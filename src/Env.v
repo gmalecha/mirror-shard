@@ -335,7 +335,7 @@ End MapRepr.
 
 (** Specializations for tvarD **)
 Section UpdateAt_tvar.
-  Require Import Bedrock.ndep.Expr.
+  Require Import Expr.
 
   Definition cast_tvar new ls idx
     : tvarD (updateAt new ls idx) (tvType idx) -> Impl new :=

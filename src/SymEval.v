@@ -1,7 +1,6 @@
-Require Import List Bedrock.DepList Word Memory.
+Require Import List DepList Word Memory.
 Require Import Heaps SepTheoryX.
-Require Import Bedrock.ndep.Expr Bedrock.ndep.SepExpr.
-Require Import Bedrock.ndep.Env.
+Require Import Expr SepExpr Provers.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -501,36 +500,18 @@ Module EvaluatorPlugin (B : Heap) (ST : SepTheoryX.SepTheoryXType B) : Evaluator
 
 End EvaluatorPlugin.
 
-(*
+
 Module BedrockEvaluator (B : Heap) (ST : SepTheoryX.SepTheoryXType B).
   Module Import SEP := SepExpr B ST.
   Require Import IL.
 
   (** TODO : This is specialized to bedrock **)
-  Require Import Bedrock.SepTac.
+  Require Import SepTac.
 
   Variable types' : list type.
-  Definition wIdx := 0.
-  Definition stIdx := 1.
-  Print bedrock_types.
-  Definition W_type := 
-    {| Impl := W
-     ; Expr.Eq := fun x y : W =>
-       match weq x y with
-         | left pf => Some pf
-         | right _ => None
-       end |}.
-  Definition state_type := 
-    SEP.defaultType (settings * state)%type.
-
-  Definition wT := tvType wIdx.
-  Definition stT := tvType stIdx.
-
-  Definition deltaT := ((wIdx, W_type) :: (stIdx, state_type) :: nil).
-
-  Definition types := repr deltaT types'.
-
-  Definition castor := cast_repr_tvar deltaT.
+  Definition types := bedrock_types ++ types'.
+  Definition pcT := tvType 0.
+  Definition stT := tvType 1.
 
   (** These the reflected version of the IL, it essentially 
    ** replaces all uses of W with expr types so that the value
@@ -581,11 +562,12 @@ Module BedrockEvaluator (B : Heap) (ST : SepTheoryX.SepTheoryXType B).
 
   (** Symbolic State **)
   Record SymState : Type :=
-  { SymMem  : SEP.SHeap types wT stT
+  { SymMem  : SEP.SHeap types pcT stT
   ; SymRegs : SymRegType
   }.
 
   (** This has to be connected to the type of the intermediate representation **)
+  Definition tvWord := tvType 0.
 
   Definition sym_evalRval (rv : sym_rvalue) (ss : SymState) : option (expr types) :=
     match rv with
@@ -656,32 +638,19 @@ Module BedrockEvaluator (B : Heap) (ST : SepTheoryX.SepTheoryXType B).
     end.
 *)
 
-  Variable sfuncs : SEP.sfunctions types wT stT.
+  Variable sfuncs : SEP.sfunctions types pcT stT.
 
   (* Denotation functions *)
   Section sym_denote.
     Variable uvars vars : env types.
 
-    Print cast_repr.
-
-    Definition exprD_repr (e : expr types) (t : nat) : option (match nth_error_repr deltaT types' t with
-                                                                 | None => Empty_set
-                                                                 | Some t => Impl t
-                                                               end) :=
-      let d := exprD funcs uvars vars e (tvType t) in
-      @cast_repr _ (fun t => 
-        option match t with
-                 | None => Empty_set
-                 | Some t => Impl t 
-               end) deltaT types' t d.
-
     Definition sym_regsD (rs : SymRegType) : option regs :=
       match rs with
         | (sp, rp, rv) =>
           match 
-            exprD_repr sp wIdx ,
-            exprD_repr rp wIdx ,
-            exprD_repr rv wIdx
+            exprD funcs uvars vars sp tvWord ,
+            exprD funcs uvars vars rp tvWord ,
+            exprD funcs uvars vars rv tvWord 
             with
             | Some sp , Some rp , Some rv =>
                 Some (fun r => 
@@ -698,12 +667,12 @@ Module BedrockEvaluator (B : Heap) (ST : SepTheoryX.SepTheoryXType B).
       match s with
         | SymReg r => Some (Reg r)
         | SymImm e =>
-          match exprD_repr e wIdx with
+          match exprD funcs uvars vars e tvWord with
             | Some e => Some (Imm e)
             | None => None
           end
         | SymIndir r o =>
-          match exprD_repr o wIdx with
+          match exprD funcs uvars vars o tvWord with
             | Some o => Some (Indir r o)
             | None => None
           end
@@ -724,7 +693,7 @@ Module BedrockEvaluator (B : Heap) (ST : SepTheoryX.SepTheoryXType B).
                            | Some l => Some (RvLval l)
                            | None => None
                          end
-        | SymRvImm e => match exprD_repr e wIdx with
+        | SymRvImm e => match exprD funcs uvars vars e tvWord with
                           | Some l => Some (RvImm l)
                           | None => None
                         end
@@ -757,29 +726,15 @@ Module BedrockEvaluator (B : Heap) (ST : SepTheoryX.SepTheoryXType B).
 
     Definition regsD (r : regs) (sr : SymRegType) : Prop :=
       let '(sp, rp, rv) := sr in
-         exprD_repr sp wIdx = Some (r Sp)
-      /\ exprD_repr rp wIdx = Some (r Rp)
-      /\ exprD_repr rv wIdx = Some (r Rv).
+         exprD funcs uvars vars sp tvWord = Some (r Sp)
+      /\ exprD funcs uvars vars rp tvWord = Some (r Rp)
+      /\ exprD funcs uvars vars rv tvWord = Some (r Rv).
 
     Require Import PropX.
 
-    Definition sexprD_repr G (se : SepIL.ST.hprop (tvarD types wT) (tvarD types stT) G) : SepIL.hpropB G :=
-      let x := @cast_repr _ (fun t => 
-      SepIL.ST.hprop match t with
-                       | None => Empty_set
-                       | Some t => Impl t 
-                     end (tvarD types stT) G) deltaT types' wIdx se in
-      let x := @cast_repr _ (fun t => 
-      SepIL.ST.hprop W match t with
-                         | None => Empty_set
-                         | Some t => Impl t 
-                       end G) deltaT types' stIdx x in 
-      x.
-
-
-    Definition stateD cs (stn : settings) (s : state) (ss : SymState) : Prop :=
+    Definition stateD cs (stn : IL.settings) (s : state) (ss : SymState) : Prop :=
       PropX.interp cs ([| regsD (Regs s) (SymRegs ss) |] /\ 
-                       SepIL.SepFormula.sepFormula (sexprD_repr (SEP.sexprD funcs sfuncs uvars vars (SEP.sheapD (SymMem ss)))) (stn, s))%PropX.
+                       SepIL.SepFormula.sepFormula (SEP.sexprD funcs sfuncs uvars vars (SEP.sheapD (SymMem ss))) (stn, s))%PropX.
 
   End sym_denote.
 
@@ -814,16 +769,17 @@ Module BedrockEvaluator (B : Heap) (ST : SepTheoryX.SepTheoryXType B).
           forall rv,
           sym_evalRval r ss = Some rv ->
           exists rvD ,
-          exprD_repr uvars vars0 rv wIdx = Some rvD /\
+          exprD funcs uvars vars0 rv tvWord = Some rvD /\
           evalRvalue stn s rD = Some rvD.
         Proof.          
         Admitted.
+        Check sym_evalLval.
         Lemma sym_lvalue_sound : forall uvars vars0 l lD,
           sym_lvalueD uvars vars0 l = Some lD ->
           forall specs stn s ss, 
           stateD uvars vars0 specs stn s ss ->
           forall a aD ss',
-          exprD_repr uvars vars0 a wIdx = Some aD ->
+          exprD funcs uvars vars0 a tvWord = Some aD ->
           sym_evalLval l a ss = Some ss' ->
           exists s' , 
                evalLvalue stn s lD aD = Some s'
@@ -837,11 +793,8 @@ Module BedrockEvaluator (B : Heap) (ST : SepTheoryX.SepTheoryXType B).
             unfold stateD, regsD in *. PropXTac.propxFo.
               destruct (SymRegs ss). destruct p.
               destruct r; simpl in *; intuition.
-            destruct ss; simpl in *. destruct SymRegs0. destruct p.
-            intuition.
-            Check SepIL.SepFormula.sepFormula.
-            rewrite SepIL.SepFormula.sepFormula_eq in *.
-            simpl in *.          
+
+          
         Admitted.
         generalize dependent H2. case_eq (sym_evalRval s0 ss); try congruence.
         intros. eapply sym_rvalue_sound in H1; eauto. destruct H1. destruct H1.
@@ -851,7 +804,6 @@ Module BedrockEvaluator (B : Heap) (ST : SepTheoryX.SepTheoryXType B).
   Admitted.
 
 End BedrockEvaluator.
-*)
 
 
 (*
@@ -1406,7 +1358,7 @@ Module Evaluator (B : Heap) (ST : SepTheoryX.SepTheoryXType B).
 End Evaluator.
 *)
 (*
-Require Import SepIL Bedrock.SepTac.
+Require Import SepIL SepTac.
 
 Module BedrockEvaluator_ptsto.
   Module E := EvaluatorPlugin (BedrockHeap) (ST).
