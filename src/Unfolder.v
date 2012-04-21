@@ -99,7 +99,7 @@ Module Make (Import SE : SepExprType).
     Definition lemmaD (lem : lemma) : Prop :=
       forallEachR (Foralls lem) (fun env =>
         implyEach (Hyps lem) env
-        (forall specs, himp funcs preds nil nil env specs (Lhs lem) (Rhs lem))).
+        (forall specs, himp funcs preds nil env specs (Lhs lem) (Rhs lem))).
 
     (** Preprocessed databases of hints *)
 
@@ -225,9 +225,10 @@ Module Make (Import SE : SepExprType).
                           let (exs, sh') := hash (substSexpr firstUvar O subs (Rhs h)) in
 
                           (* The final result is obtained by joining the hint RHS with the original symbolic heap. *)
-                            Some {| Vars := Vars s ++ exs;
-                              UVars := UVars s;
-                              Heap := star_SHeap sh sh' |}
+                          Some {| Vars := Vars s ++ exs
+                                ; UVars := UVars s
+                                ; Heap := star_SHeap sh sh'
+                                |}
                         else
                           None
                     end
@@ -260,9 +261,9 @@ Module Make (Import SE : SepExprType).
                         if allb (Prove prover facts) (map (substExpr firstUvar O subs) (Hyps h)) then
                           (* Remove the current call from the state, as we are about to replace it with a simplified set of pieces. *)
                           let impures' := FM.add f argss (impures (Heap s)) in
-                          let sh := {| impures := impures';
-                            pures := pures (Heap s);
-                            other := other (Heap s) |} in
+                          let sh := {| impures := impures'
+                                     ; pures := pures (Heap s)
+                                     ; other := other (Heap s) |} in
 
                           (* Time to hash the hint LHS, to (among other things) get the new existential variables it creates. *)
                           let (exs, sh') := hash (substSexpr firstUvar O subs (Lhs h)) in
@@ -271,9 +272,10 @@ Module Make (Import SE : SepExprType).
                           let sh' := sheapSubstU O (length exs) (length (UVars s)) sh' in
 
                           (* The final result is obtained by joining the hint LHS with the original symbolic heap. *)
-                          Some {| Vars := Vars s;
-                            UVars := UVars s ++ exs;
-                            Heap := star_SHeap sh sh' |}
+                          Some {| Vars := Vars s
+                                ; UVars := UVars s ++ rev exs
+                                ; Heap := star_SHeap sh sh'
+                                |}
                         else
                           None
                     end
@@ -312,6 +314,7 @@ Module Make (Import SE : SepExprType).
       Hypothesis PC : ProverT_correct prover funcs.
 
       (* This soundness statement is clearly unsound, but I'll start with it to enable testing. *)
+      (** TODO: Break this into two lemmas, one for forward and one for backward **)
       Theorem unfolderOk : forall bound P Q,
         (let (exsP, shP) := hash P in
          let (exsQ, shQ) := hash Q in

@@ -1,12 +1,13 @@
 #SymEvalTests
 
 MODULES    := HintlessOrderedType HintlessFMapList HintlessFMapAVL \
+	GenRec \
 	Nomega Word IL LabelMap \
 	PropX PropXRel PropXTac \
 	Memory \
 	XCAP Structured StructuredModule Linker Programming \
 	EqdepClass Decidables DepList Reflect \
-	Heaps SepTheoryX \
+	Heaps SepTheoryX SepTheoryXIL \
 	NatMap Expr ExprUnify ExprUnify2 \
 	Prover Provers \
 	SepExpr \

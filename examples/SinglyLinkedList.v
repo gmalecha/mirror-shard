@@ -96,5 +96,7 @@ Definition hints_sll : TacPackage.
 Defined.
 
 Theorem sllMOk : moduleOk sllM.
+  Clear Timing Profile.
   vcgen; abstract sep hints_sll.
+  Print Timing Profile.
 Qed.

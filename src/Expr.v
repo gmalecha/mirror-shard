@@ -133,7 +133,7 @@ Section env.
           | Equal tv e1 e2 => He tv (recur e1) (recur e2)
           | Not e => Hn (recur e)
         end).
-    Qed.
+    Defined.
   End expr_ind.
 
   Global Instance EqDec_tvar : EqDec _ (@eq tvar).
@@ -141,11 +141,11 @@ Section env.
     decide equality. eapply Peano_dec.eq_nat_dec.
   Defined.
 
-  Definition env : Type := list { t : tvar & tvarD t }.
+  Definition env : Type := list (sigT tvarD).
 
   Definition env_empty : env := nil.
 
-  Definition lookupAs (ls : list { t : tvar & tvarD t }) (t : tvar) (i : nat)
+  Definition lookupAs (ls : env) (t : tvar) (i : nat)
     : option (tvarD t) :=
     match nth_error ls i with 
       | None => None
@@ -170,8 +170,9 @@ Section env.
       eauto.
   Qed.
 
-  Variable uenv : env.
-  Variable env : env.
+  Variable meta_env : env.
+  Variable var_env : env.
+
 
   Section applyD.
     Variable exprD : expr -> forall t, option (tvarD t).
@@ -191,25 +192,6 @@ Section env.
         end.
   End applyD.
 
-  Fixpoint typeof (e : expr) : option tvar :=
-    match e with
-      | Const t _ => Some t
-      | Var x => match nth_error env x with
-                   | None => None
-                   | Some (existT t _) => Some t
-                 end
-      | UVar x => match nth_error uenv x with
-                    | None => None
-                    | Some (existT t _) => Some t
-                  end
-      | Func f _ => match nth_error funcs f with
-                      | None => None
-                      | Some r => Some (Range r)
-                    end
-      | Equal _ _ _ => Some tvProp
-      | Not _ => Some tvProp
-    end.
-
   Fixpoint exprD (e : expr) (t : tvar) : option (tvarD t) :=
     match e with
       | Const t' c =>
@@ -220,8 +202,8 @@ Section env.
                  end
           | right _ => None 
         end
-      | Var x => lookupAs env t x
-      | UVar x => lookupAs uenv t x 
+      | Var x => lookupAs var_env t x
+      | UVar x => lookupAs meta_env t x 
       | Func f xs =>
         match nth_error funcs f with
           | None => None
@@ -256,24 +238,62 @@ Section env.
   Theorem exprD_det : forall e t1 t2, exprD e t1 <> None
     -> exprD e t2 <> None
     -> t1 = t2.
-(*    induction e; t. *)
-  Admitted.
+  Proof.
+    induction e; simpl; intros; try solve [ eapply lookupAs_det; eauto ];
+      repeat match goal with
+               | [ H : context [ match ?Y with 
+                                   | left _ => _ | right _ => _ 
+                                 end ] |- _ ] => destruct Y; try congruence
+               | [ H : context [ match nth_error ?A ?B with 
+                                   | Some _ => _ | None => _ 
+                                 end ] |- _ ] => destruct (nth_error A B); try congruence
+             end;
+    destruct t1; destruct t2; auto.
+  Qed.
 
+  Fixpoint typeof (e : expr) : option tvar :=
+    match e with
+      | Const t _ => Some t
+      | Var x => match nth_error var_env x with
+                   | None => None
+                   | Some (existT t _) => Some t
+                 end
+      | UVar x => match nth_error meta_env x with
+                    | None => None
+                    | Some (existT t _) => Some t
+                  end
+      | Func f _ => match nth_error funcs f with
+                      | None => None
+                      | Some r => Some (Range r)
+                    end
+      | Equal _ _ _
+      | Not _ => Some tvProp
+    end.
 
   Theorem exprD_principal : forall e t, exprD e t <> None
     -> match typeof e with
          | None => False
          | Some t' => exprD e t' <> None
        end.
-(*
-    induction e; simpl; unfold lookupAs;
-      repeat match goal with
-               | [ |- context[nth_error ?E ?F] ] => destruct (nth_error E F) as [ [ ] | ]
-               | [ H : match ?pf with refl_equal => _ end = _ |- _ ] => rewrite (UIP_refl e) in H
-               | _ => t1
-             end.
-*)
-  Admitted.
+  Proof.
+    induction e; simpl; unfold lookupAs; intros;
+      repeat (simpl in *; try congruence; 
+        match goal with
+          | [ |- context[nth_error ?E ?F] ] => destruct (nth_error E F) as [ [ ] | ]
+          | [ |- context[ equiv_dec ?A ?A ] ] => rewrite (EquivDec_refl_left A)
+          | [ H : match ?X with
+                    | Some _ => _ | None => _ 
+                  end <> None |- _ ] => destruct X; [ | solve [ exfalso; auto ] ]
+          | [ H : context [ match ?X with
+                              | left _ => _ | right _ => _ 
+                            end ] |- _ ] => destruct X; [ | solve [ exfalso; auto ] ]
+          | [ H : context [ match ?X with
+                              | tvProp => _ | tvType _ => _ 
+                            end ] |- _ ] => destruct X; [ | solve [ exfalso; auto ] ]
+          | [ H : match ?pf with refl_equal => _ end = _ |- _ ] => rewrite (UIP_refl pf) in H
+        end).
+    unfold equiv in *. subst. auto.
+  Qed.
 
   Section All2.
     Variable X Y : Type.
@@ -303,8 +323,8 @@ Section env.
     match e with 
       | Const t' _ => 
         if equiv_dec t' t then true else false
-      | Var x => if lookupAs env t x then true else false 
-      | UVar x => if lookupAs uenv t x then true else false 
+      | Var x => if lookupAs var_env t x then true else false 
+      | UVar x => if lookupAs meta_env t x then true else false 
       | Func f xs => 
         match nth_error funcs f with
           | None => false
@@ -328,12 +348,12 @@ Section env.
     match e with 
       | Const t' _ => Some t'
       | Var x => 
-        match nth_error env x with
+        match nth_error var_env x with
           | None => None
           | Some z => Some (projT1 z)
         end
       | UVar x => 
-        match nth_error uenv x with
+        match nth_error meta_env x with
           | None => None
           | Some z => Some (projT1 z)
         end
@@ -443,9 +463,9 @@ Section env.
   Proof.
     induction e; simpl; intros.
       destruct (equiv_dec t t1); try congruence.
-      unfold lookupAs in *. destruct (nth_error env x); try congruence.
+      unfold lookupAs in *. destruct (nth_error var_env x); try congruence.
         destruct s; simpl in *. destruct (equiv_dec x0 t); congruence.
-      unfold lookupAs in *. destruct (nth_error uenv x); try congruence.
+      unfold lookupAs in *. destruct (nth_error meta_env x); try congruence.
         destruct s; simpl in *. destruct (equiv_dec x0 t); congruence.
       destruct (nth_error funcs f); try congruence.
         destruct (equiv_dec t (Range s)); congruence.
@@ -543,7 +563,10 @@ Section env.
       | _ , _ => None
     end.
 
-  Global Instance SemiDec_expr : SemiDec expr := {| seq_dec := expr_seq_dec |}.
+  Global Instance SemiDec_expr : SemiDec expr.
+    let v := eval cbv delta [ expr_seq_dec ] in expr_seq_dec in
+    constructor; exact v.
+  Defined.
 
   (** lift the "real" variables in the range [a,...)
    ** to the range [a+b,...)
@@ -562,6 +585,7 @@ Section env.
       | Not e1 => Not (liftExpr a b e1)
     end.
 
+
   Fixpoint liftExprU (a b : nat) (e : expr (*(uvars' ++ uvars) vars*)) 
     : expr (*(uvars' ++ ext ++ uvars) vars*) :=
     match e with
@@ -578,6 +602,7 @@ Section env.
     end.
 
   (** This function replaces "real" variables [a, b) with existential variables (c,...)
+   ** TODO: the "b" parameter isn't really used!
    **)
   Fixpoint exprSubstU (a b c : nat) (s : expr (*a (b ++ c ++ d)*)) {struct s}
       : expr (* (c ++ a) (b ++ d) *) :=
@@ -595,7 +620,41 @@ Section env.
         | Not e1 => Not (exprSubstU a b c e1)
       end.
 
-  Fixpoint forallEach (ls : variables) : (env.env -> Prop) -> Prop :=
+  Lemma nth_error_length : forall T (ls ls' : list T) n,
+    nth_error (ls ++ ls') (n + length ls) = nth_error ls' n.
+  Proof.
+    induction ls; simpl; intros.
+    rewrite Plus.plus_0_r. auto.
+    cutrewrite (n + S (length ls) = S n + length ls); [ | omega ]. simpl. auto.
+  Qed.
+
+  Lemma liftExpr_0 : forall a (b : expr), liftExpr a 0 b = b.
+  Proof.
+    induction b; simpl; intros; auto.
+    destruct (Compare_dec.lt_dec x a); f_equal; omega.
+    f_equal. generalize dependent H. clear. induction 1. auto.
+    simpl; f_equal; auto.
+    rewrite IHb1; rewrite IHb2. reflexivity.
+    f_equal. auto.
+  Qed.
+
+  Lemma liftExpr_combine : forall (e : expr) a b c,
+    liftExpr a b (liftExpr a c e) = liftExpr a (c + b) e.
+  Proof.
+    induction e; intros; simpl; repeat match goal with
+                                         | [ H : _ |- _ ] => rewrite H
+                                       end; try reflexivity. 
+    destruct (Compare_dec.lt_dec x a); simpl.
+    destruct (Compare_dec.lt_dec x a); auto. exfalso; auto.
+    destruct (Compare_dec.lt_dec (x + c) a). exfalso; omega. f_equal; omega.
+    
+    f_equal. rewrite map_map. induction H; simpl; auto.
+    rewrite H. f_equal; auto.
+  Qed.            
+
+  (** first variable in the list is the first one quantified
+   **)
+  Fixpoint forallEach (ls : variables) : (env -> Prop) -> Prop :=
     match ls with
       | nil => fun cc => cc nil
       | a :: b => fun cc =>
@@ -616,6 +675,8 @@ Section env.
       eapply IHls. intros. subst. eapply H. auto.
   Qed.
 
+  (** first variable in the list is the first one quantified
+   **)
   Fixpoint existsEach (ls : variables) : (env.env -> Prop) -> Prop :=
     match ls with
       | nil => fun cc => cc nil
@@ -680,6 +741,40 @@ Section env.
 
 End env.
 
+Lemma liftExpr_ext : forall types (funcs : functions types) EG G G' G'' e t,
+  exprD funcs EG (G'' ++ G) e t = exprD funcs EG (G'' ++ G' ++ G) (liftExpr (length G'') (length G') e) t.
+Proof.
+  clear. induction e; simpl; intros; try reflexivity.
+  destruct (Compare_dec.lt_dec x (length G'')).
+  simpl. unfold lookupAs. 
+  revert G; revert G'. generalize dependent x. generalize dependent G''.
+  induction G''; simpl; intros.
+  exfalso; omega.
+  destruct x. reflexivity. simpl. erewrite <- IHG''. reflexivity. omega.
+  simpl. unfold lookupAs. 
+
+  cutrewrite (x = (x - length G'') + length G''). 
+  cutrewrite ((x - length G'') + length G'' + length G' = (x - length G'') + length G' + length G''). 2: omega.
+  repeat rewrite nth_error_length. reflexivity.
+  rewrite Plus.plus_comm. rewrite <- Minus.le_plus_minus; auto. omega.
+
+  destruct (nth_error funcs f); auto. destruct (equiv_dec (Range s) t); auto.
+  unfold Equivalence.equiv in e. subst. destruct s; simpl in *.
+  generalize dependent Domain0. induction H; intros; auto.
+  simpl. destruct Domain0; auto. rewrite H.
+  match goal with
+    | [ |- match ?X with
+             | Some _ => _ | None => _ 
+           end _ _ = _ ] => destruct X
+  end. eauto.
+
+  auto.
+
+  destruct t0; auto. rewrite IHe1. rewrite IHe2. auto.
+
+  destruct t; auto. rewrite IHe. reflexivity.
+Qed.
+
 Section exists_subst.
   Variable types : list type.
   Variable funcs : functions types.
@@ -689,46 +784,40 @@ Section exists_subst.
   Fixpoint exists_subst (CU : env types)
     (U : list (tvar * option (expr types)))
     : (env types -> Prop) -> Prop :=
-    match U as U with
-      | nil => fun cc => cc nil
-      | (t,v) :: r => fun cc =>
+    match U , CU with
+      | nil , nil => fun cc => cc nil
+      | (t,v) :: U' , existT t' v' :: CU'  => fun cc =>
         match v with
           | None => 
             exists v : tvarD types t, exists_subst (match CU with
                                                       | nil => nil
                                                       | _ :: CU' => CU'
-                                                    end) r (fun z => cc (existT _ t v :: z))
+                                                    end) U' (fun z => cc (existT _ t v :: z))
           | Some v => 
-            match exprD funcs CU U1 v t with
+            match exprD funcs CU U1 v t' with
               | None => False
-              | Some v1 =>
-                match CU with
-                  | nil => exists_subst nil r (fun z => cc (existT _ t v1 :: z))
-                  | existT t' v' :: CU' =>
-                    match exprD funcs CU U1 v t' with
-                      | None => False
-                      | Some v'' => v' = v'' /\ exists_subst CU' r (fun z => cc (existT _ t v1 :: z))
-                    end
-                end
+              | Some v1 => v' = v1 /\ exists_subst CU' U' (fun z => cc (existT _ t' v1 :: z))
             end
         end
+      | _ , _ => fun _ => False
     end.
 
-Lemma exists_subst_exists : forall CU
-  (B : list (tvar * option (expr types))) P,
+Lemma exists_subst_exists : forall (B : list (tvar * option (expr types))) CU P,
   exists_subst CU B P ->
   exists C, P C.
 Proof.
-(*
-      clear. induction B; simpl; intros.
-      eauto.
-      destruct a; simpl in *. destruct o.
-      destruct (exprD funcs CU A e t); try tauto.
-      eapply IHB in H; destruct H; eauto. 
-      destruct H. eapply IHB in H. destruct H; eauto.
-    Qed.
-*)
-Admitted.
+  clear. induction B; simpl; intros.
+    destruct CU. eauto.
+    contradiction.
+   
+    destruct a; destruct CU; simpl in *; try contradiction.
+    destruct s; destruct o. 
+    match goal with
+      | [ H : match ?X with | None => _ | Some _ => _ end |- _ ] => destruct X
+    end; intuition; subst; auto.
+    apply IHB in H1. destruct H1. eauto.
+    destruct H. eapply IHB in H. destruct H; eauto.
+Qed.
 
 End exists_subst.
 
@@ -1081,6 +1170,7 @@ Ltac getVar' idx :=
   end.
 
 Ltac getVar idx :=
+  (** NOTE: reification as indicies **)
   match idx with
     | fun x => @openUp _ _ (@fst _ _) (@?X x) =>
       getVar' X
@@ -1094,9 +1184,10 @@ Ltac get_or_extend_var types all t v k :=
   let rec doIt rem acc :=
     match rem with
       | nil => 
+        (** NOTE: reification as levels **)
         let all := eval simpl app in (all ++ (@existT tvar (tvarD types) t v) :: nil) in
         k all acc
-      | existT _ v :: _ => k all acc
+      | @existT _ _ _ v :: _ => k all acc
       | _ :: ?rem =>
         let acc := constr:(S acc) in
         doIt rem acc

@@ -16,7 +16,7 @@ Qed.
 
 Hint Resolve FR0' FRS'.
 
-Definition factS : assert := st ~> ExX, Ex n0, Ex n4, ![ $0 =*> n0 * $4 =*> n4 * #0 ] st
+Definition factS : assert := st ~> ExX, Ex n0, Ex n4, ![ $0 =*> n0 *  $4 =*> n4 * #0 ] st
   /\ st#Rp @@ (st' ~> [| factR st#Rv st'#Rv |] /\ Ex n0', Ex n4', ![ $0 =*> n0' * $4 =*> n4' * #1 ] st').
 
 Definition fact := bmodule "fact" {{
@@ -57,7 +57,9 @@ Hint Extern 5 (@eq W _ _) => cbv zeta; match goal with
                                        end.
 
 Theorem factOk : moduleOk fact.
+  Clear Timing Profile.
   vcgen; abstract (sep_auto; eauto).
+  Print Timing Profile.
 Qed.
 
 Definition factDriver := bimport [[ "fact"!"fact" @ [factS] ]]
@@ -86,7 +88,10 @@ Qed.
 Hint Resolve factR_4.
 
 Theorem factDriverOk : moduleOk factDriver.
-  vcgen; abstract (sep_auto; eauto).
+  Clear Timing Profile.
+  vcgen;
+  abstract (sep_auto; eauto).
+  Print Timing Profile.
 Qed.
 
 Definition factProg := link fact factDriver.

@@ -38,7 +38,7 @@ Definition auto_ext : TacPackage.
   ] in auto_ext' in
   exact v.
 Defined.
-
+    
 Ltac sym_eval_simplifier H :=
   Provers.unfold_comboProver H ;
   SymIL.MEVAL.Plugin.unfolder H ;
@@ -102,10 +102,6 @@ Ltac sep_firstorder := sep_easy;
 
 Ltac cancel ext :=
   sep_canceler ltac:(isConst) ext the_cancel_simplifier; sep_firstorder.
-(*
-    ltac:(fun ts fs => constr:(@Provers.comboProver_correct ts fs))
-    the_cancel_simplifier tt.
-*)
 
 Ltac unf := unfold substH.
 Ltac reduce := Programming.reduce unf.
