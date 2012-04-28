@@ -100,6 +100,13 @@ Module Type SepExprType.
      **)
     Parameter sheapD : SHeap -> sexpr.
 
+    Fixpoint existsEach (ls : list tvar) {struct ls} : sexpr -> sexpr :=
+      match ls with
+        | nil => fun x => x
+        | t :: ts => fun y => Exists t (@existsEach ts y)
+      end.
+
+
 (*
     (** result of cancelation **)
     Record SepResult (gl gr : sexpr) : Type :=
@@ -893,15 +900,6 @@ case_eq (multimap_join m1_1 m2); intros; simpl.
       intros. specialize (@hash_denote' EG cs s G). etransitivity.
       eassumption. apply heq_existsEach. intros. rewrite sheapD_sheapD'. reflexivity.
     Qed.
-(*
-            Lemma fold_star_acc : forall T EG G cs (F : nat -> T -> sexpr -> sexpr) i a a',
-              heq EG G cs a a' ->
-              (forall n a b b', heq EG G cs b b' -> heq EG G cs (F n a b) (F n a b')) ->
-              heq EG G cs (FM.fold F i a) (FM.fold F i a').
-            Proof.
-              induction i; simpl; eauto.
-            Qed.
-*)
 
     (** replace "real" variables [a,b) and replace them with
      ** uvars [c,..]
@@ -998,52 +996,17 @@ case_eq (multimap_join m1_1 m2); intros; simpl.
        {| impures := rf ; pures := pures r ; other := other r |},
        sub).
 
-(*
-    Record SepResult (gl gr : sexpr) : Type :=
-    { r_vars   : variables
-    ; r_lhs_ex : variables
-    ; r_lhs    : SHeap
-    ; r_rhs_ex : variables
-    ; r_rhs    : SHeap
-    ; r_SUBST  : Subst types
-    }.
-
-    (** TODO: I should reconsider this... 
-     ** - I think the correct interface here is to spit out two sexprs
-     **)
-    Definition CancelSep (uvars : env types)
-      : list (expr types) -> forall (gl gr : sexpr), SepResult gl gr :=
-        fun hyps gl gr =>
-        let (ql, lhs) := hash gl in
-        let (qr, rhs) := hash gr in
-        let summ := Summarize Prover (hyps ++ pures lhs) in
-        let rhs' := liftSHeap 0 (length ql) (sheapSubstU 0 (length qr) (length uvars) rhs) in
-        let '(lhs',rhs',lhs_subst,rhs_subst) := sepCancel summ lhs rhs' in
-        {| r_vars := ql 
-         ; r_lhs := lhs' ; r_lhs_ex := nil
-         ; r_rhs := rhs' ; r_rhs_ex := map (@projT1 _ _) uvars ++ qr ; r_SUBST := rhs_subst
-         |}.
-
-    (** TODO: this isn't true **)
-    Theorem ApplyCancelSep : forall cs uvars hyps l r,
-      AllProvable funcs uvars nil hyps ->
-      match CancelSep uvars hyps l r with
-        | {| r_vars := vars 
-           ; r_lhs_ex := lhs_ex ; r_lhs := lhs
-           ; r_rhs_ex := rhs_ex ; r_rhs := rhs 
-           ; r_SUBST := SUBST |} =>
-          forallEach vars (fun VS : env types =>
-            exists_subst funcs VS uvars (env_of_Subst SUBST rhs_ex 0)
-            (fun rhs_ex : env types => 
-              himp nil rhs_ex VS cs (sheapD lhs) (sheapD rhs)))
-      end ->
-      himp nil uvars nil cs l r.
+    Theorem sepCancel_correct : forall U G cs bound summ l r l' r' sub ,
+      Valid Prover_correct U G summ ->
+      sepCancel bound summ l r = (l', r', sub) ->
+      himp U G cs (sheapD l) (sheapD r) ->
+      himp U G cs (sheapD l') (sheapD r').
     Proof.
-      intros. case_eq (CancelSep uvars hyps l r); intros.
-      rewrite H1 in H0. revert Prover_correct.
-      admit.
-    Qed.
-*)
+      clear. destruct l; destruct r. unfold sepCancel. simpl.
+      intros. repeat rewrite sheapD_sheapD'. repeat rewrite sheapD_sheapD' in H1.
+      destruct l'; destruct r'. unfold sheapD' in *. simpl in *.
+    Admitted.
+
 
   End env.
 
@@ -1257,9 +1220,7 @@ Module ReifySepExpr (Import SEP : SepExprType).
         | fun x : VarType ?T => @ST.star _ _ _ (@?L x) (@?R x) =>
           reflect L funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs L =>
             reflect R funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs R => 
-              let r := constr:(@Star) in
-              let r := implicits r in
-              let r := constr:(r L R) in
+              let r := constr:(@Star types pcType stateType L R) in
               k uvars funcs sfuncs r))
         | fun x : ?T => @ST.ex _ _ _ ?T' (fun y => @?B x y) =>
           let v := constr:(fun x : VarType (T' * T) => 
@@ -1268,44 +1229,32 @@ Module ReifySepExpr (Import SEP : SepExprType).
           let nv := reflectType types T' in
           let vars' := constr:(nv :: vars) in
           reflect v funcs sfuncs uvars vars' ltac:(fun uvars funcs sfuncs B =>
-            let r := constr:(@Exists) in
-            let r := implicits r in
-            let r := constr:(@r nv B) in
+            let r := constr:(@Exists types pcType stateType nv B) in
             k uvars funcs sfuncs r)
         | fun x : ?T => @ST.emp _ _ _ => 
-          let r := constr:(@Emp) in
-          let r := implicits r in
+          let r := constr:(@Emp types pcType stateType) in
           k uvars funcs sfuncs r
 
         | fun x : ?T => @ST.inj _ _ _ (PropX.Inj (@?P x)) =>
           reify_expr isConst P types funcs uvars vars ltac:(fun uvars funcs P =>
-            let r := constr:(@Inj) in
-            let r := implicits r in
-            let r := constr:(r P) in
+            let r := constr:(@Inj types pcType stateType P) in
             k uvars funcs sfuncs r)
 
         | @ST.emp _ _ _ => 
-          let r := constr:(@Emp) in
-          let r := implicits r in
+          let r := constr:(@Emp types pcType stateType) in
           k uvars funcs sfuncs r
 
         | @ST.inj _ _ _ (PropX.Inj ?P) =>
           reify_expr isConst P types funcs uvars vars ltac:(fun uvars funcs P =>
-            let r := constr:(@Inj) in
-            let r := implicits r in
-            let r := constr:(r P) in
+            let r := constr:(@Inj types pcType stateType P) in
             k uvars funcs sfuncs r)
         | @ST.inj _ _ _ ?PX =>
-          let r := constr:(@Const) in
-          let r := implicits r in
-          let r := constr:(r PX) in
+          let r := constr:(@Const types pcType stateType PX) in
           k uvars funcs sfuncs r
         | @ST.star _ _ _ ?L ?R =>
           reflect L funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs L => 
             reflect R funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs R => 
-              let r := constr:(@Star) in
-              let r := implicits r in
-              let r := constr:(r L R) in
+              let r := constr:(@Star types pcType stateType L R) in
               k uvars funcs sfuncs r))
         | @ST.ex _ _ _ ?T (fun x => @?B x) =>
           let v := constr:(fun x : VarType (T * unit) => B (@openUp _ T (@fst _ _) x)) in
@@ -1313,9 +1262,7 @@ Module ReifySepExpr (Import SEP : SepExprType).
           let nv := reflectType types T in
           let vars' := constr:(nv :: vars) in
           reflect v funcs sfuncs uvars vars' ltac:(fun uvars funcs sfuncs B =>
-            let r := constr:(@Exists) in
-            let r := implicits r in
-            let r := constr:(@r nv B) in
+            let r := constr:(@Exists types pcType stateType nv B) in
             k uvars funcs sfuncs r)
         | ?X =>
           let rec bt_args args uvars funcs k :=
@@ -1333,20 +1280,13 @@ Module ReifySepExpr (Import SEP : SepExprType).
           let cc f Ts As :=
             getSFunction pcType stateType types f sfuncs ltac:(fun sfuncs F =>
             bt_args As uvars funcs ltac:(fun uvars funcs args =>
-            let r := constr:(@Func) in
-            let r := implicits r in
-            let r := constr:(@r F args) in
+            let r := constr:(@Func types pcType stateType F args) in
             k uvars funcs sfuncs r))
           in
           refl_app cc X
       end
     in
     reflect s funcs sfuncs uvars vars k.
-
-(*
-Ltac reify_exprs isConst ss types funcs pcType stateType sfuncs uvars vars k :=
-*)
-
 
 (*
   (** reflect the list of goals. 
