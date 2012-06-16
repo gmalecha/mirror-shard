@@ -373,6 +373,13 @@ Ltac get_instrs st :=
       | [ |- _ ] => tt
     end
   in get_instrs st tt.
+
+Ltac clear_instrs ins :=
+  match ins with
+    | tt => idtac
+    | ((_,?H), ?ins) => clear H; clear_instrs ins
+  end.
+
 Ltac collectAllTypes_instrs is Ts :=
   match is with
     | tt => Ts
@@ -604,7 +611,7 @@ End unfolder_learnhook.
           UNF.Backward UNF.backward UNF.unfoldBackward
           UNF.findWithRest UNF.find 
           equiv_dec
-          UNF.substExpr
+(*          UNF.substExpr *)
           Unfolder.FM.add
 
           SH.impures SH.pures SH.other
@@ -627,7 +634,7 @@ End unfolder_learnhook.
           UNF.Backward UNF.backward UNF.unfoldBackward
           UNF.findWithRest UNF.find 
           equiv_dec
-          UNF.substExpr
+(*          UNF.substExpr *)
           Unfolder.FM.add
 
           SH.impures SH.pures SH.other
@@ -926,7 +933,7 @@ Ltac sym_eval isConst ext simplifier :=
                           || fail 100000 "couldn't apply sym_eval_any! (non-SF case)") ;
                           first [ simplifier typesV funcsV predsV H_stateD | fail 100000 "simplifier failed! (non-SF)" ] ;
                           try clear typesV funcsV predsV ;
-                          first [ finish H_stateD | fail 100000 "finisher failed! (non-SF)" ]
+                          first [ finish H_stateD ; clear_instrs all_instrs | fail 100000 "finisher failed! (non-SF)" ]
                         | (?SF, ?H_interp) =>
                           SEP_REIFY.reify_sexpr ltac:(isConst) SF typesV funcs pcT stT preds uvars vars 
                           ltac:(fun uvars funcs preds SF =>
@@ -971,7 +978,7 @@ Ltac sym_eval isConst ext simplifier :=
 (*TIME                             start_timer "sym_eval:clear" ; *)
                             try clear typesV funcsV predsV ;
 (*TIME                             stop_timer "sym_eval:clear" ; *)
-                            first [ finish H_interp | fail 100000 "finisher failed! (SF)" ])
+                            first [ finish H_interp ; clear_instrs all_instrs | fail 100000 "finisher failed! (SF)" ])
                       end)))))
               end
           end
@@ -996,7 +1003,7 @@ Ltac sym_evaluator sym1 sym2 sym3 H :=
       ILEnv.bedrock_type_reg
       Expr.ReifyExpr.default_type
 
-      SH.sheap_liftVars
+      SH.liftSHeap
       app map nth_error value error fold_right hd hd_error tl tail rev
       Decidables.seq_dec 
       DepList.hlist_hd DepList.hlist_tl 
@@ -1062,7 +1069,7 @@ Ltac sym_evaluator sym1 sym2 sym3 H :=
       U.Subst_empty U.subst_empty
       U.Subst_set U.subst_set
       U.Subst_equations
-      U.mentionsU
+      mentionsU
       U.dep_in 
       U.exprUnify_recursor
       
@@ -1124,13 +1131,13 @@ Ltac sym_evaluator sym1 sym2 sym3 H :=
       UNF.Foralls UNF.Hyps UNF.Lhs UNF.Rhs 
       UNF.Forward UNF.Backward 
       UNF.forward UNF.unfoldForward UNF.findWithRest UNF.find
-      equiv_dec UNF.substExpr Unfolder.FM.add 
+      equiv_dec (* UNF.substExpr *) Unfolder.FM.add 
       Unfolder.allb andb length map app exprSubstU
       unfolder_LearnHook
       UNF.default_hintsPayload UNF.findWithRest'
       UNF.findWithRest
 
-      SH.hash SH.star_SHeap SH.liftSHeap SepHeap.MM.mmap_join map UNF.substExpr
+      SH.hash SH.star_SHeap SH.liftSHeap SepHeap.MM.mmap_join map (* UNF.substExpr *)
       rev_append
 
       Unfolder.FM.fold Unfolder.FM.add

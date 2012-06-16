@@ -182,7 +182,7 @@ Ltac hints_ext_simplifier hints := fun s1 s2 s3 H =>
          Expr.tvar_val_seqb_correct
          Expr.tvar_seqb_correct
          Expr.ReifyExpr.default_type
-
+         Expr.mentionsU
 
          (** ExprUnify **)
          U.exprUnify U.exprUnify_recursor
@@ -191,7 +191,7 @@ Ltac hints_ext_simplifier hints := fun s1 s2 s3 H =>
          U.Subst_empty U.subst_empty
          U.Subst_set U.subst_set
          U.Subst_equations
-         U.mentionsU
+         U.Subst_size
          U.dep_in
          U.exprUnify_recursor
 
@@ -221,11 +221,15 @@ Ltac hints_ext_simplifier hints := fun s1 s2 s3 H =>
          UNF.Forward UNF.forward UNF.unfoldForward
          UNF.Backward UNF.backward UNF.unfoldBackward
          UNF.findWithRest UNF.find equiv_dec 
-         UNF.substExpr
          UNF.findWithRest' 
-         Unfolder.allb UNF.substExpr UNF.substSheap
+         Unfolder.allb 
          UNF.find UNF.default_hintsPayload
-         UNF.substExprBw UNF.substExprBw' UNF.substSheapBw
+         UNF.openForUnification 
+         UNF.quantFwd UNF.quantBwd 
+         UNF.liftInstantiate
+         UNF.applySHeap
+         UNF.applicable UNF.checkAllInstantiated
+
 
          (** NatMap **)
          NatMap.singleton
@@ -340,11 +344,11 @@ Ltac hints_ext_simplifier hints := fun s1 s2 s3 H =>
          SEP.Default_predicate
          SEP.himp SEP.sexprD
          SEP.heq
+         SEP.liftSExpr
 
          (** SepHeap **)
          SH.impures SH.pures SH.other
          SH.liftSHeap SH.sheapSubstU
-         SH.sheap_liftVars
          SH.starred SH.hash 
          SH.star_SHeap 
          SH.SHeap_empty 
@@ -481,6 +485,7 @@ Ltac hints_ext_simplifier hints := fun s1 s2 s3 H =>
          Expr.tvar_val_seqb_correct
          Expr.tvar_seqb_correct
          Expr.ReifyExpr.default_type
+         Expr.mentionsU
 
          (** ExprUnify **)
          U.exprUnify U.exprUnify_recursor
@@ -489,7 +494,7 @@ Ltac hints_ext_simplifier hints := fun s1 s2 s3 H =>
          U.Subst_empty U.subst_empty
          U.Subst_set U.subst_set
          U.Subst_equations
-         U.mentionsU
+         U.Subst_size
          U.dep_in
          U.exprUnify_recursor
 
@@ -518,11 +523,14 @@ Ltac hints_ext_simplifier hints := fun s1 s2 s3 H =>
          UNF.UVars UNF.Heap UNF.Hyps UNF.Lhs UNF.Rhs
          UNF.Forward UNF.forward UNF.unfoldForward UNF.Backward
          UNF.backward UNF.unfoldBackward  equiv_dec 
-         UNF.substExpr
          UNF.find UNF.findWithRest UNF.findWithRest' 
-         Unfolder.allb UNF.substExpr UNF.substSheap
+         Unfolder.allb 
+         UNF.openForUnification 
+         UNF.quantFwd UNF.quantBwd 
+         UNF.liftInstantiate
+         UNF.applySHeap
          UNF.find UNF.default_hintsPayload
-         UNF.substExprBw UNF.substExprBw' UNF.substSheapBw
+         UNF.applicable UNF.checkAllInstantiated
 
          (** NatMap **)
          NatMap.singleton
@@ -641,11 +649,11 @@ Ltac hints_ext_simplifier hints := fun s1 s2 s3 H =>
          SEP.himp SEP.sexprD
          SEP.heq
          nat_eq_eqdec
+         SEP.liftSExpr
 
          (** SepHeap **)
          SH.impures SH.pures SH.other
          SH.liftSHeap SH.sheapSubstU
-         SH.sheap_liftVars
          SH.starred SH.hash 
          SH.star_SHeap 
          SH.SHeap_empty 
