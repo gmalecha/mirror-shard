@@ -391,7 +391,7 @@ Ltac get_or_extend_var types all t v k :=
  **)
 Ltac reify_expr isConst e types funcs uvars vars k :=
   let rec reflect e funcs uvars k :=
-      idtac "reflect" e funcs uvars; 
+(*      idtac "reflect" e funcs uvars;  *)
     match e with
       | ?X => is_evar X ;
         (** this is a unification variable **)
