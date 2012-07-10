@@ -4,7 +4,7 @@ MODULES := extlib.mli extlib.ml reif.ml4 example.v
 .PHONY: coq clean
 
 coq: Makefile.coq
-	make -f Makefile.coq extlib.cmi
+	$(MAKE) -f Makefile.coq extlib.cmi
 	$(MAKE) -f Makefile.coq
 
 Makefile.coq: Makefile $(MODULES)

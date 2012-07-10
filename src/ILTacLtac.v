@@ -8,6 +8,8 @@ Require Import IL ILEnv SymIL.
 Require Import Word Memory.
 Require Import Env.
 
+Export ILTacCommon.
+
 Set Implicit Arguments.
 Set Strict Implicit.
 
