@@ -15,12 +15,12 @@ Module Type SepLemma.
 
     (** The type of one unfolding lemma *)
     Record lemma := {
-      Foralls : variables;
+      Foralls : variables
       (* The lemma statement begins with this sequence of [forall] quantifiers over these types. *)
-      Hyps : list (expr types);
+    ; Hyps : list (expr types)
       (* Next, we have this sequence of pure hypotheses. *)
-      Lhs : SE.sexpr types pcType stateType;
-      Rhs : SE.sexpr types pcType stateType
+    ; Lhs : SE.sexpr types
+    ; Rhs : SE.sexpr types
       (* Finally, we have this separation implication, with lefthand and righthand sides. *)
     }.
 
@@ -54,13 +54,13 @@ Module Type SepLemma.
           forallEachR b (fun r => forall x : tvarD types a, cc (existT _ a x :: r))
       end.
 
-    Variable preds : SE.predicates types pcType stateType.
+    Variable preds : SE.predicates types.
 
     Definition lemmaD (meta_base var_base : env types) (lem : lemma) : Prop :=
       WellTyped_lemma (typeof_funcs funcs) (SE.typeof_preds preds) lem = true /\
       forallEachR (Foralls lem) (fun env =>
         implyEach (Hyps lem) meta_base (var_base ++ env)
-        (forall specs, SE.himp funcs preds meta_base (var_base ++ env) specs (Lhs lem) (Rhs lem))).
+        (SE.himp funcs preds meta_base (var_base ++ env) (Lhs lem) (Rhs lem))).
 
     (** Lemmas **)
     Axiom forallEachR_sem : forall vs P, 
@@ -87,12 +87,12 @@ Module Make (SE : SepExpr) : SepLemma with Module SE := SE.
 
     (** The type of one unfolding lemma *)
     Record lemma := {
-      Foralls : variables;
+      Foralls : variables
       (* The lemma statement begins with this sequence of [forall] quantifiers over these types. *)
-      Hyps : list (expr types);
+    ; Hyps : list (expr types)
       (* Next, we have this sequence of pure hypotheses. *)
-      Lhs : SE.sexpr types pcType stateType;
-      Rhs : SE.sexpr types pcType stateType
+    ; Lhs : SE.sexpr types
+    ; Rhs : SE.sexpr types
       (* Finally, we have this separation implication, with lefthand and righthand sides. *)
     }.
 
@@ -126,13 +126,13 @@ Module Make (SE : SepExpr) : SepLemma with Module SE := SE.
           forallEachR b (fun r => forall x : tvarD types a, cc (existT _ a x :: r))
       end.
 
-    Variable preds : SE.predicates types pcType stateType.
+    Variable preds : SE.predicates types.
 
     Definition lemmaD (meta_base var_base : env types) (lem : lemma) : Prop :=
       WellTyped_lemma (typeof_funcs funcs) (SE.typeof_preds preds) lem = true /\
       forallEachR (Foralls lem) (fun env =>
         implyEach (Hyps lem) meta_base (var_base ++ env)
-        (forall specs, SE.himp funcs preds meta_base (var_base ++ env) specs (Lhs lem) (Rhs lem))).
+        (SE.himp funcs preds meta_base (var_base ++ env) (Lhs lem) (Rhs lem))).
 
     (** Lemmas **)
     Lemma forallEachR_sem : forall vs P,

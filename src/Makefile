@@ -7,21 +7,23 @@ MODULES    := Reflection Tactics ListFacts \
 	Memory \
 	XCAP Structured StructuredModule Linker Programming \
 	EqdepClass Decidables DepList Reflect \
-	Heaps SepTheoryX SepTheoryXIL \
+	Heaps SepTheory SepTheoryXIL \
 	NatMap Expr ReifyExpr ExprUnify \
 	Prover Provers \
 	$(PROVERS:%=provers/%Prover) \
 	SepExpr ReifySepExpr SepHeap SepUnify SepCancel \
 	Unfolder ReifyHints SepLemma \
-	Env TypedPackage TacPackIL Allocated \
-	SymEval sep/PtsTo sep/Array Arrays sep/Locals provers/LocalsProver provers/ArrayBoundProver \
 	IL ReifyIL \
-	ILEnv SepIL \
-	SymIL SymILProofs SymILTac \
 	CancelIL \
-	ILTacCommon ILTac \
 	Bedrock \
 	AMD64_gas
+#	provers/LocalsProver provers/ArrayBoundProver \
+#	sep/PtsTo sep/Array Arrays sep/Locals
+#	ILTacCommon ILTac \
+#	Env TypedPackage TacPackIL Allocated \
+#       SymEval \
+#	ILEnv SepIL \
+#	SymIL SymILProofs SymILTac 
 
 TESTS := UnfolderTests
 VS         := $(MODULES:%=%.v)

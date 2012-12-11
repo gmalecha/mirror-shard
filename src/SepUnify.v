@@ -12,29 +12,25 @@ Module Make (U : SynUnifier) (SH : SepHeap).
 
   Section typed.
     Variable types : list type.
-    Variable pcT stT : tvar.
-
     Variable s : U.Subst types.
 
     Definition impuresInstantiate : MM.mmap (exprs types) -> MM.mmap (exprs types) :=
       MM.mmap_map (map (@U.exprInstantiate _ s)).
 
-    Definition sheapInstantiate (h : SH.SHeap types pcT stT) : SH.SHeap types pcT stT :=
+    Definition sheapInstantiate (h : SH.SHeap types) : SH.SHeap types :=
       {| SH.impures := impuresInstantiate (SH.impures h)
        ; SH.pures   := map (@U.exprInstantiate _ s) (SH.pures h)
        ; SH.other   := SH.other h
        |}.
 
     Variable funcs : functions types.
-    Variable preds : SH.SE.predicates types pcT stT.
+    Variable preds : SH.SE.predicates types.
     
     Variables U G : env types.
-    Variable cs : PropX.codeSpec (tvarD types pcT) (tvarD types stT).
 
-    Lemma impuresInstantiate_mmap_add : forall n e acc,
-      SH.SE.heq funcs preds U G cs
-        (SH.impuresD pcT stT (impuresInstantiate (MM.mmap_add n e acc)))
-        (SH.impuresD pcT stT 
+    Lemma impuresInstantiate_mmap_add : forall n e acc, SH.SE.heq funcs preds U G
+        (SH.impuresD (impuresInstantiate (MM.mmap_add n e acc)))
+        (SH.impuresD 
           (MM.mmap_add n (map (@U.exprInstantiate _ s) e) 
                          (impuresInstantiate acc))).
     Proof.
@@ -71,10 +67,10 @@ Module Make (U : SynUnifier) (SH : SepHeap).
     Lemma sheapInstantiate_add : forall n e m m',
       ~FM.In n m ->
       MM.PROPS.Add n e m m' ->
-      SH.SE.heq funcs preds U G cs
-        (SH.impuresD pcT stT (impuresInstantiate m'))
+      SH.SE.heq funcs preds U G
+        (SH.impuresD (impuresInstantiate m'))
         (SH.starred (fun v => SH.SE.Func n (map (U.exprInstantiate s) v)) e
-          (SH.impuresD pcT stT (impuresInstantiate m))).
+          (SH.impuresD (impuresInstantiate m))).
     Proof.
       clear. intros.
         unfold impuresInstantiate, MM.mmap_map.
@@ -82,7 +78,7 @@ Module Make (U : SynUnifier) (SH : SepHeap).
         symmetry; rewrite SH.starred_base. heq_canceler.
         repeat rewrite SH.starred_def.
         match goal with
-          | [ |- context [ @SH.SE.Emp ?X ?Y ?Z ] ] => generalize (@SH.SE.Emp X Y Z)
+          | [ |- context [ @SH.SE.Emp ?X ] ] => generalize (@SH.SE.Emp X)
         end.
         clear. induction e; simpl; intros; try reflexivity.
         rewrite IHe. heq_canceler.
@@ -107,7 +103,7 @@ Module Make (U : SynUnifier) (SH : SepHeap).
     Lemma starred_forget_exprInstantiate : forall x P,
       U.Subst_equations funcs U G s ->
       forall e,
-      SH.SE.heq funcs preds U G cs 
+      SH.SE.heq funcs preds U G 
         (SH.starred (fun v : list (expr types) => SH.SE.Func x (map (U.exprInstantiate s) v)) e P)
         (SH.starred (SH.SE.Func x) e P).
     Proof.
@@ -123,9 +119,9 @@ Module Make (U : SynUnifier) (SH : SepHeap).
 
     Lemma impuresD_forget_impuresInstantiate : forall h,
       U.Subst_equations funcs U G s ->
-      SH.SE.heq funcs preds U G cs 
-        (SH.impuresD pcT stT (impuresInstantiate h))
-        (SH.impuresD pcT stT h).
+      SH.SE.heq funcs preds U G 
+        (SH.impuresD (impuresInstantiate h))
+        (SH.impuresD h).
     Proof.
       clear. intros. eapply MM.PROPS.map_induction with (m := h); intros.
       { unfold sheapInstantiate, MM.mmap_map. repeat rewrite SH.impuresD_Empty; eauto using MF.map_Empty. reflexivity. }
@@ -136,7 +132,7 @@ Module Make (U : SynUnifier) (SH : SepHeap).
 
     Lemma Func_forget_exprInstantiate : forall n e,
       U.Subst_equations funcs U G s ->
-      SH.SE.heq funcs preds U G cs (SH.SE.Func n (map (U.exprInstantiate s) e)) (SH.SE.Func n e).
+      SH.SE.heq funcs preds U G (SH.SE.Func n (map (U.exprInstantiate s) e)) (SH.SE.Func n e).
     Proof. clear.
       unfold SH.SE.heq. simpl. intros.
       destruct (nth_error preds n); try reflexivity.

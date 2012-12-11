@@ -1,6 +1,6 @@
 Require Import Bool.
 Require Import DepList List.
-Require Import Expr SepExpr SymEval.
+Require Import Expr SepExpr.
 Require Import Word Memory IL SepIL SymIL ILEnv.
 Require Import EqdepClass.
 Require Import Env Prover.

@@ -74,20 +74,13 @@ Module Make (SH : SepHeap) (U : SynUnifier).
   Import SH.
   Module HEAP_FACTS := SepHeapFacts SH.
   Import HEAP_FACTS.
-  Module ST_EXT := SepTheoryX.SepTheoryX_Ext SE.ST.
+  Module ST_EXT := SepTheory.SepTheory_Ext SE.ST.
   Module Import LEM := SepLemma.Make SE.
-  
-  Module B := SE.ST.H.
 
   Section env.
     Variable types : list type.
     Variable funcs : functions types.
-    
-    Variable pcType : tvar.
-    Variable stateType : tvar.
-    Variable stateMem : tvarD types stateType -> B.mem.
-
-    Variable preds : predicates types pcType stateType.
+    Variable preds : predicates types.
 
     (** * Some substitution functions *)
 
@@ -149,7 +142,7 @@ Module Make (SH : SepHeap) (U : SynUnifier).
 
     (** Preprocessed databases of hints *)
 
-    Definition hintSide := list (lemma types pcType stateType).
+    Definition hintSide := list (lemma types).
     (* A complete set of unfolding hints of a single sidedness (see below) *)
 
     Definition hintSideD := Forall (lemmaD funcs preds nil nil).
@@ -239,10 +232,10 @@ Module Make (SH : SepHeap) (U : SynUnifier).
     Qed.
 
     (* As we iterate through unfolding, we modify this sort of state. *)
-    Record unfoldingState := {
-      Vars : variables;
-      UVars : variables;
-      Heap : SH.SHeap types pcType stateType
+    Record unfoldingState :=
+    { Vars : variables
+    ; UVars : variables
+    ; Heap : SH.SHeap types
     }.
 
     Section unfoldOne.
@@ -285,7 +278,7 @@ Module Make (SH : SepHeap) (U : SynUnifier).
        ** - [args] is the outside
        ** - [key] is the patterns (closed by [Foralls lem]) that need to unify with [args])
        **)
-      Definition applicable U_or_G (firstUvar firstVar : nat) (lem : lemma types pcType stateType) (args key : exprs types) 
+      Definition applicable U_or_G (firstUvar firstVar : nat) (lem : lemma types) (args key : exprs types) 
         : option (U.Subst types) :=
         let numForalls := length (Foralls lem) in
         (** NOTE: it is important that [key] is first because of the way the unification algorithm works **)
@@ -726,13 +719,12 @@ Module Make (SH : SepHeap) (U : SynUnifier).
         Subst_to_env U G sub (Foralls lem) (length U) = Some env ->
         lemmaD funcs preds nil nil lem ->            
         implyEach funcs (map (liftInstantiate U_or_G (length U) (length G) 0 sub) (Hyps lem)) U G
-        (forall specs : PropX.codeSpec (tvarD types pcType) (tvarD types stateType),
-          himp funcs preds nil env specs (Lhs lem) (Rhs lem)). 
+        (himp funcs preds nil env (Lhs lem) (Rhs lem)). 
       Proof.
         clear. destruct 2; simpl in *. eapply forallEachR_sem in H1; eauto using Subst_to_env_env.
         eapply implyEach_sem. intros. eapply implyEach_sem in H1; eauto.
         
-        clear H1 specs. unfold WellTyped_lemma in *. think. generalize dependent (Hyps lem).
+        clear H1. unfold WellTyped_lemma in *. think. generalize dependent (Hyps lem).
         induction l; simpl; intros; auto. think. intuition. clear H5 H7.
         unfold Provable in *.
         generalize (liftInstantiate_spec U_or_G U G nil (F := env)). simpl. erewrite <- Subst_to_env_typeof_env by eassumption.
@@ -750,9 +742,9 @@ Module Make (SH : SepHeap) (U : SynUnifier).
         intuition; eauto. eapply Prove_correct; eauto. unfold ValidProp.
         eapply is_well_typed_correct; eauto using typeof_env_WellTyped_env, typeof_funcs_WellTyped_funcs.
       Qed.          
-      Lemma himp_existsEach_ST_EXT_existsEach : forall cs U P vars G,
-        ST.heq cs (sexprD funcs preds U G (SE.existsEach vars P)) 
-        (ST_EXT.existsEach vars (fun env => sexprD funcs preds U (rev env ++ G) P)).
+      Lemma himp_existsEach_ST_EXT_existsEach : forall U P vars G,
+        ST.heq (sexprD funcs preds U G (SE.existsEach vars P)) 
+               (ST_EXT.existsEach vars (fun env => sexprD funcs preds U (rev env ++ G) P)).
       Proof.
         Opaque ST_EXT.existsEach.
         induction vars; simpl; intros. rewrite ST_EXT.existsEach_nil. simpl. reflexivity.
@@ -888,7 +880,7 @@ Module Make (SH : SepHeap) (U : SynUnifier).
       Qed.
 *)
 
-      Theorem applicableOk : forall U_or_G U G cs facts lem args args' sub TS,
+      Theorem applicableOk : forall U_or_G U G facts lem args args' sub TS,
         lemmaD funcs preds nil nil lem ->
         Valid PC U G facts ->
         all2 (is_well_typed (typeof_funcs funcs) (typeof_env (types := types) U) (typeof_env G)) args TS = true ->
@@ -898,12 +890,12 @@ Module Make (SH : SepHeap) (U : SynUnifier).
         args = map (liftInstantiate U_or_G (length U) (length G) 0 sub) args' /\
         let (lq,lh) := hash (Lhs lem) in
         let (rq,rh) := hash (Rhs lem) in
-        ST.himp cs (ST_EXT.existsEach lq (fun lq => 
-                       sexprD funcs preds (quant U_or_G U (rev lq)) (quant (negb U_or_G) G (rev lq))
-                       (sheapD (applySHeap (liftInstantiate U_or_G (length U) (length G) (length lq) sub) lh))))
-                   (ST_EXT.existsEach rq (fun rq => 
-                       sexprD funcs preds (quant U_or_G U (rev rq)) (quant (negb U_or_G) G (rev rq))
-                       (sheapD (applySHeap (liftInstantiate U_or_G (length U) (length G) (length rq) sub) rh))))
+        ST.himp (ST_EXT.existsEach lq (fun lq => 
+                    sexprD funcs preds (quant U_or_G U (rev lq)) (quant (negb U_or_G) G (rev lq))
+                    (sheapD (applySHeap (liftInstantiate U_or_G (length U) (length G) (length lq) sub) lh))))
+                (ST_EXT.existsEach rq (fun rq => 
+                    sexprD funcs preds (quant U_or_G U (rev rq)) (quant (negb U_or_G) G (rev rq))
+                    (sheapD (applySHeap (liftInstantiate U_or_G (length U) (length G) (length rq) sub) rh))))
         /\ WellTyped_sheap (typeof_funcs funcs) (typeof_preds preds) 
               (quant U_or_G (typeof_env U) (rev lq)) (quant (negb U_or_G) (typeof_env G) (rev lq))
                 (applySHeap (liftInstantiate U_or_G (length U) (length G) (length lq) sub) lh) = true
@@ -939,7 +931,7 @@ Module Make (SH : SepHeap) (U : SynUnifier).
           rewrite typeof_env_length in H11. generalize H.
           eapply liftInstantiate_lemmaD with (U_or_G := U_or_G) (U := U) (G := G) in H; eauto. intro.
           eapply implyEach_sem in H.
-          { specialize (H cs). 
+          { 
             rewrite SH.hash_denote in H. rewrite H10 in H.
             rewrite SH.hash_denote with (s := Rhs lem) in H. rewrite H9 in H. simpl in H.
             
@@ -1038,10 +1030,10 @@ Module Make (SH : SepHeap) (U : SynUnifier).
             rewrite rev_length in *. auto. } }
       Qed. (** TODO: This is duplicated from the full lemma **)
 
-      Lemma ST_himp_heq_L : forall cs U G P Q S,
-        heq funcs preds U G cs P Q ->
-        ST.himp cs (sexprD funcs preds U G Q) S ->
-        ST.himp cs (sexprD funcs preds U G P) S. 
+      Lemma ST_himp_heq_L : forall U G P Q S,
+        heq funcs preds U G P Q ->
+        ST.himp (sexprD funcs preds U G Q) S ->
+        ST.himp (sexprD funcs preds U G P) S. 
       Proof.
         clear. intros. rewrite H. auto.
       Qed.
@@ -1178,16 +1170,16 @@ Module Make (SH : SepHeap) (U : SynUnifier).
       Qed.
 
 
-      Lemma unfoldForwardOk : forall meta_env vars_env cs facts P Q,
+      Lemma unfoldForwardOk : forall meta_env vars_env facts P Q,
         WellTyped_env (UVars P) meta_env ->
         WellTyped_env (Vars P) vars_env ->
         Valid PC meta_env vars_env facts ->
         unfoldForward unify_bound prover facts (Forward hs) P = Some Q ->
         forall (WT : WellTyped_sheap (typeof_funcs funcs) (typeof_preds preds) (typeof_env meta_env) (typeof_env vars_env) (Heap P) = true),
-        ST.himp cs (sexprD funcs preds meta_env vars_env (sheapD (Heap P)))
-                   (ST_EXT.existsEach (skipn (length vars_env) (Vars Q))
-                     (fun vars_ext : list {t : tvar & tvarD types t} =>
-                       sexprD funcs preds meta_env (vars_env ++ vars_ext) (sheapD (Heap Q))))
+        ST.himp (sexprD funcs preds meta_env vars_env (sheapD (Heap P)))
+                (ST_EXT.existsEach (skipn (length vars_env) (Vars Q))
+                   (fun vars_ext : list {t : tvar & tvarD types t} =>
+                    sexprD funcs preds meta_env (vars_env ++ vars_ext) (sheapD (Heap Q))))
         /\ WellTyped_sheap (typeof_funcs funcs) (typeof_preds preds) (UVars Q) (Vars Q) (Heap Q) = true.
       Proof.
         unfold unfoldForward. intros.
@@ -1222,7 +1214,7 @@ Module Make (SH : SepHeap) (U : SynUnifier).
 
           rewrite SEP_FACTS.heq_star_comm. 
           assert (WellTyped_sexpr (typeof_funcs funcs) (typeof_preds preds) (typeof_env meta_env) (typeof_env vars_env)
-            (SH.SE.Func (types := types) (pcType := pcType) (stateType := stateType) f x1) = true).
+            (SH.SE.Func (types := types) f x1) = true).
           { rewrite WellTyped_sheap_eq in WT. apply andb_true_iff in WT; intuition.
             rewrite WellTyped_impures_eq in H5. simpl in *. specialize (H5 _ _ H4).
             consider (x0 ++ x1 :: x2). intros. exfalso; destruct x0; simpl in *; congruence. intros.
@@ -1236,7 +1228,7 @@ Module Make (SH : SepHeap) (U : SynUnifier).
           { unfold WellTyped_env in *. subst. rewrite typeof_env_length. auto. }
           rewrite H9 in *.
           simpl in H5. consider (nth_error (typeof_preds preds) f); intros.
-          rewrite H0 in H6. rewrite typeof_env_length in H6. eapply applicableOk with (cs := cs) in H6; [ | eauto | eauto | eauto | ].
+          rewrite H0 in H6. rewrite typeof_env_length in H6. eapply applicableOk in H6; [ | eauto | eauto | eauto | ].
           Focus 2. destruct H2. unfold WellTyped_lemma in H2. think. simpl in H13. rewrite H5 in H13. eapply H13.
           { destruct H6. rewrite H3 in *. rewrite SH.hash_Func in *. rewrite H7 in *.
             rewrite ST_EXT.existsEach_nil in *.
@@ -1250,7 +1242,7 @@ Module Make (SH : SepHeap) (U : SynUnifier).
               { generalize dependent (sheapD {| impures := FM.add f (x0 ++ x2) impures0;
                 pures := pures0;
                 other := other0 |}). clear; intros.
-                generalize (SEP_FACTS.sexprD_weaken_wt funcs preds cs meta_env nil G s vars_env). 
+                generalize (SEP_FACTS.sexprD_weaken_wt funcs preds meta_env nil G s vars_env). 
                 rewrite app_nil_r. intro. rewrite H; try reflexivity. auto. }
               { rewrite rev_involutive. unfold WellTyped_env in *. subst. repeat rewrite typeof_env_length.
                 cutrewrite (length v = length (rev G)). reflexivity.
@@ -1284,12 +1276,12 @@ Module Make (SH : SepHeap) (U : SynUnifier).
             rewrite WellTyped_impures_eq in H. apply H; auto. }
       Qed.
 
-      Lemma ST_himp_heq_R : forall (cs : PropX.codeSpec (tvarD types pcType) (tvarD types stateType))
-        (U G : env types) (P Q : sexpr types pcType stateType)
-        (S : ST.hprop (tvarD types pcType) (tvarD types stateType) nil),
-        heq funcs preds U G cs P Q ->
-        ST.himp cs S (sexprD funcs preds U G Q) ->
-        ST.himp cs S (sexprD funcs preds U G P).
+      Lemma ST_himp_heq_R : forall 
+        (U G : env types) (P Q : sexpr types)
+        (S : ST.hprop),
+        heq funcs preds U G P Q ->
+        ST.himp S (sexprD funcs preds U G Q) ->
+        ST.himp S (sexprD funcs preds U G P).
       Proof.
         clear. intros. rewrite H0. rewrite H. reflexivity.
       Qed.          
@@ -1346,16 +1338,16 @@ Module Make (SH : SepHeap) (U : SynUnifier).
           rewrite H1 in *. simpl in H8. rewrite H2 in H8. auto. }
       Qed.
 
-      Lemma unfoldBackwardOk : forall meta_env vars_env cs facts P Q,
+      Lemma unfoldBackwardOk : forall meta_env vars_env facts P Q,
         WellTyped_env (UVars P) meta_env ->
         WellTyped_env (Vars P) vars_env ->
         Valid PC meta_env vars_env facts ->
         unfoldBackward unify_bound prover facts (Backward hs) P = Some Q ->
         forall (WT : WellTyped_sheap (typeof_funcs funcs) (typeof_preds preds) (typeof_env meta_env) (typeof_env vars_env) (Heap P) = true),
-        ST.himp cs (ST_EXT.existsEach (skipn (length meta_env) (UVars Q))
-                     (fun meta_ext : list {t : tvar & tvarD types t} =>
-                       sexprD funcs preds (meta_env ++ meta_ext) vars_env (sheapD (Heap Q))))
-                   (sexprD funcs preds meta_env vars_env (sheapD (Heap P)))
+        ST.himp (ST_EXT.existsEach (skipn (length meta_env) (UVars Q))
+                  (fun meta_ext : list {t : tvar & tvarD types t} =>
+                    sexprD funcs preds (meta_env ++ meta_ext) vars_env (sheapD (Heap Q))))
+                (sexprD funcs preds meta_env vars_env (sheapD (Heap P)))
         /\ WellTyped_sheap (typeof_funcs funcs) (typeof_preds preds) (UVars Q) (Vars Q) (Heap Q) = true.
       Proof.
         unfold unfoldBackward. intros.
@@ -1390,7 +1382,7 @@ Module Make (SH : SepHeap) (U : SynUnifier).
 
           rewrite SEP_FACTS.heq_star_comm. 
           assert (WellTyped_sexpr (typeof_funcs funcs) (typeof_preds preds) (typeof_env meta_env) (typeof_env vars_env)
-            (SH.SE.Func (types := types) (pcType := pcType) (stateType := stateType) f x1) = true).
+            (SH.SE.Func (types := types) f x1) = true).
           { rewrite WellTyped_sheap_eq in WT. apply andb_true_iff in WT; intuition.
             rewrite WellTyped_impures_eq in H5. simpl in *. specialize (H5 _ _ H4).
             consider (x0 ++ x1 :: x2). intros. exfalso; destruct x0; simpl in *; congruence. intros.
@@ -1404,7 +1396,7 @@ Module Make (SH : SepHeap) (U : SynUnifier).
           { unfold WellTyped_env in *. subst. rewrite typeof_env_length. auto. }
           rewrite H9 in *.
           simpl in H5. consider (nth_error (typeof_preds preds) f); intros.
-          rewrite H0 in H6. rewrite typeof_env_length in H6. eapply applicableOk with (cs := cs) in H6; [ | eauto | eauto | eauto | ].
+          rewrite H0 in H6. rewrite typeof_env_length in H6. eapply applicableOk in H6; [ | eauto | eauto | eauto | ].
           Focus 2. destruct H2. unfold WellTyped_lemma in H2. think. simpl in H12. rewrite H5 in H12. eapply H12.
           { destruct H6. rewrite H3 in *. rewrite SH.hash_Func in *. rewrite H7 in *.
             rewrite ST_EXT.existsEach_nil in *.
@@ -1418,7 +1410,7 @@ Module Make (SH : SepHeap) (U : SynUnifier).
               { generalize dependent (sheapD {| impures := FM.add f (x0 ++ x2) impures0;
                 pures := pures0;
                 other := other0 |}). clear; intros.
-                generalize (SEP_FACTS.sexprD_weaken_wt funcs preds cs meta_env (rev G) nil s vars_env). 
+                generalize (SEP_FACTS.sexprD_weaken_wt funcs preds meta_env (rev G) nil s vars_env). 
                 rewrite app_nil_r. intro. rewrite H; try reflexivity. auto. }
               { unfold WellTyped_env in *. subst. repeat rewrite map_length.
                 rewrite typeof_env_length. reflexivity. } }
@@ -1516,16 +1508,16 @@ Module Make (SH : SepHeap) (U : SynUnifier).
         eapply unfoldForward_WellTyped in H; try eassumption. eapply IHbound; eauto.
       Qed.
 
-      Theorem forwardOk : forall cs bound facts P Q r,
+      Theorem forwardOk : forall bound facts P Q r,
         forward bound facts P = (Q,r) ->
         forall meta_env vars_env,
         WellTyped_env (UVars P) meta_env -> (** meta_env instantiates the uvars **)
         WellTyped_env (Vars P) vars_env ->
         forall (WT : WellTyped_sheap (typeof_funcs funcs) (typeof_preds preds) (UVars P) (Vars P) (Heap P) = true),
         Valid PC meta_env vars_env facts ->
-        ST.himp cs (sexprD funcs preds meta_env vars_env (sheapD (Heap P)))
-                   (ST_EXT.existsEach (skipn (length vars_env) Q.(Vars)) (fun vars_ext : list { t : tvar & tvarD types t } =>
-                     (sexprD funcs preds meta_env (vars_env ++ vars_ext) (sheapD (Heap Q))))).
+        ST.himp (sexprD funcs preds meta_env vars_env (sheapD (Heap P)))
+                (ST_EXT.existsEach (skipn (length vars_env) Q.(Vars)) (fun vars_ext : list { t : tvar & tvarD types t } =>
+                  (sexprD funcs preds meta_env (vars_env ++ vars_ext) (sheapD (Heap Q))))).
       Proof.
         induction bound; simpl; intros.
         { inversion H; clear H; subst; repeat split; try reflexivity.
@@ -1533,7 +1525,7 @@ Module Make (SH : SepHeap) (U : SynUnifier).
           rewrite ST_EXT.existsEach_nil. rewrite app_nil_r. reflexivity.
           rewrite H1. rewrite <- typeof_env_length. eauto with list_length. }
         { revert H; case_eq (unfoldForward unify_bound prover facts (Forward hs) P); intros.
-          { subst. generalize H. eapply unfoldForwardOk with (cs := cs) in H; eauto.
+          { subst. generalize H. eapply unfoldForwardOk in H; eauto.
             { destruct H. rewrite H.
               intros. eapply unfoldForward_vars in H5. do 2 destruct H5.
 (*              remember (forward bound facts u). symmetry in Hequ0. *)
@@ -1583,22 +1575,22 @@ Module Make (SH : SepHeap) (U : SynUnifier).
         eapply unfoldBackward_WellTyped in H; try eassumption. eapply IHbound; eauto.
       Qed.
 
-      Theorem backwardOk : forall cs bound facts P Q meta_env vars_env r,
+      Theorem backwardOk : forall bound facts P Q meta_env vars_env r,
         backward bound facts P = (Q,r) ->
         WellTyped_env (UVars P) meta_env -> (** meta_env instantiates the uvars **)
         WellTyped_env (Vars P) vars_env ->
         WellTyped_sheap (typeof_funcs funcs) (typeof_preds preds) (UVars P) (Vars P) (Heap P) = true ->
         Valid PC meta_env vars_env facts ->
-        ST.himp cs (ST_EXT.existsEach (skipn (length meta_env) Q.(UVars)) (fun meta_ext : env types => 
-                      (sexprD funcs preds (meta_env ++ meta_ext) vars_env (sheapD (Heap Q)))))
-                   (sexprD funcs preds meta_env vars_env (sheapD (Heap P))).
+        ST.himp (ST_EXT.existsEach (skipn (length meta_env) Q.(UVars)) (fun meta_ext : env types => 
+                   (sexprD funcs preds (meta_env ++ meta_ext) vars_env (sheapD (Heap Q)))))
+                (sexprD funcs preds meta_env vars_env (sheapD (Heap P))).
       Proof.
         induction bound; simpl; intros.
         { inversion H; clear H; subst. cutrewrite (skipn (length meta_env) (UVars Q) = nil). rewrite ST_EXT.existsEach_nil.
           rewrite app_nil_r. reflexivity. rewrite H0. rewrite <- typeof_env_length. eauto with list_length. }
         { consider (unfoldBackward unify_bound prover facts (Backward hs) P); intros.
           { generalize H. 
-            eapply unfoldBackwardOk with (cs := cs) in H; eauto. intro.
+            eapply unfoldBackwardOk in H; eauto. intro.
             apply unfoldBackward_vars in H5. think.
             generalize (backwardLength _ _ _ H4); intro. think.
             rewrite app_ass. rewrite rw_skipn_app by (rewrite <- typeof_env_length; eauto with list_length).

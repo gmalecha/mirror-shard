@@ -1,5 +1,5 @@
 Require Import List DepList Word Memory.
-Require Import Heaps SepTheoryX.
+Require Import Heaps SepTheory.
 Require Import Expr SepHeap.
 Require Import Prover.
 Require Import PropX.
@@ -209,7 +209,7 @@ Module SymbolicEvaluator (SH : SepHeap).
       (stateD : env types_ -> env types_ -> 
         codeSpec (tvarD types_ pcT) (tvarD types_ stT) -> tvarD types_ stT -> SymState -> Prop)
       (funcs : functions types_) 
-      (preds : SEP.predicates types_ pcT stT) : Prop :=
+      (preds : SEP.predicates types_) : Prop :=
     { hook_sound : forall P (PC : ProverT_correct P funcs),
       forall uvars vars cs stn_st ss ss' pp new_facts quant,
         stateD uvars vars cs stn_st ss ->
@@ -243,21 +243,21 @@ Module SymbolicEvaluator (SH : SepHeap).
 
     Record MemEvaluator : Type :=
     { sread_word : forall (P : ProverT types), Facts P -> 
-      expr types -> SH.SHeap types pcT stT -> option (expr types)
+      expr types -> SH.SHeap types -> option (expr types)
     ; swrite_word : forall (P : ProverT types), Facts P ->
-      expr types -> expr types -> SH.SHeap types pcT stT -> option (SH.SHeap types pcT stT)
+      expr types -> expr types -> SH.SHeap types -> option (SH.SHeap types)
     }.
 
     Variable eval : MemEvaluator.
 
     Variable funcs : functions types.
-    Variable preds : SEP.predicates types pcT stT.
+    Variable preds : SEP.predicates types.
 
     Variable stn_st : Type.
     
     Variables ptrT valT : tvar.
 
-    Hypothesis mem_satisfies : PropX.codeSpec (tvarD types pcT) (tvarD types stT) -> ST.hprop (tvarD types pcT) (tvarD types stT) nil -> stn_st -> Prop.
+    Hypothesis mem_satisfies : PropX.codeSpec (tvarD types pcT) (tvarD types stT) -> ST.hprop -> stn_st -> Prop.
     Hypothesis ReadWord : stn_st -> tvarD types ptrT -> option (tvarD types valT).
     Hypothesis WriteWord : stn_st -> tvarD types ptrT -> tvarD types valT -> option stn_st.
 
@@ -295,14 +295,14 @@ Module SymbolicEvaluator (SH : SepHeap).
 
   Record MemEvaluatorPackage (tr : Repr type) (pc st ptr val : tvar) 
     (sat : forall ts, codeSpec (tvarD (repr tr ts) pc) (tvarD (repr tr ts) st) -> 
-      ST.hprop (tvarD (repr tr ts) pc) (tvarD (repr tr ts) st) nil -> tvarD (repr tr ts) st -> Prop) 
+      ST.hprop -> tvarD (repr tr ts) st -> Prop) 
     (read  : forall ts, tvarD (repr tr ts) st -> tvarD (repr tr ts) ptr -> option (tvarD (repr tr ts) val))
     (write : forall ts, tvarD (repr tr ts) st -> tvarD (repr tr ts) ptr -> tvarD (repr tr ts) val -> option (tvarD (repr tr ts) st))
     : Type :=
   { MemEvalTypes : Repr type
   ; MemEvalFuncs : forall ts, Repr (signature (repr tr (repr MemEvalTypes ts)))
-  ; MemEvalPreds : forall ts, Repr (SEP.predicate (repr tr (repr MemEvalTypes ts)) pc st)
-  ; MemEval : forall ts, MemEvaluator (repr tr (repr MemEvalTypes ts)) pc st
+  ; MemEvalPreds : forall ts, Repr (SEP.predicate (repr tr (repr MemEvalTypes ts)))
+  ; MemEval : forall ts, MemEvaluator (repr tr (repr MemEvalTypes ts))
   ; MemEval_correct : forall ts fs ps, 
     @MemEvaluator_correct (repr tr (repr MemEvalTypes ts)) pc st (MemEval ts)
       (repr (MemEvalFuncs ts) fs) (repr (MemEvalPreds ts) ps)
@@ -313,27 +313,26 @@ Module SymbolicEvaluator (SH : SepHeap).
   Module Default.
     Section with_prover.
       Variable types : list type.
-      Variables pcT stT : tvar.
       Variable prover : ProverT types.
       
       Definition smemeval_read_word_default (_ : Facts prover) (_ : expr types)
-        (_ : SH.SHeap types pcT stT) : option (expr types) :=
+        (_ : SH.SHeap types) : option (expr types) :=
         None.
 
       Definition smemeval_write_word_default (_ : Facts prover)
-        (_ : expr types) (_ : expr types) (_ : SH.SHeap types pcT stT)
-        : option (SH.SHeap types pcT stT) :=
+        (_ : expr types) (_ : expr types) (_ : SH.SHeap types)
+        : option (SH.SHeap types) :=
         None.
     End with_prover.
 
-    Definition MemEvaluator_default types pcT stT : MemEvaluator types pcT stT.
+    Definition MemEvaluator_default types : MemEvaluator types.
     constructor.
     eapply smemeval_read_word_default.
     eapply smemeval_write_word_default.
     Defined.
 
     Definition MemEvaluator_default_correct types' (pcT stT : tvar) funcs preds X Y Z A B C :
-      @MemEvaluator_correct types' pcT stT (MemEvaluator_default types' pcT stT) funcs preds X Y Z A B C.
+      @MemEvaluator_correct types' pcT stT (MemEvaluator_default types') funcs preds X Y Z A B C.
     econstructor.
       simpl; unfold smemeval_read_word_default, smemeval_write_word_default; simpl; congruence.
       simpl; unfold smemeval_read_word_default, smemeval_write_word_default; simpl; congruence.
@@ -349,9 +348,9 @@ Module SymbolicEvaluator (SH : SepHeap).
     Definition package tr pcT stT ptr val X Y Z : @MemEvaluatorPackage tr pcT stT ptr val X Y Z :=
       {| MemEvalTypes := nil_Repr EmptySet_type
        ; MemEvalFuncs := fun ts => nil_Repr (Default_signature _)
-       ; MemEvalPreds := fun ts => nil_Repr (SEP.Default_predicate _ pcT stT)
-       ; MemEval := fun ts => MemEvaluator_default _ _ _
-       ; MemEval_correct := fun ts fs ps => MemEvaluator_default_correct _ _ _ _ _ _ _ 
+       ; MemEvalPreds := fun ts => nil_Repr (SEP.Default_predicate _)
+       ; MemEval := fun ts => MemEvaluator_default _
+       ; MemEval_correct := fun ts fs ps => MemEvaluator_default_correct _ _ _ _ _ _ _ _ _
        |}.
 
   End Default.
@@ -384,7 +383,7 @@ Module SymbolicEvaluator (SH : SepHeap).
       Variable stn_st : Type.
       Variables ptrT valT : tvar.
 
-      Hypothesis mem_satisfies : PropX.codeSpec (tvarD types pcT) (tvarD types stT) -> ST.hprop (tvarD types pcT) (tvarD types stT) nil -> stn_st -> Prop.
+      Hypothesis mem_satisfies : PropX.codeSpec (tvarD types pcT) (tvarD types stT) -> ST.hprop -> stn_st -> Prop.
       Hypothesis ReadWord : stn_st -> tvarD types ptrT -> option (tvarD types valT).
       Hypothesis WriteWord : stn_st -> tvarD types ptrT -> tvarD types valT -> option stn_st.
 

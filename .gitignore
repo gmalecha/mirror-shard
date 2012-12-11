@@ -1,0 +1,14 @@
+syntax: glob
+*.vo
+*.glob
+*.v.d
+src/ILTac.v
+*.cmo
+*.cmx
+*.cmi
+*.cmxs
+*.o
+*~
+.dir-locals.el
+src/Makefile.coq
+*.ml4.d
