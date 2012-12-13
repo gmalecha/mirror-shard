@@ -4,9 +4,9 @@ PROVERS := Assumption Reflexivity
 #  Transitivity
 MODULES    := Ordering \
 	Nomega Word Labels LabelMap \
-	PropX PropXRel PropXTac \
+	PropX PropXRel PropXTac XCAP \
 	Memory DiscreteMemory \
-	XCAP Structured StructuredModule Linker \
+	Structured StructuredModule Linker \
 	Reflect \
 	Heaps SepTheory SepTheoryXIL \
 	Expr ReifyExpr ExprUnify \
@@ -14,9 +14,10 @@ MODULES    := Ordering \
 	$(PROVERS:%=provers/%Prover) \
 	SepExpr ReifySepExpr SepHeap SepUnify SepCancel \
 	Unfolder ReifyHints SepLemma \
-	IL SepIL
+	IL SepIL \
+	TypedPackage
 #	Provers
-# Bedrock  Word
+# Bedrock  
 # AMD64_gas Programming 
 #	provers/LocalsProver provers/ArrayBoundProver \
 #	sep/PtsTo sep/Array Arrays sep/Locals
