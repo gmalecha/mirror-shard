@@ -1,6 +1,6 @@
 Require Import List.
 Require Import Expr Env.
-Require Import Word Prover.
+Require Import Prover.
 
 Set Implicit Arguments.
 Set Strict Implicit.

@@ -2,7 +2,7 @@
 
 Require Import Bool String.
 
-Require Import Word IL LabelMap PropX Memory.
+Require Import Word IL LabelMap PropX.
 
 Set Implicit Arguments.
 

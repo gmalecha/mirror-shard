@@ -1,6 +1,6 @@
 Require Import List DepList.
 Require Import EqdepClass.
-Require Import Word.
+(* Require Import Word. *)
 Require Import Bool Folds.
 Require Import Reflection Tactics. 
 
@@ -1327,8 +1327,6 @@ Qed.
  **)
 Definition env_ext (T : Type) n (ls : list T) : list T :=
   firstn (length ls - n) ls.
-
-(** TODO: There probably need to be some facts about this... **)
   
 Arguments Const {types} {t} (_).
 Arguments Var {types} (_).

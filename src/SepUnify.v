@@ -6,7 +6,7 @@ Require Import List.
 Set Implicit Arguments.
 Set Strict Implicit.
 
-Module Make (U : SynUnifier) (SH : SepHeap).
+Module Make (U : Unifier) (SH : SepHeap).
   Module SH_FACTS := SepHeapFacts SH.
   Import SH_FACTS.
 

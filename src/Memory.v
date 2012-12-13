@@ -1,16 +1,13 @@
 Require Import Word.
 
-Definition B := word 8.
-Definition W := word 32.
-
 Section mem_ops.
   Variable addr mem : Type.
   Variable footprint_w : addr -> addr * addr * addr * addr.
 
-  Variable mem_get : mem -> addr -> option B.
+  Variable mem_get : mem -> addr -> option (word 8).
 
-  Definition mem_get_word (implode : B * B * B * B -> W) (p : addr) (m : mem)
-    : option W :=
+  Definition mem_get_word (implode : word 8 * word 8 * word 8 * word 8 -> word 32) (p : addr) (m : mem)
+    : option (word 32) :=
     let '(a,b,c,d) := footprint_w p in
     match mem_get m a , mem_get m b , mem_get m c , mem_get m d with
       | Some a , Some b , Some c , Some d =>
@@ -18,9 +15,9 @@ Section mem_ops.
       | _ , _ , _ , _ => None
     end.
 
-  Variable mem_set : mem -> addr -> B -> option mem.
+  Variable mem_set : mem -> addr -> word 8 -> option mem.
 
-  Definition mem_set_word (explode : W -> B * B * B * B) (p : addr) (v : W)
+  Definition mem_set_word (explode : word 32 -> word 8 * word 8 * word 8 * word 8) (p : addr) (v : word 32)
     (m : mem) : option mem :=
     let '(a,b,c,d) := footprint_w p in
     let '(av,bv,cv,dv) := explode v in

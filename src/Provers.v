@@ -1,9 +1,11 @@
 Require Import Prover Env.
-Require Import ILEnv.
+(* Require Import ILEnv. *)
 Require provers.AssumptionProver.
 Require provers.ReflexivityProver.
+(*
 Require provers.WordProver.
 Require provers.ArrayBoundProver.
+*)
 
 Set Implicit Arguments.
 Set Strict Implicit.

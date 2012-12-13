@@ -4,8 +4,7 @@ Require Import Expr.
 Require Import SepExpr SepLemma.
 Require Import Env.
 
-Module Make (SL : SepLemma).
-  Module SE := SL.SE.
+Module Make (SE : SepExpr).
   Module SEP_REIFY := ReifySepExpr.ReifySepExpr SE.
 
   (* This tactic processes the part of a lemma statement after the quantifiers. *)
@@ -27,7 +26,7 @@ Module Make (SL : SepLemma).
     match P with
       | fun xs : ?T => forall x : ?T', @?f xs x =>
         match T' with
-          | PropX.codeSpec _ _ => fail 1
+(*        | PropX.codeSpec _ _ => fail 1 *)
           | _ => match type of T' with
                    | Prop => fail 1
                    | _ => let P := eval simpl in (fun x : ReifyExpr.VarType (T * T') =>
@@ -60,20 +59,17 @@ Module Make (SL : SepLemma).
       | fun x => @?H x -> @?P x =>
         ReifyExpr.reify_expr isConst H types funcs (@nil tvar) vars ltac:(fun _ funcs H =>
           reify_hint' pcType stateType isConst P types funcs preds vars ltac:(fun funcs preds P =>
-            let lem := eval simpl in (SL.Build_lemma (types := types) (pcType := pcType) (stateType := stateType)
-              vars (H :: SL.Hyps P) (SL.Lhs P) (SL.Rhs P)) in
+            let lem := eval simpl in (Build_lemma (types := types) vars (H :: Hyps P) (fst P, snd P)) in
             k funcs preds lem))
       | fun x => forall cs, @SE.ST.himp _ _ cs (@?L x) (@?R x) =>
         SEP_REIFY.reify_sexpr isConst L types funcs pcType stateType preds (@nil tvar) vars ltac:(fun _uvars funcs preds L =>
           SEP_REIFY.reify_sexpr isConst R types funcs pcType stateType preds (@nil tvar) vars ltac:(fun _uvars funcs preds R =>
-            let lem := constr:(SL.Build_lemma (types := types) (pcType := pcType) (stateType := stateType)
-              vars nil L R) in
+            let lem := constr:(Build_lemma (types := types) vars nil L R) in
             k funcs preds lem))
       | fun x => _ (@?L x) (@?R x) =>
         SEP_REIFY.reify_sexpr isConst L types funcs pcType stateType preds (@nil tvar) vars ltac:(fun _ funcs preds L =>
           SEP_REIFY.reify_sexpr isConst R types funcs pcType stateType preds (@nil tvar) vars ltac:(fun _ funcs preds R =>
-            let lem := constr:(SL.Build_lemma (types := types) (pcType := pcType) (stateType := stateType)
-              vars nil L R) in
+            let lem := constr:(Build_lemma (types := types) vars nil L R) in
             k funcs preds lem))
     end.
 
@@ -81,7 +77,7 @@ Module Make (SL : SepLemma).
     match P with
       | fun xs : ?T => forall x : ?T', @?f xs x =>
         match T' with
-          | PropX.codeSpec _ _ => fail 1
+(*        | PropX.codeSpec _ _ => fail 1 *)
           | _ => match type of T' with
                    | Prop => fail 1
                    | _ =>
@@ -98,7 +94,7 @@ Module Make (SL : SepLemma).
 
   Ltac reify_hints unfoldTac pcType stateType isConst Ps types funcs preds k :=
     match Ps with
-      | tt => k funcs preds (@nil (SL.lemma types pcType stateType)) || fail 2
+      | tt => k funcs preds (@nil (lemma types (prod (SE.sexpr types) (SE.sexpr types)))) || fail 2
       | (?P1, ?P2) =>
         reify_hints unfoldTac pcType stateType isConst P1 types funcs preds ltac:(fun funcs preds P1 =>
           reify_hints unfoldTac pcType stateType isConst P2 types funcs preds ltac:(fun funcs preds P2 =>
@@ -209,23 +205,21 @@ Ltac lift_sexpr_over_repr e rp pc st :=
 
 Ltac lift_lemma_over_repr lm rp pc st :=
   match eval hnf in lm with
-    | {| SL.Foralls := ?f
-       ; SL.Hyps := ?h
-       ; SL.Lhs := ?l
-       ; SL.Rhs := ?r
+    | {| Foralls := ?f
+       ; Hyps := ?h
+       ; Concl := (?l,?r)
        |} => 
     let h := lift_exprs_over_repr h rp in
     let l := lift_sexpr_over_repr l rp pc st in
     let r := lift_sexpr_over_repr r rp pc st in
-    constr:(fun ts => {| SL.Foralls := f
-                       ; SL.Hyps := h ts
-                       ; SL.Lhs := l ts
-                       ; SL.Rhs := r ts
+    constr:(fun ts => {| Foralls := f
+                       ; Hyps := h ts
+                       ; Concl := (l ts, r ts)
                        |})
   end.
 Ltac lift_lemmas_over_repr lms rp pc st :=
   match lms with
-    | nil => constr:(fun ts => @nil (SL.lemma (repr rp ts) pc st))
+    | nil => constr:(fun ts => let ts' := repr rp ts in @nil (lemma ts' (prod (SE.sexpr ts') (SE.sexpr ts'))))
     | ?lml ++ ?lmr =>
       let lml := lift_lemmas_over_repr lml rp pc st in
       let lmr := lift_lemmas_over_repr lmr rp pc st in

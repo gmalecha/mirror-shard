@@ -7,7 +7,7 @@
 (* Add ML Path "reification/".  *)
 (* Declare ML Module "extlib".  *)
 (* Declare ML Module "reif".  *)
-Require Import List DepList.
+Require Import List.
 
 Set Implicit Arguments.
 

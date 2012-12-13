@@ -11,7 +11,7 @@ Set Strict Implicit.
 
 (** TODO: factor out [exprInstantiate] **)
 
-Module Type SynUnifier.
+Module Type Unifier.
   (** An environment that maintains a mapping from variables to their meaning **)
   Parameter Subst : list type -> Type.
 
@@ -100,6 +100,12 @@ Module Type SynUnifier.
       exprUnify n l r sub = Some sub' ->
       exprInstantiate sub' l = exprInstantiate sub' r.
 
+    Axiom exprUnify_sound' : forall n l r sub sub',
+      exprUnify n l r sub = Some sub' ->
+      forall funcs U G t,
+      exprD funcs U G (exprInstantiate sub' l) t = 
+      exprD funcs U G (exprInstantiate sub' r) t.
+
     Axiom exprUnify_Extends : forall n l r sub sub',
       exprUnify n l r sub = Some sub' ->
       Subst_Extends sub' sub.
@@ -164,7 +170,7 @@ Module Type SynUnifier.
     End Subst_equations_to.
         
   End typed.
-End SynUnifier.
+End Unifier.
 
 Inductive R_expr (ts : list type) : expr ts -> expr ts -> Prop :=
 | R_EqualL : forall t l r, R_expr l (Equal t l r)
@@ -190,7 +196,7 @@ Proof.
 Defined.
 
 (** TODO: Really what I want to do is abstract over the functor that creates the map, but I don't know how to do that **)
-Module Unifier (E : OrderedType.OrderedType with Definition t := uvar with Definition eq := @eq uvar) <: SynUnifier.
+Module SynUnifier (E : OrderedType.OrderedType with Definition t := uvar with Definition eq := @eq uvar) <: Unifier.
   Module FM := FMapAVL.Make E.
 
   Remove Hints FM.E.eq_sym FM.E.eq_refl FM.E.eq_trans FM.E.lt_not_eq FM.E.lt_trans
@@ -1298,6 +1304,15 @@ Module Unifier (E : OrderedType.OrderedType with Definition t := uvar with Defin
         reflexivity. }
     Qed.
 
+    Theorem exprUnify_sound' : forall n l r sub sub',
+      exprUnify n l r sub = Some sub' ->
+      forall funcs U G t,
+      exprD funcs U G (exprInstantiate sub' l) t = 
+      exprD funcs U G (exprInstantiate sub' r) t.
+    Proof.
+      intros. apply exprUnify_sound in H. rewrite H. reflexivity.
+    Qed.
+
     Transparent Subst_set.
           
     Lemma Subst_set_WellTyped : forall funcs U G u E t sub sub',
@@ -2026,6 +2041,6 @@ Module Unifier (E : OrderedType.OrderedType with Definition t := uvar with Defin
     End Subst_equations_to.
 
   End typed.
-End Unifier.
+End SynUnifier.
 
-Module UNIFIER := Unifier NatMap.Ordered_nat.
+Module UNIFIER := SynUnifier NatMap.Ordered_nat.

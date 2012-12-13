@@ -1,12 +1,10 @@
+Require Import List.
 Require Import IL SepIL.
 Require Import Word Memory.
-Import List.
 Require Import DepList EqdepClass.
-Require Import PropX.
 Require Import Expr SepExpr SepCancel.
-Require Import Prover ILEnv.
+Require Import Prover.
 Require Import Tactics Reflection.
-Require Import TacPackIL.
 Require ExprUnify.
 
 Set Implicit Arguments.
@@ -118,10 +116,12 @@ Lemma AllProvable_impl_AllProvable : forall ts (funcs : functions ts) U G P ps,
 Proof. clear. induction ps; simpl; intros; eauto. intuition. Qed.    
 
 Section canceller.
-  Variable ts : list type.
-  Let types := Env.repr BedrockCoreEnv.core ts.
+  Variable types : list type.
   Variable funcs : functions types.
-  Variable preds : SEP.predicates types BedrockCoreEnv.pc BedrockCoreEnv.st.
+  Variable preds : SEP.predicates types.
+  Variable prover : ProverT types.
+  Variable hints : option hintSide.
+
   Variable algos : ILAlgoTypes.AllAlgos ts.
 
   Record CancellerResult : Type :=

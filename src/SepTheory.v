@@ -1,15 +1,10 @@
-Require Import Heaps Memory.
 Require Import RelationClasses.
+Require Import List.
 
 Set Implicit Arguments.
 Set Strict Implicit.
 
-Module Type SepState.
-  Parameter State : Type.
-End SepState.
-
 Module Type SepTheory.
-  Declare Module SS : SepState.
 
   Parameter hprop : Type.
  
@@ -24,8 +19,8 @@ Module Type SepTheory.
   Parameter Sym_heq : Symmetric heq.
   Parameter Trans_heq : Transitive heq.
 
-  Notation "a ===> b" := (himp a b) (at level 60).
-  Notation "a <===> b" := (heq a b) (at level 60).
+  Local Notation "a ===> b" := (himp a b) (at level 60).
+  Local Notation "a <===> b" := (heq a b) (at level 60).
 
   Parameter heq_defn : forall a b, (a ===> b /\ b ===> a) <-> a <===> b.
 
@@ -120,8 +115,6 @@ Module Type SepTheory.
 End SepTheory.
 
 Module Type SepTheory_Kernel.
-  Declare Module SS : SepState.
-
   Parameter hprop : Type.
  
   Parameter himp : hprop -> hprop -> Prop.
@@ -135,8 +128,8 @@ Module Type SepTheory_Kernel.
   Parameter Sym_heq : Symmetric heq.
   Parameter Trans_heq : Transitive heq.
 
-  Notation "a ===> b" := (himp a b) (at level 60).
-  Notation "a <===> b" := (heq a b) (at level 60).
+  Local Notation "a ===> b" := (himp a b) (at level 60).
+  Local Notation "a <===> b" := (heq a b) (at level 60).
 
   Parameter heq_defn : forall a b, (a ===> b /\ b ===> a) <-> a <===> b.
   
@@ -191,9 +184,12 @@ Module Type SepTheory_Kernel.
 End SepTheory_Kernel.
 
 Module SepTheory_From_Kernel (Import K : SepTheory_Kernel) <: 
-  SepTheory with Module SS := K.SS.
+  SepTheory.
 
   Include K.
+
+  Local Notation "a ===> b" := (himp a b) (at level 60).
+  Local Notation "a <===> b" := (heq a b) (at level 60).
 
   Theorem heq_himp : forall a b, a <===> b -> a ===> b.
   Proof.
@@ -365,11 +361,6 @@ End SepTheory_Rewrites.
 Module SepTheory_Ext (ST : SepTheory).
   Require Import List.
   Module Import ST_RW := SepTheory_Rewrites ST.
-  Fixpoint functionTypeD (domain : list Type) (range : Type) : Type :=
-    match domain with
-      | nil => range
-      | d :: domain' => d -> functionTypeD domain' range
-    end.
 
   Section param.
     Variable type : Type.

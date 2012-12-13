@@ -563,6 +563,19 @@ Module SepExprFacts (SE : SepExpr).
     eapply SE.ST.himp_star_pure_c; contradiction. 
   Qed.
 
+  Module ST_EXT := SepTheory.SepTheory_Ext SE.ST.
+
+  Lemma himp_existsEach_ST_EXT_existsEach : forall types funcs preds U (P : SE.sexpr types) vars G,
+    SE.ST.heq (SE.sexprD funcs preds U G (SE.existsEach vars P)) 
+           (ST_EXT.existsEach vars (fun env => SE.sexprD funcs preds U (rev env ++ G) P)).
+  Proof.
+    Opaque ST_EXT.existsEach.
+    induction vars; simpl; intros. rewrite ST_EXT.existsEach_nil. simpl. reflexivity.
+    change (a :: vars) with ((a :: nil) ++ vars). rewrite ST_EXT.existsEach_app.
+    rewrite ST_EXT.existsEach_cons. apply SE.ST.heq_ex. intros. rewrite ST_EXT.existsEach_nil. rewrite IHvars.
+    simpl. eapply ST_EXT.heq_existsEach. intros. rewrite app_ass. reflexivity.
+  Qed.
+
 End SepExprFacts.
 
 Module Make (ST' : SepTheory.SepTheory) <: SepExpr with Module ST := ST'.

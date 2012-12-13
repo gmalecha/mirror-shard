@@ -1,32 +1,34 @@
-PROVERS := Assumption Reflexivity Word
+GENERIC := Reflection GenRec Tactics ListFacts Folds Multimap \
+	   Decidables DepList EqdepClass NatMap
+PROVERS := Assumption Reflexivity
 #  Transitivity
-MODULES    := Reflection Tactics ListFacts \
-	GenRec Ordering Multimap Folds \
+MODULES    := Ordering \
 	Nomega Word Labels LabelMap \
 	PropX PropXRel PropXTac \
-	Memory \
-	XCAP Structured StructuredModule Linker Programming \
-	EqdepClass Decidables DepList Reflect \
+	Memory DiscreteMemory \
+	XCAP Structured StructuredModule Linker \
+	Reflect \
 	Heaps SepTheory SepTheoryXIL \
-	NatMap Expr ReifyExpr ExprUnify \
-	Prover Provers \
+	Expr ReifyExpr ExprUnify \
+	Prover \
 	$(PROVERS:%=provers/%Prover) \
 	SepExpr ReifySepExpr SepHeap SepUnify SepCancel \
 	Unfolder ReifyHints SepLemma \
-	IL ReifyIL \
-	CancelIL \
-	Bedrock \
-	AMD64_gas
+	IL SepIL
+#	Provers
+# Bedrock  Word
+# AMD64_gas Programming 
 #	provers/LocalsProver provers/ArrayBoundProver \
 #	sep/PtsTo sep/Array Arrays sep/Locals
 #	ILTacCommon ILTac \
 #	Env TypedPackage TacPackIL Allocated \
 #       SymEval \
-#	ILEnv SepIL \
+#	ReifyIL ILEnv SepIL \
 #	SymIL SymILProofs SymILTac 
+#	CancelIL 
 
 TESTS := UnfolderTests
-VS         := $(MODULES:%=%.v)
+VS         := $(GENERIC:%=%.v) $(MODULES:%=%.v)
 TVS        := $(TESTS:%=%.v)
 
 ARGS :=-R . Bedrock

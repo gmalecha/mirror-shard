@@ -5,6 +5,9 @@ Require Export Labels.
 
 Require Import Nomega Word Memory.
 
+Definition B := word 8.
+Definition W := word 32.
+
 (** * Setting up hidden word constants *)
 
 Fixpoint natToWord' (sz n : nat) : word sz :=
@@ -340,7 +343,7 @@ Proof.
            | [ |- context [ weq ?X ?Y ] ] => 
              let Z := fresh in destruct (weq X Y) as [ Z | ? ]; [ exfalso; generalize Z; W_neq | ]
          end.
-  intros. rewrite <- H. rewrite implode_explode. reflexivity.
+  intros. unfold B in *. rewrite <- H. rewrite implode_explode. reflexivity.
 Qed.
 
 Theorem ReadWriteNe : forall stn m m' k v k', 

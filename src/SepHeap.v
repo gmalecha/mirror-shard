@@ -1,9 +1,8 @@
 Require Import List.
-Require Import SepTheory PropX.
-Require Import PropXTac.
+Require Import SepTheory.
 Require Import RelationClasses EqdepClass.
 Require Import Expr SepExpr.
-Require Import DepList.
+(*Require Import DepList.*)
 Require Import Setoid.
 Require Import Tactics.
 Require Import Bool Folds.

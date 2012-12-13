@@ -1,5 +1,6 @@
 Require Import Arith NArith Eqdep_dec List.
-Require Import Nomega Word Memory PropX PropXTac IL DepList Heaps SepTheoryXIL.
+Require Import Nomega Word DiscreteMemory.
+Require Import PropX PropXTac IL DepList SepTheoryXIL.
 
 Set Implicit Arguments.
 
@@ -71,6 +72,7 @@ Lemma natToWord_injective : forall width n n',
   -> (n' < pow2 width)%nat
   -> natToWord width n = natToWord width n'
   -> n = n'.
+Proof.
   intros.
   destruct (wordToNat_natToWord width n);
     destruct (wordToNat_natToWord width n');
@@ -98,6 +100,7 @@ Local Hint Constructors NoDup.
 Lemma NoDup_allWordsUpto' : forall width init' init,
   init <= init' < pow2 width
   -> ~In (natToWord width init') (allWordsUpto width init).
+Proof.
   induction init; simpl; intuition;
     match goal with
       | [ H : _ |- _ ] => apply natToWord_injective in H; omega
@@ -109,23 +112,26 @@ Local Hint Resolve NoDup_allWordsUpto'.
 Theorem NoDup_allWordsUpto : forall width init,
   (init <= pow2 width)%nat
   -> NoDup (allWordsUpto width init).
+Proof.
   induction init; simpl; intuition.
 Qed.
 
 Theorem NoDup_allWords : forall width,
   NoDup (allWords width).
+Proof.
   rewrite allWords_eq; intros; apply NoDup_allWordsUpto; omega.
 Qed.
 
-Module BedrockHeap.
+Module BedrockHeap <: Memory.
   Definition addr := W.
+  Definition value := B.
 
   Definition mem := mem.
 
   Definition mem_get := ReadByte.
 
   Definition mem_set := WriteByte.
-
+(*
   Definition mem_acc (m : mem) (a : addr) :=
     exists v, m a = Some v.
 
@@ -151,6 +157,7 @@ Module BedrockHeap.
     unfold mem_acc. intros; destruct (m p); eauto. right.
     intro. destruct H; congruence.
   Qed.
+*)
     
   Theorem mem_get_set_eq : forall m p v' m', 
     mem_set m p v' = Some m' ->
@@ -162,94 +169,112 @@ Module BedrockHeap.
     destruct (weq p p); auto. congruence.
   Qed.
     
-  Theorem mem_get_set_neq : forall m p p' v' m', 
-    p <> p' ->
-    mem_set m p' v' = Some m' ->
-    mem_get m' p = mem_get m p.
+  Theorem mem_get_set_neq : forall m p v m', 
+    mem_set m p v = Some m' ->
+    forall p', p <> p' ->
+      mem_get m' p' = mem_get m p'.
   Proof.
     unfold mem_set, mem_get, ReadByte, WriteByte; intros.
-    destruct (m p'); try congruence.
-    inversion H0; clear H0; subst.
-    destruct (weq p p'); auto. congruence.
-  Qed.
-
-  (** mem writes don't modify permissions **)
-  Theorem mem_set_perm : forall m p v m',
-    mem_set m p v = Some m' ->
-    (forall p, mem_acc m p -> mem_acc m' p).
-  Proof.
-    unfold mem_set, mem_acc, ReadByte, WriteByte; intros.
-    generalize dependent H.
-    case_eq (weq p p0); intros; subst.
-    destruct (m p0); try congruence.
-    inversion H1; subst; auto.
-    rewrite H. eauto.
-
     destruct (m p); try congruence.
-    inversion H1; subst. 
-    destruct (weq p0 p); eauto.
+    inversion H; subst.
+    destruct (weq p' p); auto. congruence.
   Qed.
 
-  Definition footprint_w (p : addr) : addr * addr * addr * addr :=
-    (p , p ^+ $1 , p ^+ $2 , p ^+ $3).
+  (* (** mem writes don't modify permissions **) *)
+  (* Theorem mem_set_perm : forall m p v m', *)
+  (*   mem_set m p v = Some m' -> *)
+  (*   (forall p, mem_acc m p -> mem_acc m' p). *)
+  (* Proof. *)
+  (*   unfold mem_set, mem_acc, ReadByte, WriteByte; intros. *)
+  (*   generalize dependent H. *)
+  (*   case_eq (weq p p0); intros; subst. *)
+  (*   destruct (m p0); try congruence. *)
+  (*   inversion H1; subst; auto. *)
+  (*   rewrite H. eauto. *)
 
-  Theorem footprint_disjoint : forall p a b c d,
-    footprint_w p = (a,b,c,d) ->
-    a <> b /\ a <> c /\ a <> d /\ b <> c /\ b <> d /\ c <> d.
-  Proof.
-    unfold footprint_w. inversion 1. clear.
-    repeat split; W_neq.
-  Qed.
+  (*   destruct (m p); try congruence. *)
+  (*   inversion H1; subst.  *)
+  (*   destruct (weq p0 p); eauto. *)
+  (* Qed. *)
+
+  (* Definition footprint_w (p : addr) : addr * addr * addr * addr := *)
+  (*   (p , p ^+ $1 , p ^+ $2 , p ^+ $3). *)
+
+  (* Theorem footprint_disjoint : forall p a b c d, *)
+  (*   footprint_w p = (a,b,c,d) -> *)
+  (*   a <> b /\ a <> c /\ a <> d /\ b <> c /\ b <> d /\ c <> d. *)
+  (* Proof. *)
+  (*   unfold footprint_w. inversion 1. clear. *)
+  (*   repeat split; W_neq. *)
+  (* Qed. *)
 
   Definition addr_dec := @weq 32.
+
+End BedrockHeap.
+
+Module DiscreteBedrockHeap : DiscreteMemory with Definition addr := BedrockHeap.addr.
+  Definition addr := BedrockHeap.addr.
 
   Definition all_addr := allWords 32.
 
   Theorem NoDup_all_addr : NoDup all_addr.
     apply NoDup_allWords.
   Qed.
-End BedrockHeap.
+End DiscreteBedrockHeap.
 
-Module ST := SepTheoryXIL.Make (BedrockHeap).
+Module BedrockSepHeap := DiscreteHeap BedrockHeap DiscreteBedrockHeap.
+
+Module BedrockSepKernel := SepTheoryXIL_Kernel BedrockSepHeap.
+
+Module ST := SepTheory.SepTheory_From_Kernel BedrockSepKernel.
 Import ST.
 Export ST.
-Import ST.HT.
-Export ST.HT.
-
+Import BedrockSepHeap.
+Export BedrockSepHeap.
 
 (** * Define some convenient connectives, etc. for specs *)
 
-Definition memoryIn : mem -> smem := memoryIn.
+Definition memoryIn : mem -> smem := BedrockSepHeap.memoryIn.
 
-Definition hpropB := hprop W (settings * state).
+Definition hpropB sos := BedrockSepKernel.hprop' sos. 
 Definition HProp := hpropB nil.
 
-Definition empB sos : hpropB sos := emp _ _.
+Definition empB sos : hpropB sos := BedrockSepKernel.emp'.
 Notation "'Emp'" := (empB _) : Sep_scope.
 
-Definition injB sos (P : Prop) : hpropB sos := inj (Inj P).
+Definition injB sos (P : Prop) : hpropB sos := BedrockSepKernel.inj' P.
 
 Notation "[| P |]" := (injB _ P) : Sep_scope.
 
-Definition injBX sos (P : propX W (settings * state) sos) : hpropB sos := inj P.
+Definition injBX sos (P : propX W (settings * state) sos) : hpropB sos := BedrockSepKernel.injX' P.
 
 Notation "[|| P ||]" := (injBX P) : Sep_scope.
 
+Definition hptsto {sos} (p : W) (b : B) : hpropB sos :=
+  fun _ m => [| smem_get p m = Some b /\ 
+    forall p', p <> p' -> smem_get p' m = None |]%PropX.
+
 Definition ptsto8 sos : W -> B -> hpropB sos :=
-  hptsto W (settings * state) sos.
+  @hptsto sos.
 
 Notation "a =8> v" := (ptsto8 _ a v) (no associativity, at level 39) : Sep_scope.
 
+Definition smem_get_word (implode : B * B * B * B -> W) (p : W) (m : smem) : option W :=
+  match smem_get p m , smem_get (p ^+ $1) m , smem_get (p ^+ $2) m , smem_get (p ^+ $3) m with
+    | Some a , Some b , Some c , Some d => Some (implode (a,b,c,d))
+    | _ , _ , _ , _ => None
+  end.
+
 (* This breaks the hprop abstraction because it needs access to 'settings' *)
 Definition ptsto32 sos (a v : W) : hpropB sos :=
-  (fun stn sm => [| ST.HT.smem_get_word (implode stn) a sm = Some v
+  (fun stn sm => [| smem_get_word (implode stn) a sm = Some v
     /\ forall a', a' <> a /\ a' <> (a ^+ $1) /\ a' <> (a ^+ $2) /\ a' <> (a ^+ $3)
-      -> ST.HT.smem_get a' sm = None |])%PropX.
+      -> smem_get a' sm = None |])%PropX.
 
 Notation "a =*> v" := (ptsto32 _ a v) (no associativity, at level 39) : Sep_scope.
 
 Definition starB sos : hpropB sos -> hpropB sos -> hpropB sos :=
-  @star W (settings * state) sos.
+  @BedrockSepKernel.star' sos.
 
 Infix "*" := starB : Sep_scope.
 
@@ -270,7 +295,7 @@ Fixpoint ptsto32m sos (a : W) (offset : nat) (vs : list W) : hpropB sos :=
 
 Notation "a ==*> v1 , .. , vn" := (ptsto32m _ a O (cons v1 .. (cons vn nil) ..)) (no associativity, at level 39) : Sep_scope.
 
-Definition exB sos T (p : T -> hpropB sos) : hpropB sos := ex p.
+Definition exB sos T (p : T -> hpropB sos) : hpropB sos := BedrockSepKernel.ex' p.
 
 Notation "'Ex' x , p" := (exB (fun x => p)) : Sep_scope.
 Notation "'Ex' x : A , p" := (exB (fun x : A => p)) : Sep_scope.
@@ -304,7 +329,7 @@ Fixpoint lift sos (p : HProp) : hpropB sos :=
 Notation "^[ p ]" := (lift _ p) : Sep_scope.
 
 Definition Himp (p1 p2 : HProp) : Prop :=
-  forall specs, ST.himp specs p1 p2.
+  BedrockSepKernel.himp p1 p2.
 
 Notation "p1 ===> p2" := (Himp p1%Sep p2%Sep) (no associativity, at level 90).
 
@@ -330,8 +355,9 @@ Import SepFormula.
 
 Require Import RelationClasses Setoid.
 
+(*
 Global Add Parametric Morphism cs : (@sepFormula nil) with
-  signature (@himp W (settings * state) cs ==> @eq (settings * state) ==> @PropXRel.PropX_imply _ _ cs)
+  signature (himp ==> @eq (settings * state) ==> @PropXRel.PropX_imply _ _ cs)
 as sepFormula_himp_imply.
   unfold himp. rewrite sepFormula_eq.
   unfold sepFormula_def.
@@ -339,16 +365,17 @@ as sepFormula_himp_imply.
   intros. unfold interp.
   eapply PropX.Imply_I. 
 
-  specialize (H (fst y0) (memoryIn (Mem (snd y0)))). eapply PropX.Imply_E.
-  eapply PropXTac.valid_weaken. eapply H. firstorder.
+  specialize (H cs (fst y0) (memoryIn (Mem (snd y0)))). eapply PropX.Imply_E.
+  eapply PropXTac.valid_weaken. instantiate (2 := nil). propxFo. eapply simplify_bwd. simpl. apply H. eapply H. firstorder. 
   PropXRel.propxIntuition.
 Qed.
 Global Add Parametric Morphism cs : (@sepFormula nil) with
-  signature (@heq W (settings * state) cs ==> @eq (settings * state) ==> @PropXRel.PropX_eq _ _ cs)
+  signature (@heq ==> @eq (settings * state) ==> @PropXRel.PropX_eq _ _ cs)
 as sepFormula_himp_eq.
   rewrite sepFormula_eq. unfold heq, himp, sepFormula_def, PropXRel.PropX_eq, PropXRel.PropX_imply.
-  intros. unfold interp in *. intuition; PropXRel.propxIntuition; eauto.
+  intros. unfold interp in *. intuition; PropXRel.propxIntuition; eauto. simpl in *.
 Qed.
+*)
 
 Export SepFormula.
 
@@ -494,14 +521,14 @@ Lemma Himp_trans : forall p q r,
   unfold Himp, himp; eauto using Imply_trans.
 Qed.
 
-Lemma himp_star_frame_comm :
-  forall (pcType stateType : Type) (cs : codeSpec pcType stateType)
-    (P Q R S : hprop pcType stateType nil),
-    himp cs P Q -> himp cs R S -> himp cs (star P R) (star S Q).
+(*
+Lemma himp_star_frame_comm : forall (P Q R S : hprop),
+    himp P Q -> himp R S -> himp (star P R) (star S Q).
+Proof.
   intros; eapply Trans_himp; [ | apply himp_star_comm ].
   apply himp_star_frame; auto.
 Qed.
-
+*)
 
 (** * [goodSize] *)
 

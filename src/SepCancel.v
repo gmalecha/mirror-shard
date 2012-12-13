@@ -13,7 +13,7 @@ Require SepUnify.
 Set Implicit Arguments.
 Set Strict Implicit.
 
-Module Make (U : SynUnifier) (SH : SepHeap).
+Module Make (U : Unifier) (SH : SepHeap).
   Module Import SE := SH.SE.
   Module HEAP_FACTS := SepHeapFacts SH.
   Module Import SEP_FACTS := HEAP_FACTS.SEP_FACTS.
@@ -181,11 +181,18 @@ Module Make (U : SynUnifier) (SH : SepHeap).
             rewrite H2 in H8. rewrite H1 in H7. inversion H7; inversion H8; subst; auto. }
           { clear H3. revert H9. case_eq (U.exprUnify bound a e S); intros; try congruence.
             eapply IHl with (f := f t0) in H9; eauto using U.exprUnify_WellTyped.
-            intuition. rewrite H10. f_equal. f_equal.
-            eapply U.exprUnify_sound in H3. 
-            assert (U.exprInstantiate S' (U.exprInstantiate s a) = U.exprInstantiate S' (U.exprInstantiate s e)).
-            rewrite H3; auto.
-            repeat rewrite U.exprInstantiate_Extends in H11 by eauto. rewrite H11 in H7. rewrite H7 in H8. inversion H8; auto.
+            intuition.
+            rewrite H10. f_equal. f_equal.
+            eapply U.exprUnify_sound' with (funcs := funcs) (U := U) (G := G) (t := t) in H3.
+            generalize H9. 
+            eapply U.exprInstantiate_Extends with (t := a) in H9.
+            intro.
+            eapply U.exprInstantiate_Extends with (t := e) in H11.
+            rewrite <- H9 in H7.
+            rewrite <- H11 in H8.
+            rewrite U.Subst_equations_exprInstantiate in H7 by eassumption.
+            rewrite U.Subst_equations_exprInstantiate in H8 by eassumption.
+            rewrite H3 in H7. rewrite H7 in H8. inversion H8; auto.
 
             etransitivity; eauto using U.exprUnify_Extends. }
           { exfalso.

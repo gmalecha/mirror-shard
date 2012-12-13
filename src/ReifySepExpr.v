@@ -44,11 +44,11 @@ Module ReifySepExpr (Import SEP : SepExpr).
           B (@openUp _ T (@fst _ _) x) (@openUp _ T' (@snd _ _) x)) in
         let v := eval simpl in v in
         collectTypes_sexpr isConst v types k
-      | fun x : ?T => @ST.inj _ _ _ (PropX.Inj (@?P x)) =>
+      | fun x : ?T => @ST.inj _ _ _ (@?P x) =>
          collectTypes_expr isConst P types k
       | fun x : ?T => @ST.emp _ _ _ => k types
       | @ST.emp _ _ _ => k types
-      | @ST.inj _ _ _ (PropX.Inj ?P) =>
+      | @ST.inj _ _ _ ?P =>
         collectTypes_expr isConst P types k
       | @ST.inj _ _ _ ?PX => k types
       | @ST.star _ _ _ ?L ?R =>
@@ -213,7 +213,7 @@ Module ReifySepExpr (Import SEP : SepExpr).
           let r := constr:(@Emp types pcType stateType) in
           k uvars funcs sfuncs r
 
-        | fun x : ?T => @ST.inj _ _ _ (PropX.Inj (@?P x)) =>
+        | fun x : ?T => @ST.inj _ _ _ (@?P x) =>
           reify_expr isConst P types funcs uvars vars ltac:(fun uvars funcs P =>
             let r := constr:(@Inj types pcType stateType P) in
             k uvars funcs sfuncs r)
@@ -222,7 +222,7 @@ Module ReifySepExpr (Import SEP : SepExpr).
           let r := constr:(@Emp types pcType stateType) in
           k uvars funcs sfuncs r
 
-        | @ST.inj _ _ _ (PropX.Inj ?P) =>
+        | @ST.inj _ _ _ ?P =>
           reify_expr isConst P types funcs uvars vars ltac:(fun uvars funcs P =>
             let r := constr:(@Inj types pcType stateType P) in
             k uvars funcs sfuncs r)

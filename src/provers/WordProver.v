@@ -11,7 +11,7 @@ Local Notation "[ x , .. , y ]" := (cons x .. (cons y nil) ..).
 
 (** * The Word Prover **)
 
-Require Import Arith ILEnv Memory.
+Require Import Arith ILEnv.
 
 Section WordProver.
   Variable types' : list type.
