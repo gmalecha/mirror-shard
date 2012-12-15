@@ -67,22 +67,15 @@ Section unfolder_learnhook.
 *)
   Admitted.
 
-(*
-    Lemma interp_existsEach : forall vs P stn st,
-      ST.satisfies (existsEach vs P) stn st ->
-      exists G, map (@projT1 _ _) G = vs /\ ST.satisfies cs (P G) stn st. 
-    Proof.
-      intros. apply ST.satisfies_ex in H. destruct H. exists x.
-      apply ST.satisfies_star in H. 
-      repeat match goal with
-               | [ H : exists x, _ |- _ ] => destruct H
-               | [ H : _ /\ _ |- _ ] => destruct H
-             end.
-      apply ST.satisfies_pure in H0. intuition.
-      PropXTac.propxFo. eapply ST.HT.split_semp in H; eauto. subst; auto.
-    Qed.
-*)
-
+  Lemma interp_existsEach : forall cs 
+    vs (P : list {t : tvar & tvarD (repr bedrock_types_r types) t} -> _) stn st,
+    interp cs ((UNF.ST_EXT.existsEach vs P) stn st) ->
+    exists G, map (@projT1 _ _) G = vs /\ interp cs ((P G) stn st). 
+  Proof.
+    intros. unfold UNF.ST_EXT.existsEach in H.
+    unfold SH.SE.ST.ex, BedrockSepKernel.ex' in H. PropXTac.propxFo. subst.
+    eexists; split; eauto. apply split_emp in H0. unfold smem_eqv in *. subst; auto.
+  Qed.
 
   Theorem unfolderLearnHook_correct 
     : @MEVAL.LearnHook_correct (repr bedrock_types_r types) _ BedrockCoreEnv.pc BedrockCoreEnv.st (@unfolder_LearnHook) 
@@ -118,15 +111,6 @@ Section unfolder_learnhook.
         rewrite Heqo in H.
         rewrite sepFormula_eq in H. unfold sepFormula_def in *. simpl in H.
 
-        Lemma interp_existsEach : forall cs 
-          vs (P : list {t : tvar & tvarD (repr bedrock_types_r types) t} -> _) stn st,
-          interp cs ((UNF.ST_EXT.existsEach vs P) stn st) ->
-          exists G, map (@projT1 _ _) G = vs /\ interp cs ((P G) stn st). 
-        Proof.
-          intros. unfold UNF.ST_EXT.existsEach in H.
-          unfold SH.SE.ST.ex, BedrockSepKernel.ex' in H. PropXTac.propxFo. subst.
-          eexists; split; eauto. apply split_emp in H0. unfold smem_eqv in *. subst; auto.
-        Qed.
         eapply interp_existsEach in H.
         destruct H. rewrite existsEach_sem. exists x. destruct H. split.
         unfold typeof_env. simpl in *. rewrite map_length. rewrite <- H.
@@ -136,11 +120,12 @@ Section unfolder_learnhook.
         rewrite <- app_nil_r with (l := vars ++ x). rewrite <- UNF.HEAP_FACTS.SEP_FACTS.sexprD_weaken.
         apply interp_satisfies. intuition. eapply BedrockSepHeap.memoryIn_sound.
         apply AllProvable_app' in H4. destruct H4. repeat apply AllProvable_app; eauto using AllProvable_weaken.
-        rewrite app_nil_r. eapply SymILProofs.SymIL_Correct.sheapD_pures in H6. eapply H6.
-        rewrite app_nil_r. eapply SH.sheapD_pures. eapply H6. }
-      { inversion H2. subst. simpl. auto. }
+        rewrite app_nil_r. eapply sheapD_pures in H6. eapply H6.
+        rewrite app_nil_r. eapply sheapD_pures. eapply H6. }
+      { inversion H2. subst. simpl. auto. } }
+    { inversion H2; subst; simpl; auto. }
     Qed.
-    Transparent UNF.forward.
+    Transparent UNF.refineForward.
   End unfolder_learnhook.
 
 (** Unfortunately, most things can change while evaluating a stream,
@@ -159,7 +144,7 @@ Section stream_correctness.
 
   Variable funcs' : functions TYPES.
   Notation funcs := (repr (bedrock_funcs_r types') funcs').
-  Variable preds : SEP.predicates TYPES pcT stT.
+  Variable preds : SEP.predicates TYPES.
 
   Lemma skipn_length : forall T (ls : list T) n,
     length ls = n ->
@@ -175,7 +160,7 @@ Section stream_correctness.
     clear; intros; subst; induction ls; auto.
   Qed.
 
-  Lemma interp_ex : forall cs T (P : T -> hprop _ _ _) stn_st,
+  Lemma interp_ex : forall cs T (P : T -> hprop) stn_st,
     interp cs (![SEP.ST.ex P] stn_st) ->
     exists v, interp cs (![P v] stn_st).
   Proof.
@@ -229,7 +214,7 @@ Section stream_correctness.
       exprD funcs uvars vars rp tvWord = Some (Regs st Rp) ->
       forall pures : list (Expr.expr TYPES),
         Expr.AllProvable funcs uvars vars pures ->
-        forall (sh : SEP.sexpr TYPES pcT stT) (hashed : SH.SHeap TYPES pcT stT) vars',
+        forall (sh : SEP.sexpr TYPES) (hashed : SH.SHeap TYPES) vars',
           SH.hash sh = (vars', hashed) ->
           forall (cs : codeSpec W (settings * state)) (stn : settings),
             interp cs (![SEP.sexprD funcs preds uvars vars sh] (stn, st)) ->
@@ -240,7 +225,7 @@ Section stream_correctness.
                |}.
   Proof.
     unfold qstateD. intros. simpl.
-    generalize (SH.hash_denote funcs preds uvars nil cs sh). rewrite H3. simpl in *.
+    generalize (SH.hash_denote funcs preds uvars nil sh). rewrite H3. simpl in *.
     intro XX. rewrite XX in H4. 
 
     apply interp_pull_existsEach in H4. destruct H4. intuition.
@@ -255,8 +240,7 @@ Section stream_correctness.
     apply AllProvable_app; auto.
     { eapply AllProvable_weaken. eauto. }
     { rewrite sepFormula_eq in H6. unfold sepFormula_def in H6. simpl in H6.
-      eapply SH.sheapD_pures. 
-      unfold SEP.ST.satisfies. simpl in *. rewrite app_nil_r. eauto. }
+      eapply sheapD_pures. simpl. rewrite app_nil_r. eauto. }
   Qed.
 
 End stream_correctness.
@@ -277,7 +261,7 @@ Section apply_stream_correctness.
 
   Variable funcs' : functions TYPES.
   Notation funcs := (repr (bedrock_funcs_r types') funcs').
-  Variable preds : SEP.predicates TYPES pcT stT.
+  Variable preds : SEP.predicates TYPES.
 
   Variable algos : ILAlgoTypes.AllAlgos TYPES.
   Variable algos_correct : @ILAlgoTypes.AllAlgos_correct TYPES funcs preds algos.
@@ -301,7 +285,7 @@ Section apply_stream_correctness.
                     | Some p => p
                   end in
     let meval := match ILAlgoTypes.MemEval algos with
-                   | None => MEVAL.Default.MemEvaluator_default _ _ _ 
+                   | None => MEVAL.Default.MemEvaluator_default _
                    | Some me => me
                  end in
     let unfolder := match ILAlgoTypes.Hints algos with
@@ -360,12 +344,11 @@ Section apply_stream_correctness.
                             | Some p => p
                             | None => ReflexivityProver.reflexivityProver
                           end).
-    assert (MC : SymILProofs.MEVAL.MemEvaluator_correct
+    assert (MC : SymILProofs.MEVAL.MemEvaluator_correct pcT stT
       match ILAlgoTypes.MemEval algos with
       | Some me => me
       | None =>
           MEVAL.Default.MemEvaluator_default (repr BedrockCoreEnv.core TYPES)
-            pcT stT
       end (repr (bedrock_funcs_r types') funcs) preds tvWord tvWord
       (IL_mem_satisfies (ts:=types')) (IL_ReadWord (ts:=types'))
       (IL_WriteWord (ts:=types'))).
@@ -374,13 +357,13 @@ Section apply_stream_correctness.
       apply SymIL.MEVAL.Default.MemEvaluator_default_correct. }
     generalize dependent (match ILAlgoTypes.MemEval algos with
                             | Some me => me
-                            | None => MEVAL.Default.MemEvaluator_default (repr BedrockCoreEnv.core TYPES) pcT stT
+                            | None => MEVAL.Default.MemEvaluator_default (repr BedrockCoreEnv.core TYPES)
                           end).
     match goal with
       | [ |- context [ ?X ] ] =>
         match X with 
           | match ILAlgoTypes.Hints _ with _ => _ end =>
-            assert (LC : SymILProofs.MEVAL.LearnHook_correct (types_ := TYPES) (pcT := tvType 0) (stT := tvType 1) X
+            assert (LC : @SymILProofs.MEVAL.LearnHook_correct TYPES _ (tvType 0) (tvType 1) X
               (stateD funcs preds) (repr (bedrock_funcs_r types') funcs) preds); [ | generalize dependent X ]
         end
     end.
