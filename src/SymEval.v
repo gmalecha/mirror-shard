@@ -187,8 +187,9 @@ Section over_types.
 
 End over_types.
 
+Require Import SepIL.
 
-Module SymbolicEvaluator (SH : SepHeap).
+Module SymbolicEvaluator (SH : SepHeap with Module SE.ST := SepIL.ST).
   Module SEP := SH.SE.
   Module ST := SEP.ST.
 
@@ -377,7 +378,6 @@ Module SymbolicEvaluator (SH : SepHeap).
         forall (P : ProverT types) (facts : Facts P) (args : exprs types) (p v : expr types),
           option (exprs types)
       }.
-
       Variables pcT stT : tvar.
 
       Variable stn_st : Type.
@@ -389,7 +389,7 @@ Module SymbolicEvaluator (SH : SepHeap).
 
       Variable me : MemEvalPred.
 
-      Record MemEvalPred_correct (Predicate : SEP.predicate types pcT stT)
+      Record MemEvalPred_correct (Predicate : SEP.predicate types)
         (funcs : functions types) : Prop :=
       { sym_read_word_correct : forall P (PE : ProverT_correct P funcs),
         forall args uvars vars cs facts pe p ve stn_st Q,
@@ -505,15 +505,15 @@ Module SymbolicEvaluator (SH : SepHeap).
       Variable mep : MemEvalPred types.
       Variable predIndex : nat.
 
-      Definition MemEvalPred_to_MemEvaluator : MemEvaluator types pcT stT :=
-        {| sread_word := fun (P : ProverT types) (F : Facts P) (p : expr types) (h : SH.SHeap types pcT stT) =>
+      Definition MemEvalPred_to_MemEvaluator : MemEvaluator types :=
+        {| sread_word := fun (P : ProverT types) (F : Facts P) (p : expr types) (h : SH.SHeap types) =>
            let impures := SH.impures h in
            let argss := FM.find predIndex impures in
            match argss with
              | None => None
              | Some argss => fold_args (fun args => @pred_read_word _ mep P F args p) argss
            end
-         ; swrite_word := fun (P : ProverT types) (F : Facts P) (p v : expr types) (h : SH.SHeap types pcT stT) =>
+         ; swrite_word := fun (P : ProverT types) (F : Facts P) (p v : expr types) (h : SH.SHeap types) =>
            let impures := SH.impures h in
            let argss := FM.find predIndex impures in
            match argss with
@@ -532,17 +532,17 @@ Module SymbolicEvaluator (SH : SepHeap).
     
       (** Correctness **)
       Variable funcs : functions types.
-      Variable preds : SEP.predicates types pcT stT.
+      Variable preds : SEP.predicates types.
 
       Variable stn_st : Type.
     
       Variables ptrT valT : tvar.
 
-      Hypothesis mem_satisfies : PropX.codeSpec (tvarD types pcT) (tvarD types stT) -> ST.hprop (tvarD types pcT) (tvarD types stT) nil -> stn_st -> Prop.
+      Hypothesis mem_satisfies : PropX.codeSpec (tvarD types pcT) (tvarD types stT) -> ST.hprop -> stn_st -> Prop.
       Hypothesis ReadWord : stn_st -> tvarD types ptrT -> option (tvarD types valT).
       Hypothesis WriteWord : stn_st -> tvarD types ptrT -> tvarD types valT -> option stn_st.
 
-      Variable pred : SEP.predicate types pcT stT.
+      Variable pred : SEP.predicate types.
       Hypothesis predAt : nth_error preds predIndex = Some pred.
       Hypothesis pred_correct :
         @MemEvalPred_correct types pcT stT stn_st ptrT valT mem_satisfies ReadWord WriteWord mep pred funcs.
@@ -558,11 +558,12 @@ Module SymbolicEvaluator (SH : SepHeap).
       (** This is all going to get put in a record **)
       Hypothesis mem_satisfies_himp : forall cs P Q stn_st,
         mem_satisfies cs P stn_st ->
-        ST.himp cs P Q ->
+        ST.himp P Q ->
         mem_satisfies cs Q stn_st.
+
       Hypothesis mem_satisfies_pure : forall cs p P stn_st,
         mem_satisfies cs (ST.star (ST.inj p) P) stn_st ->
-        interp cs p.
+        p.
 (*
       Variable split : stn_st -> stn_st -> stn_st -> Prop.
       Hypothesis mem_satisfies_star : forall cs P Q stn_st,
@@ -596,7 +597,7 @@ Module SymbolicEvaluator (SH : SepHeap).
               |}))))) stn_st.
       Proof.
         intros. 
-        assert (SEP.heq funcs preds uvars vars cs 
+        assert (SEP.heq funcs preds uvars vars 
           (SH.sheapD SH) 
           (SEP.Star (SEP.Func predIndex x) 
             (SH.starred (SEP.Func predIndex) x0 (SH.starred (SEP.Func predIndex) x1
@@ -692,8 +693,8 @@ Module SymbolicEvaluator (SH : SepHeap).
                      SH.other := SH.other SH |})))))).
           simpl. rewrite predAt. rewrite H4. eauto.
           match goal with
-            | [ |- ST.himp ?cs (SEP.sexprD ?F ?P ?U ?G ?L) (SEP.sexprD _ _ _ _ ?R) ] =>
-              change (SEP.himp F P U G cs L R)
+            | [ |- ST.himp (SEP.sexprD ?F ?P ?U ?G ?L) (SEP.sexprD _ _ _ _ ?R) ] =>
+              change (SEP.himp F P U G L R)
           end.
           apply SF.heq_himp. do 2 rewrite SH.starred_base.
           repeat rewrite SH.sheapD_def; simpl. symmetry.
@@ -720,7 +721,7 @@ Module SymbolicEvaluator (SH : SepHeap).
       Variable types : list type.
       Variable pcT stT : tvar.
 
-      Definition MemEvaluator_composite (l r : MemEvaluator types pcT stT) : MemEvaluator types pcT stT :=
+      Definition MemEvaluator_composite (l r : MemEvaluator types) : MemEvaluator types :=
         {| sread_word := fun P f e h => 
            match sread_word l P f e h with
              | None => sread_word r P f e h
@@ -733,21 +734,21 @@ Module SymbolicEvaluator (SH : SepHeap).
            end
          |}.
 
-      Variables evalL evalR : MemEvaluator types pcT stT.
+      Variables evalL evalR : MemEvaluator types.
 
       Variable funcs : functions types.
-      Variable preds : SEP.predicates types pcT stT.
+      Variable preds : SEP.predicates types.
 
       Variable stn_st : Type.
     
       Variables ptrT valT : tvar.
 
-      Hypothesis mem_satisfies : PropX.codeSpec (tvarD types pcT) (tvarD types stT) -> ST.hprop (tvarD types pcT) (tvarD types stT) nil -> stn_st -> Prop.
+      Hypothesis mem_satisfies : PropX.codeSpec (tvarD types pcT) (tvarD types stT) -> ST.hprop -> stn_st -> Prop.
       Hypothesis ReadWord : stn_st -> tvarD types ptrT -> option (tvarD types valT).
       Hypothesis WriteWord : stn_st -> tvarD types ptrT -> tvarD types valT -> option stn_st.
 
-      Hypothesis Lcorr : MemEvaluator_correct evalL funcs preds ptrT valT mem_satisfies ReadWord WriteWord.
-      Hypothesis Rcorr : MemEvaluator_correct evalR funcs preds ptrT valT mem_satisfies ReadWord WriteWord.
+      Hypothesis Lcorr : MemEvaluator_correct _ _ evalL funcs preds ptrT valT mem_satisfies ReadWord WriteWord.
+      Hypothesis Rcorr : MemEvaluator_correct _ _ evalR funcs preds ptrT valT mem_satisfies ReadWord WriteWord.
 
       Theorem MemEvaluator_correct_composite : @MemEvaluator_correct types pcT stT (MemEvaluator_composite evalL evalR)
         funcs preds stn_st ptrT valT mem_satisfies ReadWord WriteWord.

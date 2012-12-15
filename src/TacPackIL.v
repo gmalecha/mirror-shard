@@ -20,12 +20,13 @@ Module UNF := Unfolder.Make SH ExprUnify.UNIFIER.
 Module ILAlgoTypes <: AlgoTypes SEP BedrockCoreEnv.
   Module PACK := TypedPackage.Make SEP BedrockCoreEnv.
   Module SEP_REIFY := ReifySepExpr.ReifySepExpr SEP.
-  Module HINTS_REIFY := ReifyHints.Make UNF.LEM.
+  Module HINTS_REIFY := ReifyHints.Make SEP.
+  Module LEM := SepLemma.SepLemma SEP.
 
   Record AllAlgos (ts : list type) : Type :=
   { Prover : option (ProverT (repr BedrockCoreEnv.core ts))
-  ; Hints : option (UNF.hintsPayload (repr BedrockCoreEnv.core ts) BedrockCoreEnv.pc BedrockCoreEnv.st)
-  ; MemEval : option (MEVAL.MemEvaluator (repr BedrockCoreEnv.core ts) BedrockCoreEnv.pc BedrockCoreEnv.st)
+  ; Hints : option (UNF.hintsPayload (repr BedrockCoreEnv.core ts))
+  ; MemEval : option (MEVAL.MemEvaluator (repr BedrockCoreEnv.core ts))
   }.
 
   Section oplus.
@@ -46,14 +47,14 @@ Module ILAlgoTypes <: AlgoTypes SEP BedrockCoreEnv.
         {| Prover  := oplus (@composite_ProverT _) pl pr 
          ; Hints   := oplus (fun l r => {| UNF.Forward := UNF.Forward l ++ UNF.Forward r
          ; UNF.Backward := UNF.Backward l ++ UNF.Backward r |}) hl hr
-         ; MemEval := oplus (@MEVAL.Composite.MemEvaluator_composite _ BedrockCoreEnv.pc BedrockCoreEnv.st) ml mr
+         ; MemEval := oplus (@MEVAL.Composite.MemEvaluator_composite _) ml mr
         |}
     end.
 
   Record AllAlgos_correct
     (types : list type)
     (funcs : functions (repr BedrockCoreEnv.core types))
-    (preds : SEP.predicates (repr BedrockCoreEnv.core types) BedrockCoreEnv.pc BedrockCoreEnv.st)
+    (preds : SEP.predicates (repr BedrockCoreEnv.core types))
     (algos : AllAlgos types) : Type :=
   { Acorrect_Prover :
     match Prover algos with
@@ -101,7 +102,7 @@ Module ILAlgoTypes <: AlgoTypes SEP BedrockCoreEnv.
     refine (
       {| Env := {| PACK.Types := nil_Repr EmptySet_type
                  ; PACK.Funcs := fun ts => nil_Repr (Default_signature _)
-                 ; PACK.Preds := fun ts => nil_Repr (SEP.Default_predicate _ _ _)
+                 ; PACK.Preds := fun ts => nil_Repr (SEP.Default_predicate _)
                 |} 
        ; Algos := fun ts => {| Prover := None ; Hints := None ; MemEval := None |}
        ; Algos_correct := _
@@ -144,7 +145,7 @@ Module ILAlgoTypes <: AlgoTypes SEP BedrockCoreEnv.
     refine (
       {| Env := {| PACK.Types := nil_Repr EmptySet_type
         ; PACK.Funcs := bedrock_funcs_r 
-        ; PACK.Preds := fun ts => nil_Repr (SEP.Default_predicate _ _ _)
+        ; PACK.Preds := fun ts => nil_Repr (SEP.Default_predicate _)
       |}
       ; Algos := fun ts => {| Prover := None ; Hints := None ; MemEval := None |}
         ; Algos_correct := _
@@ -180,7 +181,7 @@ Module ILAlgoTypes <: AlgoTypes SEP BedrockCoreEnv.
           {| PACK.Types := Prover.ProverTypes prover
            ; PACK.Funcs := fun ts => Prover.ProverFuncs prover (repr bedrock_types_r ts)
            ; PACK.Preds := fun ts =>
-             nil_Repr (SEP.Default_predicate (repr (Prover.ProverTypes prover) (repr bedrock_types_r ts)) (tvType 0) (tvType 1))
+             nil_Repr (SEP.Default_predicate (repr (Prover.ProverTypes prover) (repr bedrock_types_r ts)))
           |}
         in
         let algos ts :=
@@ -247,8 +248,8 @@ Module ILAlgoTypes <: AlgoTypes SEP BedrockCoreEnv.
         pose (mem := 
           {| MEVAL.MemEvalTypes := nil_Repr EmptySet_type
            ; MEVAL.MemEvalFuncs := fun ts => nil_Repr (Default_signature _)
-           ; MEVAL.MemEvalPreds := fun ts => nil_Repr (SEP.Default_predicate _ _ _)
-           ; MEVAL.MemEval := fun ts => @MEVAL.Default.MemEvaluator_default _ (tvType 0) (tvType 1)
+           ; MEVAL.MemEvalPreds := fun ts => nil_Repr (SEP.Default_predicate _)
+           ; MEVAL.MemEval := fun ts => @MEVAL.Default.MemEvaluator_default _
            ; MEVAL.MemEval_correct := fun ts fs ps =>
              @MEVAL.Default.MemEvaluator_default_correct _ _ _ _ _ _ _ _ _ _ _
           |} : @MEVAL.MemEvaluatorPackage min_types_r (tvType 0) (tvType 1) (tvType 0) (tvType 0) 
@@ -263,8 +264,8 @@ Module ILAlgoTypes <: AlgoTypes SEP BedrockCoreEnv.
       Functions : forall ts, Repr (signature (repr Types ts));
       PcType : tvar;
       StateType : tvar;
-      Predicates : forall ts, Repr (SEP.predicate (Env.repr Types ts) PcType StateType);
-      Hints : forall ts, UNF.hintsPayload (repr Types ts) PcType StateType;
+      Predicates : forall ts, Repr (SEP.predicate (Env.repr Types ts));
+      Hints : forall ts, UNF.hintsPayload (repr Types ts);
       HintsOk : forall ts fs ps, UNF.hintsSoundness (repr (Functions ts) fs) (repr (Predicates ts) ps) (Hints ts)
     }.
 
@@ -343,7 +344,7 @@ Module ILAlgoTypes <: AlgoTypes SEP BedrockCoreEnv.
     Definition bedrock_env : PACK.TypeEnv :=
       {| PACK.Types := nil_Repr EmptySet_type
        ; PACK.Funcs := fun ts => nil_Repr (Default_signature _)
-       ; PACK.Preds := fun ts => nil_Repr (SEP.Default_predicate _ _ _)
+       ; PACK.Preds := fun ts => nil_Repr (SEP.Default_predicate _)
       |}.
 
     Module HintsPackTest.
@@ -442,7 +443,8 @@ Ltac opaque_pack pack :=
 Goal TypedPackage.
   Require provers.ReflexivityProver.
   build_prover_pack provers.ReflexivityProver.ReflexivityProver ltac:(fun x => 
-    build_mem_pack (MEVAL.Default.package bedrock_types_r (tvType 0) (tvType 1) (tvType 0) (tvType 0) IL_mem_satisfies IL_ReadWord IL_WriteWord) ltac:(fun y =>   
+    build_mem_pack (MEVAL.Default.package bedrock_types_r (tvType 0) (tvType 1) (tvType 0) (tvType 0) 
+      IL_mem_satisfies IL_ReadWord IL_WriteWord) ltac:(fun y =>   
     glue_pack x y ltac:(opaque_pack))).
 Qed.
 
@@ -503,15 +505,15 @@ Module Extension.
         k ts fs ps
     end.
 
-  Lemma hintSideD_app : forall types pc st funcs preds A B,
-    @UNF.hintSideD types funcs pc st preds A ->
-    @UNF.hintSideD types funcs pc st preds B ->
-    @UNF.hintSideD types funcs pc st preds (A ++ B).
+  Lemma hintSideD_app : forall types funcs preds A B,
+    @UNF.hintSideD types funcs preds A ->
+    @UNF.hintSideD types funcs preds B ->
+    @UNF.hintSideD types funcs preds (A ++ B).
   Proof. 
     induction 1; simpl; intros; auto. constructor; eauto. eapply IHForall. auto.
   Qed.
 
-  Definition extend_opt_hints types pc st (o : option (UNF.hintsPayload types pc st)) (fwd bwd : list (UNF.LEM.lemma types pc st)) : option (UNF.hintsPayload types pc st) :=
+  Definition extend_opt_hints types (o : option (UNF.hintsPayload types)) (fwd bwd : list (LEM.sepLemma types)) : option (UNF.hintsPayload types) :=
     match fwd , bwd with
       | nil , nil => o
       | _ , _ =>
@@ -520,10 +522,10 @@ Module Extension.
           | Some e => Some (UNF.Build_hintsPayload (UNF.Forward e ++ fwd) (UNF.Backward e ++ bwd))
         end
     end.
-  Lemma extend_opt_hintsOk : forall types pc st funcs preds (o : option (UNF.hintsPayload types pc st)) (fwd bwd : list (UNF.LEM.lemma types pc st)),
+  Lemma extend_opt_hintsOk : forall types funcs preds (o : option (UNF.hintsPayload types)) (fwd bwd : list (LEM.sepLemma types)),
     match o with
       | None => True
-      | Some H => @UNF.hintsSoundness types funcs pc st preds H
+      | Some H => @UNF.hintsSoundness types funcs preds H
     end ->
     UNF.hintSideD funcs preds fwd ->
     UNF.hintSideD funcs preds bwd ->    

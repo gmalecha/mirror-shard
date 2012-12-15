@@ -130,6 +130,39 @@ Section tactic.
   Qed.
 End tactic.
 
+Ltac propxIntuition' :=
+  repeat (instantiate; match goal with
+                         | [ |- valid _ ((Ex x : _ , _) :: _)%PropX _ ] => 
+                           eapply valid_ex_clear; intros
+                         | [ |- valid _ ((_ /\ _) :: _)%PropX _ ] =>
+                           eapply valid_and_split
+                         | [ |- valid _ _ (_ ---> _) ] => 
+                           eapply Imply_I
+                         | [ |- valid _ ([| _ |] :: _)%PropX _ ] =>
+                           eapply valid_inj; intros
+                         | [ |- valid _ (_ :: ?X) _ ] =>
+                           match X with
+                             | context [ (_ /\ _)%PropX ] => 
+                               eapply valid_perm; simpl
+                             | context [ (Ex x : _ , _)%PropX ] => 
+                               eapply valid_perm; simpl
+                             | context [ ([| _ |])%PropX ] => 
+                               eapply valid_perm; simpl
+                           end
+                         | [ |- valid _ _ (_ /\ _)%PropX ] =>
+                           eapply And_I
+                         (* | [ |- valid _ _ (Ex x : _ , _)%PropX ] => *)
+                         (*   eapply Exists_I *)
+                         | [ |- valid _ _ (?X _ _) ] =>
+                           match X with
+                             | @Inj _ _ => fail 1
+                             | _ =>
+                               solve [ econstructor; firstorder ]
+                           end
+                         | [ |- valid _ _ ([| _ |])%PropX ] => 
+                           eapply Inj_I
+                       end).
+
 Ltac propxIntuition :=
   repeat (instantiate; match goal with
                          | [ |- valid _ ((Ex x : _ , _) :: _)%PropX _ ] => 

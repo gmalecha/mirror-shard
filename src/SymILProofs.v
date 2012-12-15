@@ -20,6 +20,12 @@ Set Strict Implicit.
 (** The Symolic Evaluation Interfaces *)
 Module MEVAL := SymIL.MEVAL.
 
+Lemma sheapD_pures : forall types (funcs : functions types) preds U G cs stn sm h,
+  interp cs ((SH.SE.sexprD funcs preds U G (SH.sheapD h)) stn sm) ->
+  AllProvable funcs U G (SH.pures h).
+Proof.
+Admitted.
+
 Module SymIL_Correct.
   Section typed.
     Variable ts : list type.
@@ -34,13 +40,14 @@ Module SymIL_Correct.
 
     Variable fs : functions types.
     Let funcs := repr (bedrock_funcs_r ts) fs.
-    Variable preds : SEP.predicates types pcT stT.
+    Variable preds : SEP.predicates types.
 
     Variable Prover : ProverT types.
     Variable PC : ProverT_correct Prover funcs.
 
-    Variable meval : MEVAL.MemEvaluator types pcT stT.
-    Variable meval_correct : MEVAL.MemEvaluator_correct meval funcs preds tvWord tvWord
+    Variable meval : MEVAL.MemEvaluator types.
+    Variable meval_correct : @MEVAL.MemEvaluator_correct types pcT stT
+      meval funcs preds _ tvWord tvWord
       (@IL_mem_satisfies ts) (@IL_ReadWord ts) (@IL_WriteWord ts).
 
     Variable facts : Facts Prover.
@@ -145,9 +152,9 @@ Module SymIL_Correct.
         simpl in *.
         destruct (WriteWord s0 (Mem s1) (evalLoc s1 l) valD); try contradiction. t_correct.
         Transparent stateD. destruct ss; destruct SymRegs; destruct p. simpl in *. Opaque stateD. intuition. subst.
-        generalize SH.sheapD_pures. unfold SEP.ST.satisfies. intro XXX. 
+        generalize sheapD_pures. intro XXX.
         rewrite sepFormula_eq in H3. unfold sepFormula_def in H3. simpl in *.
-        specialize (@XXX _ _ _ funcs preds meta_env vars_env cs _ _ _ H3). 
+        specialize (@XXX  _ _ _ meta_env vars_env cs _ _ _ H3). 
         apply AllProvable_app' in H6. apply AllProvable_app; intuition auto. }
     Qed.
 
@@ -273,13 +280,13 @@ Module SymIL_Correct.
 
     Variable fs : functions types.
     Let funcs := repr (bedrock_funcs_r ts) fs.
-    Variable preds : SEP.predicates types pcT stT.
+    Variable preds : SEP.predicates types.
 
     Variable Prover : ProverT types.
     Variable PC : ProverT_correct Prover funcs.
 
-    Variable meval : MEVAL.MemEvaluator types pcT stT.
-    Variable meval_correct : MEVAL.MemEvaluator_correct meval funcs preds tvWord tvWord
+    Variable meval : MEVAL.MemEvaluator types.
+    Variable meval_correct : @MEVAL.MemEvaluator_correct types pcT stT meval funcs preds _ tvWord tvWord
       (@IL_mem_satisfies ts) (@IL_ReadWord ts) (@IL_WriteWord ts).
 
     Ltac t_correct := 
@@ -361,7 +368,7 @@ Module SymIL_Correct.
       Transparent stateD.
     Qed.
 
-    Variable learnHook : MEVAL.LearnHook types (SymState types pcT stT).
+    Variable learnHook : MEVAL.LearnHook types (SymState types).
     Variable learn_correct : @MEVAL.LearnHook_correct _ _ pcT stT learnHook (@stateD _ funcs preds) funcs preds.
 
     Ltac shatter_state ss :=
@@ -620,7 +627,7 @@ Module SymIL_Correct.
                end
                | [ H : learnHook _ ?U' ?G' ?SS ?f ?F = (?A, ?B)
                  , H' : stateD _ _ ?U ?G _ _ _ 
-                 , LC : MEVAL.LearnHook_correct _ _ _ _ 
+                 , LC : MEVAL.LearnHook_correct _ _ _ _ _ _ 
                  , PC : ProverT_correct _ _ |- _ ] =>
                  (cutrewrite (U' = typeof_env U) in H; [ | rewrite typeof_env_app; f_equal; auto ] ;
                   cutrewrite (G' = typeof_env G) in H; [ | rewrite typeof_env_app; f_equal; auto ] ;

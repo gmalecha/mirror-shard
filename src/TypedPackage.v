@@ -21,7 +21,7 @@ Module Type Package.
   { Types : Repr type
   ; Funcs : forall ts, Repr (signature (repr CE.core (repr Types ts)))
   ; Preds : forall ts, 
-    Repr (SEP.predicate (repr CE.core (repr Types ts)) CE.pc CE.st)
+    Repr (SEP.predicate (repr CE.core (repr Types ts)))
   }.
 
   Section Apps.
@@ -31,7 +31,7 @@ Module Type Package.
       repr CE.core (repr (Types TE) ls).
     Definition applyFuncs ts (ls : functions (applyTypes ts)) : functions (applyTypes ts) :=
       repr (Funcs TE ts) ls.
-    Definition applyPreds ts (ls : SEP.predicates (applyTypes ts) CE.pc CE.st) : SEP.predicates (applyTypes ts) CE.pc CE.st :=
+    Definition applyPreds ts (ls : SEP.predicates (applyTypes ts)) : SEP.predicates (applyTypes ts) :=
       repr (Preds TE ts) ls.
   End Apps.
 
@@ -47,7 +47,7 @@ Module Type Package.
       | {| Types := ts' ; Funcs := fs |} => fun ls =>
         repr (fs ts) ls
     end.
-  Definition applyPreds_red TE ts : SEP.predicates (applyTypes TE ts) CE.pc CE.st -> SEP.predicates (applyTypes TE ts) CE.pc CE.st :=
+  Definition applyPreds_red TE ts : SEP.predicates (applyTypes TE ts) -> SEP.predicates (applyTypes TE ts) :=
     match TE with
       | {| Types := ts' ; Preds := ps |} => fun ls =>
         repr (ps ts) ls
@@ -69,7 +69,7 @@ Module Type AlgoTypes (SEP : SepExpr) (CE : CoreEnv).
   Parameter AlgoImpl  : list type -> Type.
   Parameter AlgoProof : forall ts : list type, 
     functions (repr CE.core ts) -> 
-    SEP.predicates (repr CE.core ts) CE.pc CE.st ->
+    SEP.predicates (repr CE.core ts) ->
     AlgoImpl ts -> Type.
 End AlgoTypes.
 
@@ -81,7 +81,7 @@ Module Make (SEP' : SepExpr) (CE' : CoreEnv) <: Package with Module SEP := SEP' 
     Record TypeEnv : Type :=
     { Types : Repr type
     ; Funcs : forall ts, Repr (signature (repr CE.core (repr Types ts)))
-    ; Preds : forall ts, Repr (SEP.predicate (repr CE.core (repr Types ts)) CE.pc CE.st)
+    ; Preds : forall ts, Repr (SEP.predicate (repr CE.core (repr Types ts)))
     }.
 
     Variable TE : TypeEnv.
@@ -90,7 +90,7 @@ Module Make (SEP' : SepExpr) (CE' : CoreEnv) <: Package with Module SEP := SEP' 
       repr CE.core (repr (Types TE) ls).
     Definition applyFuncs ts (ls : functions (applyTypes ts)) : functions (applyTypes ts) :=
       repr (Funcs TE ts) ls.
-    Definition applyPreds ts (ls : SEP.predicates (applyTypes ts) CE.pc CE.st) : SEP.predicates (applyTypes ts) CE.pc CE.st :=
+    Definition applyPreds ts (ls : SEP.predicates (applyTypes ts)) : SEP.predicates (applyTypes ts) :=
       repr (Preds TE ts) ls.
 
   End TypeEnv.
@@ -105,7 +105,7 @@ Module Make (SEP' : SepExpr) (CE' : CoreEnv) <: Package with Module SEP := SEP' 
       | {| Types := ts' ; Funcs := fs |} => fun ls =>
         repr (fs ts) ls
     end.
-  Definition applyPreds_red TE ts : SEP.predicates (applyTypes TE ts) CE.pc CE.st -> SEP.predicates (applyTypes TE ts) CE.pc CE.st :=
+  Definition applyPreds_red TE ts : SEP.predicates (applyTypes TE ts) -> SEP.predicates (applyTypes TE ts) :=
     match TE with
       | {| Types := ts' ; Preds := ps |} => fun ls =>
         repr (ps ts) ls

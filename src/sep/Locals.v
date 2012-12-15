@@ -312,16 +312,16 @@ Section correctness.
   Variable types' : list type.
   Definition types0 := types types'.
 
-  Definition ssig : SEP.predicate types0 pcT stT.
-    refine (SEP.PSig _ _ _ (listStringT :: valsT :: natT :: wordT :: nil) _).
+  Definition ssig : SEP.predicate types0.
+    refine (SEP.PSig _ (listStringT :: valsT :: natT :: wordT :: nil) _).
     exact locals.
   Defined.
 
-  Definition ssig_r : Env.Repr (SEP.predicate types0 pcT stT) :=
+  Definition ssig_r : Env.Repr (SEP.predicate types0) :=
     Eval cbv beta iota zeta delta [ Env.listOptToRepr ] in 
       let lst := 
         None :: None :: Some ssig :: nil
-      in Env.listOptToRepr lst (SEP.Default_predicate _ _ _).
+      in Env.listOptToRepr lst (SEP.Default_predicate _).
 
   Variable funcs' : functions types0.
   Definition funcs := Env.repr (funcs_r _) funcs'.
@@ -471,11 +471,11 @@ Section correctness.
       applyD (exprD funcs uvars vars) (SEP.SDomain ssig) args _ (SEP.SDenotation ssig)
       with
       | None => False
-      | Some p => ST.satisfies cs p stn m
+      | Some p => PropX.interp cs (p stn m)
     end ->
     match exprD funcs uvars vars ve wordT with
       | Some v =>
-        ST.HT.smem_get_word (IL.implode stn) p m = Some v
+        smem_get_word (IL.implode stn) p m = Some v
       | _ => False
     end.
   Proof.
@@ -524,13 +524,12 @@ Section correctness.
     simpl simplify in H2, H3, H5.
     destruct H5.
     apply simplify_bwd in H6.
-    generalize (split_semp _ _ _ H3 H7); intro; subst.
+    subst. eapply split_emp in H3. unfold smem_eqv in *. subst.
     specialize (smem_read_correct' _ _ _ _ (i := natToW n) H6); intro Hsmem.
     rewrite natToW_times4.
     rewrite wmult_comm.
     unfold natToW in *.
     erewrite split_smem_get_word; eauto.
-    left.
     rewrite Hsmem.
     f_equal.
 
@@ -628,7 +627,7 @@ Section correctness.
     simpl in H2.
     simpl in H5.
     destruct H5.
-    generalize (split_semp _ _ _ H2 H11); intro; subst.
+    subst. eapply split_emp in H2. unfold smem_eqv in *. subst.
     apply simplify_bwd in H9.
 
     Fixpoint variablePosition' (ns : list string) (nm : string) : nat :=
@@ -650,7 +649,6 @@ Section correctness.
 
     rewrite variablePosition'_4 in Hsmem.
     erewrite split_smem_get_word; eauto.
-    left.
     unfold natToW in *.
     rewrite Hsmem.
     f_equal.
@@ -714,16 +712,16 @@ Section correctness.
       applyD (@exprD _ funcs uvars vars) (SEP.SDomain ssig) args _ (SEP.SDenotation ssig)
       with
       | None => False
-      | Some p => ST.satisfies cs p stn m
+      | Some p => PropX.interp cs (p stn m)
     end ->
     match 
       applyD (@exprD _ funcs uvars vars) (SEP.SDomain ssig) args' _ (SEP.SDenotation ssig)
       with
       | None => False
       | Some pr => 
-        match ST.HT.smem_set_word (IL.explode stn) p v m with
+        match smem_set_word (IL.explode stn) p v m with
           | None => False
-          | Some sm' => ST.satisfies cs pr stn sm'
+          | Some sm' => PropX.interp cs (pr stn sm')
         end
     end.
   Proof.
@@ -769,20 +767,18 @@ Section correctness.
     destruct H7 as [ ? [ ] ].
     rewrite natToW_times4.
     rewrite wmult_comm.
-    generalize (split_semp _ _ _ H3 H8); intro; subst.
-    eapply split_set_word in H7.
+    subst. eapply split_emp in H3. unfold smem_eqv in *; subst.
+    eapply split_smem_set_word in H7; eauto.
     destruct H7.
-    destruct H; subst.
-    rewrite H10.
+    destruct H3; subst.
+    rewrite H7.
     unfold locals.
     apply simplify_bwd.
     exists x4; exists x1.
-    repeat split; auto.
-    exists smem_emp.
-    exists x4.
-    simpl; intuition.
-    apply split_a_semp_a.
-    reflexivity.
+    Opaque natToWord array.
+    simpl. split. eauto. split; eauto.
+    exists smem_emp. exists x4. intuition.
+    eapply split_emp. reflexivity.
     apply simplify_fwd.
 
     Lemma toArray_irrel : forall vs v nm ns,
@@ -894,34 +890,34 @@ Section correctness.
     simpl in H9.
     destruct H9.
     apply simplify_bwd in H13.
-    generalize (split_semp _ _ _ H3 H14); intro; subst.
+    subst. eapply split_emp in H3. unfold smem_eqv in *; subst.
     eapply smem_write_correct' in H13.
+    set (H3 := True).
     destruct H13 as [ ? [ ] ].
     rewrite <- variablePosition'_4.
     rewrite natToW_times4.
     rewrite wmult_comm.
-    eapply split_set_word in H13.
+    eapply split_smem_set_word in H13.
     destruct H13.
-    generalize (proj2 H); intro; subst.
-    rewrite H16.
+    destruct H13.
+    rewrite H15.
     apply simplify_bwd.
     esplit.
     esplit.
     esplit.
     simpl.
-    apply disjoint_split_join; auto.
+    eassumption.
     esplit.
     esplit.
     esplit.
     esplit.
     simpl.
-    apply split_a_semp_a.
+    eapply split_emp. reflexivity.
     esplit.
     simpl; intuition.
-    apply semp_smem_emp.
     apply simplify_fwd.
-    unfold Array.upd in H15.
-    rewrite wordToNat_natToWord_idempotent in H15.
+    unfold Array.upd in H14.
+    rewrite wordToNat_natToWord_idempotent in H14.
 
     Lemma array_updN_variablePosition' : forall vs nm v ns,
       NoDup ns
@@ -947,46 +943,43 @@ Section correctness.
     
     rewrite array_updN_variablePosition'; auto.
 
-    apply array_bound in H15.
-    rewrite updN_length in H15.
+    apply array_bound in H14.
+    rewrite updN_length in H14.
     apply Nlt_in.
     rewrite Npow2_nat.
     repeat rewrite Nat2N.id.
     apply variablePosition'_length in H8.
-    rewrite length_toArray in H15.
+    rewrite length_toArray in H14.
     omega.
 
-    assumption.
-    apply H.
-    rewrite length_toArray.
-    apply Nlt_in.
-    repeat rewrite wordToN_nat.
-    repeat rewrite Nat2N.id.
-    rewrite wordToNat_natToWord_idempotent.
-    rewrite wordToNat_natToWord_idempotent.
-    apply variablePosition'_length; auto.
-    apply array_bound in H13.
-    apply Nlt_in.
-    rewrite Npow2_nat.
-    repeat rewrite Nat2N.id.
-    rewrite length_toArray in H13.
-    assumption.
+    2: apply H.
+    eapply H7.
 
+    Transparent natToW.
     apply Nlt_in.
-    rewrite Npow2_nat.
     repeat rewrite wordToN_nat.
     repeat rewrite Nat2N.id.
-    apply array_bound in H13.
+    apply array_bound in H13.    
     generalize (variablePosition'_length _ _ H8).
-    rewrite length_toArray in H13.
+    rewrite length_toArray in *.
+    intro.
+    repeat rewrite wordToNat_natToWord_idempotent.
     omega.
+    rewrite <- Npow2_nat in *.
+    rewrite <- Nat2N.id with (n := Datatypes.length t) in H13.
+    apply Nlt_in. eauto.
+
+    rewrite <- Npow2_nat in *.
+    apply Nlt_in. 
+    rewrite <- Nat2N.id with (n := variablePosition' t x1) in H3.
+    auto.
   Qed.
 
 End correctness.
 
-Definition MemEvaluator types' : MEVAL.MemEvaluator (types types') (tvType 0) (tvType 1) :=
+Definition MemEvaluator types' : MEVAL.MemEvaluator (types types') :=
   Eval cbv beta iota zeta delta [ MEVAL.PredEval.MemEvalPred_to_MemEvaluator ] in 
-    @MEVAL.PredEval.MemEvalPred_to_MemEvaluator _ (tvType 0) (tvType 1) (MemEval types') 2.
+    @MEVAL.PredEval.MemEvalPred_to_MemEvaluator _ (MemEval types') 2.
 
 Theorem MemEvaluator_correct types' funcs' preds'
   : @MEVAL.MemEvaluator_correct (Env.repr types_r types') (tvType 0) (tvType 1) 
@@ -1008,8 +1001,7 @@ Definition pack : MEVAL.MemEvaluatorPackage types_r (tvType 0) (tvType 1) (tvTyp
   types_r
   funcs_r
   (fun ts => Env.listOptToRepr (None :: None :: Some (ssig ts) :: nil)
-    (SEP.Default_predicate (Env.repr types_r ts)
-      (tvType 0) (tvType 1)))
+    (SEP.Default_predicate (Env.repr types_r ts)))
   (fun ts => MemEvaluator (types ts))
   (fun ts fs ps => @MemEvaluator_correct (types ts) _ _).
 
@@ -1076,9 +1068,7 @@ Qed.
 
 Theorem Himp_star_Emp : forall P,
   Emp * P ===> P.
-  intros; intro cs.
-  destruct (heq_star_emp_l cs P); auto.
-Qed.
+Proof. intros. rewrite heq_star_emp_l. reflexivity. Qed.
 
 Theorem ptsto32m'_out : forall a vs offset,
   ptsto32m' _ a offset vs ===> ptsto32m _ a offset vs.

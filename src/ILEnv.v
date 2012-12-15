@@ -5,27 +5,10 @@ Require Import Word.
 Require Import Expr.
 Require Import Env.
 Require Import Memory IL.
-Require Import TypedPackage.
 Require Import Arith.
-
 
 Set Implicit Arguments.
 Set Strict Implicit.
-
-(*
-Definition test_seq l r : bool :=
-  match l as l , r as r with
-    | IL.Eq , IL.Eq => true
-    | IL.Ne , IL.Ne => true
-    | IL.Le , IL.Le => true
-    | IL.Lt , IL.Lt => true
-    | _ , _ => false
-  end.
-
-Theorem test_seq_compare : forall x y, test_seq x y = true -> x = y.
-  destruct x; destruct y; simpl; (reflexivity || congruence).
-Defined.
-*)
 
 Definition reg_seq l r : bool := 
   match l as l , r as r with
@@ -64,13 +47,6 @@ Definition bedrock_type_state : type :=
    ; Expr.Eqb := fun _ _ => false
    ; Expr.Eqb_correct := @all_false_compare _
    |}.
-(*
-Definition bedrock_type_test : type :=
-  {| Expr.Impl := IL.test
-   ; Expr.Eqb := test_seq
-   ; Expr.Eqb_correct := test_seq_compare
-  |}.
-*)
 Definition bedrock_type_reg : type :=
   {| Expr.Impl := IL.reg
    ; Expr.Eqb := reg_seq
@@ -142,17 +118,6 @@ Section typed_ext.
     refine {| Domain := tvWord :: tvWord :: nil; Range := tvWord |}.
     exact (@wmult 32).
   Defined.
-
-(*
-  Definition word_test_r : Repr Expr.type :=
-    Eval cbv beta iota zeta delta [ listToRepr ] 
-      in (listOptToRepr (Some bedrock_type_W :: None :: None :: Some bedrock_type_test :: nil) Expr.EmptySet_type).
-
-  Definition wcomparator_r : signature (repr word_test_r types').
-    refine {| Domain := tvTest :: tvWord :: tvWord :: nil ; Range := tvProp |}.
-    exact (comparator).
-  Defined.
-*)
 
   Definition word_state_r : Repr Expr.type :=
     Eval cbv beta iota zeta delta [ listToRepr ] 
@@ -262,6 +227,7 @@ Section func_ext.
   Qed.
 End func_ext.
 
+Require Import TypedPackage.
 
 Module BedrockCoreEnv <: CoreEnv.
   Definition core := 

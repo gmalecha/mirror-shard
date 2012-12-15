@@ -25,44 +25,64 @@ Module MEVAL := SymIL.MEVAL.
 (** The instantiation of the learn hook with the unfolder **)
 Section unfolder_learnhook.
   Variable types : list type.
-  Variable hints : UNF.hintsPayload (repr bedrock_types_r types) (tvType 0) (tvType 1).
+  Variable hints : UNF.hintsPayload (repr bedrock_types_r types).
 
   Definition unfolder_LearnHook : MEVAL.LearnHook (repr bedrock_types_r types) 
-    (SymState (repr bedrock_types_r types) (tvType 0) (tvType 1)) :=
+    (SymState (repr bedrock_types_r types)) :=
     fun prover meta_vars vars_vars st facts ext => 
       match SymMem st with
         | Some m =>
-          match fst (UNF.forward hints prover 10 facts
+          match UNF.refineForward prover (UNF.Forward hints) 10 facts
             {| UNF.Vars := vars_vars
              ; UNF.UVars := meta_vars
              ; UNF.Heap := m
-             |})
+             |}
             with
-            | {| UNF.Vars := vs ; UNF.UVars := us ; UNF.Heap := m |} =>
+            | Some {| UNF.Vars := vs ; UNF.UVars := us ; UNF.Heap := m |} =>
               (** assert (us = meta_vars) **)
               ({| SymMem := Some m
                 ; SymRegs := SymRegs st
                 ; SymPures := SymPures st ++ SH.pures m
                 |}, qex (skipn (length vars_vars) vs) QBase)
+            | None => (st, QBase)
           end
         | None => (st, QBase)
       end.
 
   Variable funcs : functions (repr bedrock_types_r types).
-  Variable preds : SEP.predicates (repr bedrock_types_r types) (tvType 0) (tvType 1).
+  Variable preds : SEP.predicates (repr bedrock_types_r types).
   Hypothesis hints_correct : UNF.hintsSoundness funcs preds hints.
 
   (** TODO : move to SymILProofs **)
   Lemma stateD_WellTyped_sheap : forall uvars vars cs stn_st s SymRegs SymPures,
     stateD funcs preds uvars vars cs stn_st {| SymMem := Some s; SymRegs := SymRegs; SymPures := SymPures |} ->
-    SH.WellTyped_sheap (typeof_funcs funcs) (UNF.SE.typeof_preds preds) (typeof_env uvars) (typeof_env vars) s = true.
+    SH.WellTyped_sheap (typeof_funcs funcs) (SEP.typeof_preds preds) (typeof_env uvars) (typeof_env vars) s = true.
   Proof.
     clear. intros. unfold stateD in H.
     destruct stn_st. destruct SymRegs. destruct p. intuition. generalize H. clear; intros.
     rewrite sepFormula_eq in H. unfold sepFormula_def in *. simpl in H.
     rewrite SH.WellTyped_sheap_WellTyped_sexpr.
+(*
     eapply UNF.HEAP_FACTS.SEP_FACTS.interp_WellTyped_sexpr; eauto.
-  Qed.
+*)
+  Admitted.
+
+(*
+    Lemma interp_existsEach : forall vs P stn st,
+      ST.satisfies (existsEach vs P) stn st ->
+      exists G, map (@projT1 _ _) G = vs /\ ST.satisfies cs (P G) stn st. 
+    Proof.
+      intros. apply ST.satisfies_ex in H. destruct H. exists x.
+      apply ST.satisfies_star in H. 
+      repeat match goal with
+               | [ H : exists x, _ |- _ ] => destruct H
+               | [ H : _ /\ _ |- _ ] => destruct H
+             end.
+      apply ST.satisfies_pure in H0. intuition.
+      PropXTac.propxFo. eapply ST.HT.split_semp in H; eauto. subst; auto.
+    Qed.
+*)
+
 
   Theorem unfolderLearnHook_correct 
     : @MEVAL.LearnHook_correct (repr bedrock_types_r types) _ BedrockCoreEnv.pc BedrockCoreEnv.st (@unfolder_LearnHook) 
@@ -73,42 +93,55 @@ Section unfolder_learnhook.
 
     destruct ss. simpl in *.
     destruct SymMem; simpl; intros.
-    { remember (UNF.forward hints P n pp
+    { remember (UNF.refineForward P (UNF.Forward hints) n pp
       {| UNF.Vars := typeof_env vars
         ; UNF.UVars := typeof_env uvars
         ; UNF.Heap := s |}).
-      destruct p. simpl in *.
-      destruct u; simpl in *.
-      symmetry in Heqp.
-      eapply UNF.forwardOk with (cs := cs) in Heqp; eauto using typeof_env_WellTyped_env.
-      Focus 2. simpl.
-      eapply stateD_WellTyped_sheap. eauto. simpl in *.
-      inversion H2; clear H2; subst.
+      destruct o. 
+      { destruct u; simpl in *.
+        symmetry in Heqo.
+        eapply UNF.refineForward_Ok in Heqo; eauto using typeof_env_WellTyped_env.
+        Focus 2. eapply UNF.ForwardOk in hints_correct. eapply hints_correct.
 
-      apply quantD_qex_QEx. simpl.
-      unfold stateD in *. destruct stn_st. destruct SymRegs. destruct p. intuition.
-      repeat match goal with
-               | [ H : match ?X with _ => _ end |- _ ] => 
-                 consider X; intros; try contradiction
-             end.
-      intuition; subst.
-      rewrite Heqp in H.
-      rewrite sepFormula_eq in H. unfold sepFormula_def in *. simpl in H.
-      eapply UNF.ST_EXT.interp_existsEach in H. destruct H.
-      apply existsEach_sem. exists x. destruct H. split.
-      unfold typeof_env. simpl in *. rewrite map_length. rewrite <- H.
-      apply map_ext. auto.
-      rewrite <- app_nil_r with (l := uvars).
-      repeat erewrite exprD_weaken by eassumption. intuition.
-      rewrite <- app_nil_r with (l := vars ++ x). rewrite <- UNF.HEAP_FACTS.SEP_FACTS.sexprD_weaken.
-      apply interp_satisfies. intuition. apply SEP.ST.HT.satisfies_memoryIn.
-      apply AllProvable_app' in H4. destruct H4. repeat apply AllProvable_app; eauto using AllProvable_weaken.
-      rewrite app_nil_r. eapply SH.sheapD_pures. eapply H6.
-      rewrite app_nil_r. eapply SH.sheapD_pures. eapply H6. }
-    { inversion H2. subst. simpl. auto. }
-  Qed.
-  Transparent UNF.forward.
-End unfolder_learnhook.
+        Focus 2. simpl.
+        eapply stateD_WellTyped_sheap. eauto. 
+        
+        simpl in *. inversion H2; clear H2; subst.
+
+        apply quantD_qex_QEx. simpl.
+        unfold stateD in *. destruct stn_st. destruct SymRegs. destruct p. intuition.
+        repeat match goal with
+                 | [ H : match ?X with _ => _ end |- _ ] => 
+                   consider X; intros; try contradiction
+               end.
+        intuition; subst.
+        rewrite Heqo in H.
+        rewrite sepFormula_eq in H. unfold sepFormula_def in *. simpl in H.
+
+        Lemma interp_existsEach : forall cs 
+          vs (P : list {t : tvar & tvarD (repr bedrock_types_r types) t} -> _) stn st,
+          interp cs ((UNF.ST_EXT.existsEach vs P) stn st) ->
+          exists G, map (@projT1 _ _) G = vs /\ interp cs ((P G) stn st). 
+        Proof.
+          intros. unfold UNF.ST_EXT.existsEach in H.
+          unfold SH.SE.ST.ex, BedrockSepKernel.ex' in H. PropXTac.propxFo. subst.
+          eexists; split; eauto. apply split_emp in H0. unfold smem_eqv in *. subst; auto.
+        Qed.
+        eapply interp_existsEach in H.
+        destruct H. rewrite existsEach_sem. exists x. destruct H. split.
+        unfold typeof_env. simpl in *. rewrite map_length. rewrite <- H.
+        apply map_ext. auto.
+        rewrite <- app_nil_r with (l := uvars).
+        repeat erewrite exprD_weaken by eassumption. intuition.
+        rewrite <- app_nil_r with (l := vars ++ x). rewrite <- UNF.HEAP_FACTS.SEP_FACTS.sexprD_weaken.
+        apply interp_satisfies. intuition. eapply BedrockSepHeap.memoryIn_sound.
+        apply AllProvable_app' in H4. destruct H4. repeat apply AllProvable_app; eauto using AllProvable_weaken.
+        rewrite app_nil_r. eapply SymILProofs.SymIL_Correct.sheapD_pures in H6. eapply H6.
+        rewrite app_nil_r. eapply SH.sheapD_pures. eapply H6. }
+      { inversion H2. subst. simpl. auto. }
+    Qed.
+    Transparent UNF.forward.
+  End unfolder_learnhook.
 
 (** Unfortunately, most things can change while evaluating a stream,
  ** so we have to move it outside the sections

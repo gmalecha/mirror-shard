@@ -503,22 +503,6 @@ Module SepTheory_Ext (ST : SepTheory).
         destruct v1; try reflexivity. simpl in *; congruence. }
     Qed.
 
-(*
-    Lemma interp_existsEach : forall vs P stn st,
-      ST.satisfies (existsEach vs P) stn st ->
-      exists G, map (@projT1 _ _) G = vs /\ ST.satisfies cs (P G) stn st. 
-    Proof.
-      intros. apply ST.satisfies_ex in H. destruct H. exists x.
-      apply ST.satisfies_star in H. 
-      repeat match goal with
-               | [ H : exists x, _ |- _ ] => destruct H
-               | [ H : _ /\ _ |- _ ] => destruct H
-             end.
-      apply ST.satisfies_pure in H0. intuition.
-      PropXTac.propxFo. eapply ST.HT.split_semp in H; eauto. subst; auto.
-    Qed.
-*)
-
   End param.
 End SepTheory_Ext.
 

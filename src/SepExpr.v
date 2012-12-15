@@ -498,7 +498,7 @@ Module SepExprFacts (SE : SepExpr).
 
 (*
   Theorem interp_WellTyped_sexpr : forall ts funcs (preds : SE.predicates ts) s vars uvars stn m,
-    SE.ST.satisfies (SE.sexprD funcs preds uvars vars s) stn m ->
+    Se.ST.satisfies (SE.sexprD funcs preds uvars vars s) stn m ->
     SE.WellTyped_sexpr (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env uvars) (typeof_env vars) s = true.
   Proof.
     induction s; simpl; intros; auto.

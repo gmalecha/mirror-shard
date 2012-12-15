@@ -306,9 +306,10 @@ Local Opaque mult.
 Lemma ptsto32m'_implies : forall specs stn p ws offset m,
   interp specs (ptsto32m' _ p offset ws stn m --->
     [| arrayImplies (fun n => smem_get_word (implode stn) (p ^+ $(n)) m) ws offset |])%PropX.
+Proof.
   induction ws; unfold ptsto32m', arrayImplies; fold ptsto32m'; fold arrayImplies; intuition.
   apply Imply_I; apply Inj_I; constructor.
-  unfold starB, star; apply Imply_I.
+  unfold starB, star, BedrockSepKernel.star'; apply Imply_I.
   eapply Exists_E; [ apply Env; hnf; eauto | cbv beta; intro ].
   eapply Exists_E; [ apply Env; hnf; left; eauto | cbv beta; intro ].
   apply implies_inj_and.
@@ -319,14 +320,15 @@ Lemma ptsto32m'_implies : forall specs stn p ws offset m,
   eapply split_smem_get_word; eauto.
   tauto.
   eapply Inj_E; [ eapply And_E1; apply Env; hnf; eauto | intro ].
-  eapply Imply_E; [ apply interp_weaken; apply inj_imply;
-    apply (arrayImplies_weaken (fun n => smem_get_word (implode stn) (p ^+ $ (n)) B0)) | ].
-  intros; eapply split_smem_get_word; eauto.
+  eapply Imply_E. apply interp_weaken; apply inj_imply.
+    apply (arrayImplies_weaken (fun n => smem_get_word (implode stn) (p ^+ $ (n)) B0)).  
+  intros; eapply split_comm in H. eapply split_smem_get_word; eauto.
   eapply Imply_E.
   eauto.
   eapply And_E2; eapply And_E2; apply Env; hnf; eauto.
 Qed.
 
+(** Everything here is duplicated from elsewhere **)
 Theorem Himp_star_comm : forall P Q, (star P Q) ===> (star Q P).
   intros; intro cs; apply himp_star_comm.
 Qed.
@@ -344,7 +346,9 @@ Qed.
 Theorem Himp'_ex : forall T (P : T -> _) Q,
   (forall x, (P x) ===> Q) ->
   ex P ===> Q.
-  intros; intro cs; apply himp'_ex; firstorder.
+  intros; intro cs. intros. unfold interp, ex, BedrockSepKernel.ex'. PropXRel.propxIntuition. 
+  specialize (H x cs stn m). eapply PropX.Imply_E. eapply valid_weaken; try eassumption.
+  firstorder. auto.
 Qed.
 
 Theorem Himp_star_frame : forall P Q R S, 
@@ -354,32 +358,30 @@ Qed.
 
 
 Theorem Himp_star_pure_c : forall P Q (F : Prop),
-  (F -> P ===> Q) -> (star (inj (PropX.Inj F)) P) ===> Q.
+  (F -> P ===> Q) -> (star (inj F) P) ===> Q.
   intros; intro; apply himp_star_pure_c; firstorder.
 Qed.
 
 Theorem Himp_star_assoc : forall P Q R,
   (star (star P Q) R) ===> (star P (star Q R)).
-  intros; intro; apply himp_star_assoc.
+  intros. rewrite heq_star_assoc. reflexivity.
 Qed.
 
 Theorem Himp_star_assoc' : forall P Q R,
   (star P (star Q R)) ===> (star (star P Q) R).
-  intros; intro cs.
-  destruct (heq_star_assoc cs P Q R); auto.
+  intros. rewrite heq_star_assoc; reflexivity.
 Qed.
 
 Theorem Himp_star_Emp' : forall P,
   P ===> Emp * P.
-  intros; intro cs.
-  destruct (heq_star_emp_l cs P); auto.
+  intros. rewrite heq_star_emp_l. reflexivity.
 Qed.
 
 Theorem Himp_star_pure_cc : forall P Q (p : Prop),
   p ->
   P ===> Q ->
-  P ===> (star (inj (PropX.Inj p)) Q).
-  intros; intro; eapply himp_star_pure_cc; eauto.
+  P ===> (star (inj p) Q).
+  intros. eapply himp_star_pure_cc; eauto.
 Qed.
 
 Theorem ptsto32m'_in : forall a vs offset,
@@ -415,8 +417,8 @@ Lemma array_implies : forall specs stn m ws p,
 Qed.
 
 Lemma arrayImplies_equal : forall stn p m m1 m2 m1' m2',
-  HT.split m m1 m2
-  -> HT.split m m1' m2'
+  BedrockSepHeap.split m m1 m2
+  -> BedrockSepHeap.split m m1' m2'
   -> forall ws ws' offset,
     arrayImplies (fun n => smem_get_word (implode stn) (p ^+ $(n)) m1) ws offset
     -> arrayImplies (fun n => smem_get_word (implode stn) (p ^+ $(n)) m1') ws' offset
@@ -433,7 +435,7 @@ Lemma array_equals : forall specs stn st ws p fr ws' fr',
   interp specs (![array ws p * fr] (stn, st))
   -> interp specs (![array ws' p * fr'] (stn, st) --->
     [| length ws' = length ws -> ws' = ws |])%PropX.
-  rewrite sepFormula_eq; unfold sepFormula_def, starB, star; simpl; intros.
+  rewrite sepFormula_eq; unfold sepFormula_def, starB, star, BedrockSepKernel.star'; simpl; intros.
   propxFo.
   eapply Imply_sound in H; [ | apply array_implies ].
   apply Inj_sound in H.
@@ -464,6 +466,7 @@ Lemma smem_read_correctx'' : forall cs base stn ws offset i m,
   (i < length ws)%nat
   -> interp cs (ptsto32m' _ base (offset * 4) ws stn m
     ---> [| smem_get_word (implode stn) (base ^+ $((offset + i) * 4)) m = Some (selN ws i) |])%PropX.
+Proof.
   induction ws.
 
   simpl length.
@@ -477,7 +480,7 @@ Lemma smem_read_correctx'' : forall cs base stn ws offset i m,
   intros.
   destruct i; simpl selN.
   replace (offset + 0) with offset by omega.
-  unfold starB, star.
+  unfold starB, star, BedrockSepKernel.star'.
   apply Imply_I.
   eapply Exists_E; [ apply Env; hnf; eauto | cbv beta; intro ].
   eapply Exists_E; [ apply Env; hnf; left; eauto | cbv beta; intro ].
@@ -488,7 +491,7 @@ Lemma smem_read_correctx'' : forall cs base stn ws offset i m,
   eapply split_smem_get_word; eauto.
   tauto.
 
-  unfold starB, star.
+  unfold starB, star, BedrockSepKernel.star'.
   apply Imply_I.
   eapply Exists_E; [ apply Env; hnf; eauto | cbv beta; intro ].
   eapply Exists_E; [ apply Env; hnf; left; eauto | cbv beta; intro ].
@@ -502,9 +505,8 @@ Lemma smem_read_correctx'' : forall cs base stn ws offset i m,
   eapply Inj_E; [ eapply And_E1; apply Env; hnf; eauto | intro ].
   apply interp_weaken; apply inj_imply.
   instantiate (1 := S offset).
-  intros.
+  intros. eapply split_comm in H0.
   eapply split_smem_get_word; eauto.
-  hnf.
   do 2 eapply And_E2; apply Env; hnf; eauto.
 Qed.
 
@@ -519,7 +521,7 @@ Lemma array_boundx' : forall cs base stn ws m i,
   propxFo.
   destruct i; try omega.
   simpl in H1.
-  unfold starB, star.
+  unfold starB, star, BedrockSepKernel.star'.
   apply Imply_I.
   eapply Exists_E; [ apply Env; simpl; eauto | cbv beta; intro ].
   eapply Exists_E; [ apply Env; simpl; left; eauto | cbv beta; intro ].
@@ -576,14 +578,14 @@ Theorem containsArray_boundx' : forall cs P stn ls,
   induction 1; intros.
   eapply array_boundx; eauto.
 
-  unfold SEP.ST.star.
+  unfold SEP.ST.star, BedrockSepKernel.star'.
   apply Imply_I.
   eapply Exists_E; [ apply Env; simpl; eauto | cbv beta; intro ].
   eapply Exists_E; [ apply Env; simpl; left; eauto | cbv beta; intro ].
   eapply Imply_E; eauto.
   eapply And_E1; eapply And_E2; apply Env; simpl; eauto.
 
-  unfold SEP.ST.star.
+  unfold SEP.ST.star, BedrockSepKernel.star'.
   apply Imply_I.
   eapply Exists_E; [ apply Env; simpl; eauto | cbv beta; intro ].
   eapply Exists_E; [ apply Env; simpl; left; eauto | cbv beta; intro ].

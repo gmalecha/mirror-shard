@@ -1,6 +1,7 @@
 Require Import Arith NArith Eqdep_dec List.
 Require Import Nomega Word DiscreteMemory.
 Require Import PropX PropXTac IL DepList SepTheoryXIL.
+Require Import Reflection.
 
 Set Implicit Arguments.
 
@@ -131,33 +132,6 @@ Module BedrockHeap <: Memory.
   Definition mem_get := ReadByte.
 
   Definition mem_set := WriteByte.
-(*
-  Definition mem_acc (m : mem) (a : addr) :=
-    exists v, m a = Some v.
-
-  Theorem mem_get_acc : forall m p,
-    mem_acc m p <->
-    exists v, mem_get m p = Some v.
-  Proof.
-    intuition eauto.
-  Qed.
-    
-  Theorem mem_set_acc : forall m p,
-    mem_acc m p <->
-    forall v, exists m', mem_set m p v = Some m'.
-  Proof.
-    intuition. destruct H. unfold mem_set, WriteByte. rewrite H.
-    eauto. specialize (H (wzero _)). destruct H. unfold mem_set, mem_acc, WriteByte in *.
-    destruct (m p); eauto. congruence.
-  Qed.
-
-  Theorem mem_acc_dec : forall m p,
-    mem_acc m p \/ ~mem_acc m p.
-  Proof.
-    unfold mem_acc. intros; destruct (m p); eauto. right.
-    intro. destruct H; congruence.
-  Qed.
-*)
     
   Theorem mem_get_set_eq : forall m p v' m', 
     mem_set m p v' = Some m' ->
@@ -180,35 +154,14 @@ Module BedrockHeap <: Memory.
     destruct (weq p' p); auto. congruence.
   Qed.
 
-  (* (** mem writes don't modify permissions **) *)
-  (* Theorem mem_set_perm : forall m p v m', *)
-  (*   mem_set m p v = Some m' -> *)
-  (*   (forall p, mem_acc m p -> mem_acc m' p). *)
-  (* Proof. *)
-  (*   unfold mem_set, mem_acc, ReadByte, WriteByte; intros. *)
-  (*   generalize dependent H. *)
-  (*   case_eq (weq p p0); intros; subst. *)
-  (*   destruct (m p0); try congruence. *)
-  (*   inversion H1; subst; auto. *)
-  (*   rewrite H. eauto. *)
-
-  (*   destruct (m p); try congruence. *)
-  (*   inversion H1; subst.  *)
-  (*   destruct (weq p0 p); eauto. *)
-  (* Qed. *)
-
-  (* Definition footprint_w (p : addr) : addr * addr * addr * addr := *)
-  (*   (p , p ^+ $1 , p ^+ $2 , p ^+ $3). *)
-
-  (* Theorem footprint_disjoint : forall p a b c d, *)
-  (*   footprint_w p = (a,b,c,d) -> *)
-  (*   a <> b /\ a <> c /\ a <> d /\ b <> c /\ b <> d /\ c <> d. *)
-  (* Proof. *)
-  (*   unfold footprint_w. inversion 1. clear. *)
-  (*   repeat split; W_neq. *)
-  (* Qed. *)
-
   Definition addr_dec := @weq 32.
+
+  Theorem mem_get_mem_set : forall m p,
+    mem_get m p <> None -> forall v, mem_set m p v <> None.
+  Proof.
+    unfold mem_get, mem_set, ReadByte, WriteByte; intros.
+    destruct (m p); auto. congruence.
+  Qed.
 
 End BedrockHeap.
 
@@ -258,6 +211,19 @@ Definition ptsto8 sos : W -> B -> hpropB sos :=
   @hptsto sos.
 
 Notation "a =8> v" := (ptsto8 _ a v) (no associativity, at level 39) : Sep_scope.
+
+Definition smem_set_word (explode : W -> B * B * B * B) (p : W) (v : W) (m : smem) : option smem :=
+  let '(v1,v2,v3,v4) := explode v in
+  match  smem_set (p ^+ $3) v4 m with
+    | Some m => match smem_set (p ^+ $2) v3 m with
+                  | Some m => match smem_set (p ^+ $1) v2 m with
+                                | Some m => smem_set p v1 m
+                                | None => None
+                              end
+                  | None => None
+                end
+    | None => None
+  end.
 
 Definition smem_get_word (implode : B * B * B * B -> W) (p : W) (m : smem) : option W :=
   match smem_get p m , smem_get (p ^+ $1) m , smem_get (p ^+ $2) m , smem_get (p ^+ $3) m with
@@ -333,6 +299,184 @@ Definition Himp (p1 p2 : HProp) : Prop :=
 
 Notation "p1 ===> p2" := (Himp p1%Sep p2%Sep) (no associativity, at level 90).
 
+(** Satisfies lemmas **)
+Theorem satisfies_star : forall cs P Q stn sm, 
+  interp cs (ST.star P Q stn sm) <->
+  exists sm1 sm2, split sm sm1 sm2 /\
+    interp cs (P stn sm1) /\ interp cs (Q stn sm2).
+Proof.
+  clear. unfold ST.star, BedrockSepKernel.star'; intros.
+
+  propxFo; eauto. exists x; exists x0. intuition; eapply simplify_fwd; auto.
+Qed.
+
+Theorem satisfies_ex : forall T cs stn sm P,
+  interp cs (ST.ex P stn sm) ->
+  exists x : T, interp cs (P x stn sm).
+Proof.
+  unfold ex, BedrockSepKernel.ex'; intros.
+  propxFo. eauto.
+Qed.
+
+Theorem same_domain_memoryIn : forall a d,
+  same_domain a (memoryIn d) ->
+  models a d ->
+  a = memoryIn d.
+Proof.
+  clear. unfold smem, models, same_domain, in_domain, smem_get, memoryIn, BedrockSepHeap.memoryIn, smem, BedrockSepHeap.memoryIn, memoryIn.
+  generalize (DiscreteBedrockHeap.all_addr).
+  induction l; simpl in *; intros; auto.
+  rewrite DepList.hlist_nil_only with (h := a); eauto with typeclass_instances.
+  { rewrite DepList.hlist_eta with (h := a0) in *; eauto with typeclass_instances.
+    simpl in *. intuition.
+    f_equal.
+    specialize (H a). destruct (M.addr_dec a a); try congruence.
+    destruct (DepList.hlist_hd a0). destruct (M.mem_get d a); try congruence.
+    destruct (M.mem_get d a); auto. exfalso. eapply H; congruence. 
+    
+    eapply IHl; eauto. 
+Admitted.
+
+Theorem same_domain_memoryIn_mem_set : forall p v m1 m2,
+  WriteByte m1 p v = Some m2 ->
+  same_domain (memoryIn m1) (memoryIn m2).
+Proof.
+  clear. unfold same_domain, in_domain, memoryIn, BedrockSepHeap.memoryIn, smem_get, WriteByte, smem.
+  generalize DiscreteBedrockHeap.all_addr. induction l; simpl; intros.
+  intuition.
+  destruct (M.addr_dec a p0); subst; eauto.
+  revert H; case_eq (m1 p); try congruence.
+  intros; inversion H0; clear H0; subst; simpl in *.
+  unfold M.mem_get, ReadByte. destruct (weq p0 p).
+  subst. rewrite H in *. intuition congruence.
+  firstorder.
+Qed.
+
+Theorem satisfies_get_word : forall sm m p t stn,
+  models sm m ->
+  smem_get_word (implode stn) p sm = Some t ->
+  Memory.mem_get_word W mem footprint_w ReadByte (implode stn) p m = Some t.
+Proof.
+  clear. unfold smem_get_word, Memory.mem_get_word, footprint_w, ReadByte; intros.
+  repeat match goal with
+           | [ |- context [ ?m ?p ] ] => 
+             change (m p) with (M.mem_get m p)
+         end.
+  repeat match goal with
+           | [ H : match ?X with _ => _ end = _ |- _ ] => consider X; try congruence; intros
+         end.
+  repeat erewrite smem_get_sound by eassumption. auto.
+Qed.
+
+Theorem satisfies_set_word : forall sm sm' m p v stn,
+  models sm m ->
+  smem_set_word (explode stn) p v sm = Some sm' ->
+  same_domain sm sm' /\
+  exists m', models sm' m' /\
+    Memory.mem_set_word W mem footprint_w WriteByte (explode stn) p v m = Some m'.
+Proof.
+  clear. unfold smem_set_word, Memory.mem_set_word, footprint_w; intros.
+  destruct (explode stn v). destruct p0. destruct p0.
+  repeat match goal with
+           | [ H : match ?X with _ => _ end = _ |- _ ] => consider X; try congruence; intros
+         end.
+  repeat match goal with
+           | [ H : exists x , _ |- _ ] => destruct H
+           | [ H : _ /\ _ |- _ ] => destruct H
+           | [ H : smem_set _ _ _ = _ |- _ ] =>
+             (eapply smem_set_sound in H; try eassumption) ; [] 
+           | [ H : _ = _ |- _ ] => rewrite H
+           | [ |- _ ] => unfold M.mem_set in *
+         end.
+  intuition eauto.
+  repeat (etransitivity; [ eassumption | eauto ]).
+Qed.
+
+Theorem smem_get_set_word_eq : forall e i m p v' m', 
+  (forall x, i (e x) = x) ->
+  smem_set_word e p v' m = Some m' ->
+  smem_get_word i p m' = Some v'.
+Proof.
+  unfold smem_set_word, smem_get_word; intros.
+  specialize (H v'). destruct (e v') as [ [ [ ? ? ] ? ] ? ].
+  repeat match goal with
+           | [ H : match ?X with _ => _ end = _ |- _ ] => consider X; try congruence; intros
+           | [ |- _ ] => erewrite smem_set_get_eq by eassumption
+           | [ |- _ ] => erewrite smem_set_get_neq; [ | eassumption | word_neq ]
+         end.
+  subst; auto.
+Qed.
+
+Theorem split_smem_get_word : forall a b c p v i,
+  split a b c -> 
+    smem_get_word i p b = Some v -> 
+    smem_get_word i p a = Some v.
+Proof.
+  clear.
+  unfold smem_get_word, Memory.mem_get_word, footprint_w, ReadByte; intros.
+  repeat match goal with
+           | [ H : match ?X with _ => _ end = _ |- _ ] => consider X; try congruence; intros
+         end.
+  repeat erewrite split_smem_get by eassumption. auto.
+Qed.
+
+Theorem split_smem_set_word : forall a b b' c p v i,
+  split a b c -> 
+    smem_set_word i p v b = Some b' -> 
+    exists a', split a' b' c /\ 
+      smem_set_word i p v a = Some a'.
+Proof.
+  clear. unfold smem_set_word, Memory.mem_set_word, footprint_w; intros.
+  repeat match goal with
+           | [ H : match ?X with _ => _ end = _ |- _ ] => consider X; try congruence; intros
+           | [ H : exists x, _ |- _ ] => destruct H
+           | [ H : _ /\ _ |- _ ] => destruct H
+           | [ H : _ = _ |- _ ] => rewrite H
+           | [ H : smem_set _ _ _ = _ |- _ ] => 
+             (eapply split_smem_set in H; try eassumption); []
+         end; subst.
+  eapply split_smem_set; eauto.
+Qed.
+
+Theorem same_domain_memoryIn_mem_set_word : forall p v m1 m2 e,
+  Memory.mem_set_word W mem footprint_w WriteByte 
+  e p v m1 = Some m2 ->
+  same_domain (memoryIn m1) (memoryIn m2).
+Proof.
+  clear. unfold Memory.mem_set_word; intros.
+  destruct (footprint_w p) as [ [ [ ? ? ] ? ] ? ].
+  destruct (e v) as [ [ [ ? ? ] ? ] ? ].
+  repeat match goal with
+           | [ H : WriteByte _ _ _ = _ |- _ ] => 
+             apply same_domain_memoryIn_mem_set in H
+           | [ H : match ?X with _ => _ end = _ |- _ ] => 
+             revert H; case_eq X; intros; try congruence
+         end.
+  repeat (etransitivity; [ eassumption | eauto ]).
+Qed.
+
+Theorem smem_get_set_word_valid : forall m p v i e,
+  smem_get_word i p m <> None ->
+  smem_set_word e p v m <> None.
+Proof.
+  unfold smem_set_word, smem_get_word; intros.
+  destruct (e v) as [ [ [ ] ] ].
+  intro. eapply H; clear H.
+  repeat match goal with
+           | [ |- match ?X with _ => _ end = _ ] =>
+             case_eq X; intros; try congruence
+         end; exfalso.
+  repeat match goal with
+           | [ H' : smem_get ?P ?M = Some _ 
+             , H : smem_set ?P ?V ?M = None |- _ ] =>
+           eapply smem_get_set_valid with (p := P) (v := V) (m := M); eauto; try congruence
+           | [ H : smem_set _ _ _ = Some _ 
+             , H' : _ |- _ ] =>
+           erewrite <- (@smem_set_get_neq _ _ _ _ H) in H' by word_neq
+           | [ H : match ?X with _ => _ end = _ |- _ ] => revert H; case_eq X; intros
+  end.
+Qed.
+
 (** * The main injector of separation formulas into PropX *)
 Definition sepFormula_def sos (p : hpropB sos) (st : settings * state) : propX W (settings * state) sos :=
   p (fst st) (memoryIn (Mem (snd st))).
@@ -355,27 +499,20 @@ Import SepFormula.
 
 Require Import RelationClasses Setoid.
 
-(*
 Global Add Parametric Morphism cs : (@sepFormula nil) with
   signature (himp ==> @eq (settings * state) ==> @PropXRel.PropX_imply _ _ cs)
 as sepFormula_himp_imply.
   unfold himp. rewrite sepFormula_eq.
   unfold sepFormula_def.
   unfold PropXRel.PropX_imply.
-  intros. unfold interp.
-  eapply PropX.Imply_I. 
-
-  specialize (H cs (fst y0) (memoryIn (Mem (snd y0)))). eapply PropX.Imply_E.
-  eapply PropXTac.valid_weaken. instantiate (2 := nil). propxFo. eapply simplify_bwd. simpl. apply H. eapply H. firstorder. 
-  PropXRel.propxIntuition.
+  intros. unfold interp. eapply H.
 Qed.
 Global Add Parametric Morphism cs : (@sepFormula nil) with
   signature (@heq ==> @eq (settings * state) ==> @PropXRel.PropX_eq _ _ cs)
 as sepFormula_himp_eq.
   rewrite sepFormula_eq. unfold heq, himp, sepFormula_def, PropXRel.PropX_eq, PropXRel.PropX_imply.
-  intros. unfold interp in *. intuition; PropXRel.propxIntuition; eauto. simpl in *.
+  intros. unfold interp in *. intuition; PropXRel.propxIntuition; eauto. 
 Qed.
-*)
 
 Export SepFormula.
 

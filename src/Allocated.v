@@ -93,17 +93,16 @@ Theorem allocated_split : forall base len' len offset,
   -> allocated base offset len ===> allocated base offset len' * allocated base (offset + 4 * len') (len - len').
 Proof.
   induction len'; inversion 1.
-  { simpl. intro. unfold empB, starB.
-    rewrite heq_star_emp_r. reflexivity. }
+  { simpl. rewrite heq_star_emp_l. reflexivity. }
   { replace (offset + 4 * 0) with offset by omega.
     simpl minus.
-    unfold allocated at 2. unfold empB, starB. intro. rewrite heq_star_emp_l. reflexivity. }
-  { replace (S len' - S len') with 0 by omega. intro.
+    unfold allocated at 2. unfold empB, starB. rewrite heq_star_emp_l. reflexivity. }
+  { replace (S len' - S len') with 0 by omega.
     unfold allocated at 3. unfold empB, starB. rewrite heq_star_emp_r. reflexivity. }
   { subst.
     replace (offset + 4 * S len') with ((4 + offset) + 4 * len') by omega.
     unfold allocated at 1 2; fold allocated.
-    unfold empB, starB, exB. intro.
+    unfold empB, starB, exB.
     rewrite heq_star_assoc.    
     repeat rewrite heq_ex_star.
     apply himp_ex. intros.
@@ -116,16 +115,16 @@ Theorem allocated_join : forall base len' len offset,
   -> allocated base offset len' * allocated base (offset + 4 * len') (len - len') ===> allocated base offset len.
 Proof.
   induction len'; inversion 1.
-  { intro; unfold starB, empB; simpl. rewrite heq_star_emp_r. reflexivity. }
+  { unfold starB, empB; simpl. rewrite heq_star_emp_r. reflexivity. }
   { replace (offset + 4 * 0) with offset by omega.
     simpl minus.
-    unfold allocated at 1. unfold empB, starB. intro. rewrite heq_star_emp_l. reflexivity. }
-  { replace (S len' - S len') with 0 by omega. intro.
+    unfold allocated at 1. unfold empB, starB. rewrite heq_star_emp_l. reflexivity. }
+  { replace (S len' - S len') with 0 by omega. 
     unfold allocated at 3. unfold empB, starB. rewrite heq_star_emp_r. reflexivity. }
   { subst.
     replace (offset + 4 * S len') with ((4 + offset) + 4 * len') by omega.
     unfold allocated at 1 3; fold allocated.
-    unfold empB, starB, exB. intro.
+    unfold empB, starB, exB. 
     rewrite heq_star_assoc.    
     repeat rewrite heq_ex_star.
     apply himp_ex. intros.
