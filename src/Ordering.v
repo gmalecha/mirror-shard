@@ -1,4 +1,5 @@
 Require Import List.
+Require Import Permutation.
 
 Section ListLexOrder.
   Variable T : Type.
@@ -55,8 +56,6 @@ Proof.
   destruct IHl. destruct H. intuition. subst.
   rewrite H0. exists (a :: x0). exists x1. simpl; eauto.
 Qed.
-
-Require Import Permutation.
 
 Lemma sort_permutation : forall T (C : T -> T -> _) x,
   Permutation (sort _ C x) x.

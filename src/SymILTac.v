@@ -90,10 +90,9 @@ Section unfolder_learnhook.
       {| UNF.Vars := typeof_env vars
         ; UNF.UVars := typeof_env uvars
         ; UNF.Heap := s |}).
-      destruct o. 
-      { destruct u; simpl in *.
-        symmetry in Heqo.
-        eapply UNF.refineForward_Ok in Heqo; eauto using typeof_env_WellTyped_env.
+      destruct p. destruct u. destruct b.
+      { symmetry in Heqp.
+        eapply UNF.refineForward_Ok in Heqp; eauto using typeof_env_WellTyped_env.
         Focus 2. eapply UNF.ForwardOk in hints_correct. eapply hints_correct.
 
         Focus 2. simpl.
@@ -108,7 +107,7 @@ Section unfolder_learnhook.
                    consider X; intros; try contradiction
                end.
         intuition; subst.
-        rewrite Heqo in H.
+        rewrite Heqp in H.
         rewrite sepFormula_eq in H. unfold sepFormula_def in *. simpl in H.
 
         eapply interp_existsEach in H.
