@@ -1652,6 +1652,83 @@ Module SepHeapFacts (SH : SepHeap).
     red; reflexivity. intro; eapply MM.FACTS.empty_in_iff; eassumption.
   Qed.
 
+  Section typed.
+    Variable types : list type.
+    Variable funcs : functions types.
+    Variable preds : SH.SE.predicates types.
+
+    Lemma himp_remove_pure_p : forall U G p P Q,
+      (Provable funcs U G p ->
+        SH.SE.himp funcs preds U G P Q) ->
+      SH.SE.himp funcs preds U G (SH.SE.Star (@SH.SE.Inj _ p) P) Q.
+    Proof. clear.
+      intros. unfold SH.SE.himp. simpl. unfold Provable in *. 
+      destruct (exprD funcs U G p tvProp); eapply SH.SE.ST.himp_star_pure_c; intuition.
+    Qed.
+    Lemma himp_remove_pures_p : forall U G ps P Q,
+      (AllProvable funcs U G ps ->
+        SH.SE.himp funcs preds U G P Q) ->
+      SH.SE.himp funcs preds U G (SH.starred (@SH.SE.Inj _) ps P) Q.
+    Proof. clear.
+      induction ps; intros.
+      { rewrite starred_nil. apply H. exact I. }
+      { rewrite starred_cons. apply himp_remove_pure_p. intros.
+        eapply IHps. intro. apply H; simpl; auto. }
+    Qed.
+    Lemma himp_remove_pure_c : forall U G p P Q,
+      Provable funcs U G p ->
+      SH.SE.himp funcs preds U G P Q ->
+      SH.SE.himp funcs preds U G P (SH.SE.Star (@SH.SE.Inj _ p) Q).
+    Proof. clear.
+      intros. unfold SH.SE.himp. simpl. unfold Provable in *. 
+      destruct (exprD funcs U G p tvProp); eapply SH.SE.ST.himp_star_pure_cc; intuition.
+    Qed.
+    Lemma himp_remove_pures_c : forall U G ps P Q,
+      AllProvable funcs U G ps ->
+      SH.SE.himp funcs preds U G P Q ->
+      SH.SE.himp funcs preds U G P (SH.starred (@SH.SE.Inj _) ps Q).
+    Proof. clear.
+      induction ps; intros.
+      { rewrite starred_nil. apply H0. }
+      { rewrite starred_cons. simpl in *. apply himp_remove_pure_c; intuition. }
+    Qed.
+
+    Lemma sheapD_remove_pures_p : forall m v h Q,
+      ST.himp (sexprD funcs preds m v (SH.sheapD {| SH.impures := SH.impures h
+        ; SH.pures := nil
+        ; SH.other := SH.other h |})) Q ->
+      ST.himp (sexprD funcs preds m v (SH.sheapD h)) Q.
+    Proof.
+      clear; intros.
+      rewrite <- H; clear H.
+      rewrite SH.sheapD_def.
+      rewrite SH.sheapD_def. simpl.
+      repeat eapply ST.himp_star_frame; try reflexivity.
+      rewrite starred_nil. simpl.
+      generalize (@himp_remove_pures_p m v (SH.pures h) Emp Emp). 
+      unfold himp. intros.
+      eapply H; auto. reflexivity.
+    Qed.
+
+    Lemma sheapD_remove_pures_c : forall m v h Q,
+      AllProvable funcs m v (SH.pures h) ->
+      ST.himp Q (sexprD funcs preds m v (SH.sheapD {| SH.impures := SH.impures h
+        ; SH.pures := nil
+        ; SH.other := SH.other h |})) ->
+      ST.himp Q (sexprD funcs preds m v (SH.sheapD h)).
+    Proof.
+      clear; intros.
+      rewrite H0; clear H0.
+      rewrite SH.sheapD_def.
+      rewrite SH.sheapD_def. simpl.
+      repeat eapply ST.himp_star_frame; try reflexivity.
+      rewrite starred_nil. simpl.
+      generalize (@himp_remove_pures_c m v (SH.pures h) Emp Emp). 
+      unfold himp. intros.
+      eapply H0; auto. reflexivity.
+    Qed.
+  End typed.
+
   Export SEP_FACTS.
 
 End SepHeapFacts.

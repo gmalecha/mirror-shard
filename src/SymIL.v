@@ -1,7 +1,6 @@
 (** This file implements symbolic evaluation for the
  ** language defined in IL.v
  **)
-Require Import Word.
 Require Import PropX.
 Require Import Expr SepExpr.
 Require Import Prover.

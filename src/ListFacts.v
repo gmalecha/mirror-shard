@@ -91,3 +91,24 @@ Lemma map_skipn_all_map_is_nil : forall T U (F : T -> U) ls ls',
 Proof.
   clear; intros. rewrite <- map_skipn_all_map in H. destruct ls'; simpl in *; congruence.
 Qed.
+
+Lemma firstn_app_exact : forall T n (a b : list T),
+  length a = n ->
+  firstn n (a ++ b) = a.
+Proof.
+  clear. intros; subst. induction a; simpl; eauto.
+  f_equal. auto.
+Qed.
+
+Lemma app_inj_length : forall T (a b c d : list T),
+  a ++ b = c ++ d ->
+  length a = length c ->
+  a = c /\ b = d.
+Proof.
+  induction a; destruct c; simpl; intros; think; try solve [ congruence | intuition ].
+  inversion H; subst.  eapply IHa in H3. intuition; subst; auto. omega.
+Qed.
+
+Lemma skipn_length : forall T a (b : list T),
+  length (skipn a b) = length b - a.
+Proof. induction a; destruct b; simpl; intros; auto. Qed.

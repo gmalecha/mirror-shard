@@ -85,13 +85,16 @@ Module Type Unfolder.
     Definition hintSide := list (LEM.sepLemma types).
 
     Parameter refineForward : hintSide -> nat -> Facts prover -> 
-      unfoldingState -> option unfoldingState.
+      unfoldingState -> unfoldingState * bool.
 
     Parameter refineBackward : hintSide -> nat -> Facts prover -> 
-      unfoldingState -> option unfoldingState.
+      unfoldingState -> unfoldingState * bool.
 
     Variable funcs : functions types.
     Variable preds : SH.SE.predicates types.
+
+    Definition hintSideD := Forall (@LEM.sepLemmaD types funcs preds nil nil).
+
 
 (*
     Variable hints : hintSide.
@@ -99,24 +102,24 @@ Module Type Unfolder.
     Hypothesis PC : ProverT_correct prover funcs.
 *)
 
-    Axiom refineForward_Length : forall hints bound facts P Q,
-      refineForward hints bound facts P = Some Q ->
+    Axiom refineForward_Length : forall hints bound facts P Q b,
+      refineForward hints bound facts P = (Q,b) ->
       exists vars_ext (* meta_ext *),
         Vars Q = Vars P ++ vars_ext /\
         UVars Q = UVars P (* ++ meta_ext *).
 
-    Axiom refineForward_WellTyped : forall hints bound facts P Q,
-      Forall (@LEM.sepLemmaD types funcs preds nil nil) hints ->
+    Axiom refineForward_WellTyped : forall hints bound facts P Q b,
+      hintSideD hints ->
       ProverT_correct prover funcs ->
-      refineForward hints bound facts P = Some Q ->
+      refineForward hints bound facts P = (Q,b) ->
       SH.WellTyped_sheap (typeof_funcs funcs) (SH.SE.typeof_preds preds) (UVars P) (Vars P) (Heap P) = true ->
       SH.WellTyped_sheap (typeof_funcs funcs) (SH.SE.typeof_preds preds) (UVars Q) (Vars Q) (Heap Q) = true.
 
-    Axiom refineForward_Ok : forall hints bound facts P Q,
-      Forall (@LEM.sepLemmaD types funcs preds nil nil) hints ->
+    Axiom refineForward_Ok : forall hints bound facts P Q b,
+      hintSideD hints ->
       ProverT_correct prover funcs ->
       forall PC : ProverT_correct prover funcs, 
-      refineForward hints bound facts P = Some Q ->
+      refineForward hints bound facts P = (Q,b) ->
       forall meta_env vars_env,
         WellTyped_env (UVars P) meta_env -> (** meta_env instantiates the uvars **)
         WellTyped_env (Vars P) vars_env ->
@@ -127,24 +130,24 @@ Module Type Unfolder.
            (ST_EXT.existsEach (skipn (length vars_env) Q.(Vars)) (fun vars_ext : list { t : tvar & tvarD types t } =>
               (SH.SE.sexprD funcs preds meta_env (vars_env ++ vars_ext) (SH.sheapD (Heap Q))))).
 
-    Axiom refineBackward_Length : forall hints bound facts P Q,
-      refineBackward hints bound facts P = Some Q ->
+    Axiom refineBackward_Length : forall hints bound facts P Q b,
+      refineBackward hints bound facts P = (Q,b) ->
       exists meta_ext,
         Vars Q = Vars P /\
         UVars Q = UVars P ++ meta_ext.
 
-    Axiom refineBackward_WellTyped : forall hints bound facts P Q,
-      Forall (@LEM.sepLemmaD types funcs preds nil nil) hints ->
+    Axiom refineBackward_WellTyped : forall hints bound facts P Q b,
+      hintSideD hints ->
       ProverT_correct prover funcs ->
-        refineBackward hints bound facts P = Some Q ->
+        refineBackward hints bound facts P = (Q,b) ->
         SH.WellTyped_sheap (typeof_funcs funcs) (SH.SE.typeof_preds preds) (UVars P) (Vars P) (Heap P) = true ->
         SH.WellTyped_sheap (typeof_funcs funcs) (SH.SE.typeof_preds preds) (UVars Q) (Vars Q) (Heap Q) = true.
 
-    Axiom refineBackward_Ok : forall hints bound facts P Q meta_env vars_env,
-      Forall (@LEM.sepLemmaD types funcs preds nil nil) hints ->
+    Axiom refineBackward_Ok : forall hints bound facts P Q meta_env vars_env b,
+      hintSideD hints ->
       ProverT_correct prover funcs ->
       forall PC : ProverT_correct prover funcs, 
-      refineBackward hints bound facts P = Some Q ->
+      refineBackward hints bound facts P = (Q,b) ->
       WellTyped_env (UVars P) meta_env -> (** meta_env instantiates the uvars **)
       WellTyped_env (Vars P) vars_env ->
       SH.WellTyped_sheap (typeof_funcs funcs) (SH.SE.typeof_preds preds) (UVars P) (Vars P) (Heap P) = true ->
@@ -1652,49 +1655,49 @@ Module Make (SH : SepHeap) (U : Unifier) <: Unfolder with Module SH := SH.
     Variable prover : ProverT types.
 
     Definition refineForward (hs : hintSide types) (bound : nat) (facts : Facts prover)
-      (us : unfoldingState types) : option (unfoldingState types) :=
+      (us : unfoldingState types) : (unfoldingState types) * bool :=
       let '(res,n) := forward hs prover bound facts us in
-      if EqNat.beq_nat n bound then None else Some res.
+      (res, EqNat.beq_nat n bound).
 
     Definition refineBackward (hs : hintSide types) (bound : nat) (facts : Facts prover)
-      (us : unfoldingState types) : option (unfoldingState types) :=
+      (us : unfoldingState types) : (unfoldingState types) * bool :=
       let '(res,n) := backward hs prover bound facts us in
-      if EqNat.beq_nat n bound then None else Some res.
+      (res, EqNat.beq_nat n bound).
     
     Variable funcs : functions types.
     Variable preds : SE.predicates types.
 
-    Theorem refineForward_Length : forall hints bound facts P Q,
-      refineForward hints bound facts P = Some Q ->
+    Theorem refineForward_Length : forall hints bound facts P Q b,
+      refineForward hints bound facts P = (Q,b) ->
       exists vars_ext (* meta_ext *),
         Vars Q = Vars P ++ vars_ext /\
         UVars Q = UVars P (* ++ meta_ext *).
     Proof.
       unfold refineForward; intros.
       consider (forward hints prover bound facts P); intros.
-      destruct (beq_nat n bound); try congruence. inversion H0; clear H0; subst.
+      inversion H0; subst.
       eapply forwardLength; eassumption.
     Qed.
 
 
-    Theorem refineForward_WellTyped : forall hints bound facts P Q,
+    Theorem refineForward_WellTyped : forall hints bound facts P Q b,
       Forall (LEM.sepLemmaD funcs preds nil nil) hints ->
       ProverT_correct prover funcs ->
-      refineForward hints bound facts P = Some Q ->
+      refineForward hints bound facts P = (Q,b) ->
       SH.WellTyped_sheap (typeof_funcs funcs) (SH.SE.typeof_preds preds) (UVars P) (Vars P) (Heap P) = true ->
       SH.WellTyped_sheap (typeof_funcs funcs) (SH.SE.typeof_preds preds) (UVars Q) (Vars Q) (Heap Q) = true.
     Proof.
       unfold refineForward; intros.
       consider (forward hints prover bound facts P); intros.
-      destruct (beq_nat n bound); try congruence. inversion H2; clear H2; subst.
+      inversion H2; clear H2; subst.
       eapply forward_WellTyped; eauto.
     Qed.
 
-    Theorem refineForward_Ok : forall hints bound facts P Q,
+    Theorem refineForward_Ok : forall hints bound facts P Q b,
       Forall (LEM.sepLemmaD funcs preds nil nil) hints ->
       ProverT_correct prover funcs ->
       forall PC : ProverT_correct prover funcs, 
-      refineForward hints bound facts P = Some Q ->
+      refineForward hints bound facts P = (Q,b) ->
       forall meta_env vars_env,
         WellTyped_env (UVars P) meta_env -> (** meta_env instantiates the uvars **)
         WellTyped_env (Vars P) vars_env ->
@@ -1707,45 +1710,42 @@ Module Make (SH : SepHeap) (U : Unifier) <: Unfolder with Module SH := SH.
     Proof.
       unfold refineForward; intros.
       consider (forward hints prover bound facts P); intros.
-      destruct (beq_nat n bound); try congruence.
       inversion H4; clear H4; subst.
       eapply forwardOk; eauto.
     Qed.
 
 
-    Theorem refineBackward_Length : forall hints bound facts P Q,
-      refineBackward hints bound facts P = Some Q ->
+    Theorem refineBackward_Length : forall hints bound facts P Q b,
+      refineBackward hints bound facts P = (Q, b) ->
       exists meta_ext,
         Vars Q = Vars P /\
         UVars Q = UVars P ++ meta_ext.
     Proof.
       unfold refineBackward; intros.
       consider (backward hints prover bound facts P); intros.
-      destruct (beq_nat n bound); try congruence.
       inversion H0; clear H0; subst.
       eapply backwardLength; eauto.
     Qed.
 
 
-    Theorem refineBackward_WellTyped : forall hints bound facts P Q,
+    Theorem refineBackward_WellTyped : forall hints bound facts P Q b,
       Forall (LEM.sepLemmaD funcs preds nil nil) hints ->
       ProverT_correct prover funcs ->
-        refineBackward hints bound facts P = Some Q ->
+        refineBackward hints bound facts P = (Q,b) ->
         SH.WellTyped_sheap (typeof_funcs funcs) (SH.SE.typeof_preds preds) (UVars P) (Vars P) (Heap P) = true ->
         SH.WellTyped_sheap (typeof_funcs funcs) (SH.SE.typeof_preds preds) (UVars Q) (Vars Q) (Heap Q) = true.
     Proof.
       unfold refineBackward; intros.
       consider (backward hints prover bound facts P); intros.
-      destruct (beq_nat n bound); try congruence.
       inversion H2; clear H2; subst.
       eapply backward_WellTyped; eauto.
     Qed.
 
-    Theorem refineBackward_Ok : forall hints bound facts P Q meta_env vars_env,
+    Theorem refineBackward_Ok : forall hints bound facts P Q meta_env vars_env b,
       Forall (LEM.sepLemmaD funcs preds nil nil) hints ->
       ProverT_correct prover funcs ->
       forall PC : ProverT_correct prover funcs, 
-      refineBackward hints bound facts P = Some Q ->
+      refineBackward hints bound facts P = (Q,b) ->
       WellTyped_env (UVars P) meta_env -> (** meta_env instantiates the uvars **)
       WellTyped_env (Vars P) vars_env ->
       SH.WellTyped_sheap (typeof_funcs funcs) (SH.SE.typeof_preds preds) (UVars P) (Vars P) (Heap P) = true ->
@@ -1756,7 +1756,6 @@ Module Make (SH : SepHeap) (U : Unifier) <: Unfolder with Module SH := SH.
     Proof.
       unfold refineBackward; intros.
       consider (backward hints prover bound facts P); intros.
-      destruct (beq_nat n bound); try congruence.
       inversion H5; clear H5; subst.
       eapply backwardOk; eauto.
     Qed.

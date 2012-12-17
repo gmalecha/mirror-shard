@@ -1,9 +1,8 @@
 (** This file implements symbolic evaluation for the
  ** language defined in IL.v
  **)
+Require Import Word.
 Require Import IL SepIL.
-Require Import Word Memory.
-Require Import DepList EqdepClass.
 Require Import PropX.
 Require Import SepExpr SymEval.
 Require Import Expr.

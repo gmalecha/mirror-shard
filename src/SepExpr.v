@@ -576,6 +576,17 @@ Module SepExprFacts (SE : SepExpr).
     simpl. eapply ST_EXT.heq_existsEach. intros. rewrite app_ass. reflexivity.
   Qed.
 
+  Theorem WellTyped_sexpr_weaken : forall ts tf tp U U' r G G',
+    SE.WellTyped_sexpr (types := ts) tf tp U G r = true ->
+    SE.WellTyped_sexpr tf tp (U ++ U') (G ++ G') r = true.
+  Proof.
+    clear. induction r; simpl in *; intros; auto.
+    { eapply is_well_typed_weaken. auto. }
+    { repeat rewrite andb_true_iff in *. intuition. }
+    { change (t :: G ++ G') with ((t :: G) ++ G'). eapply IHr; auto. }
+    { destruct (nth_error tp f); auto. eapply all2_is_well_typed_weaken. auto. }
+  Qed.
+
 End SepExprFacts.
 
 Module Make (ST' : SepTheory.SepTheory) <: SepExpr with Module ST := ST'.

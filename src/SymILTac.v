@@ -38,13 +38,13 @@ Section unfolder_learnhook.
              ; UNF.Heap := m
              |}
             with
-            | Some {| UNF.Vars := vs ; UNF.UVars := us ; UNF.Heap := m |} =>
+            | ({| UNF.Vars := vs ; UNF.UVars := us ; UNF.Heap := m |}, true) =>
               (** assert (us = meta_vars) **)
               ({| SymMem := Some m
                 ; SymRegs := SymRegs st
                 ; SymPures := SymPures st ++ SH.pures m
                 |}, qex (skipn (length vars_vars) vs) QBase)
-            | None => (st, QBase)
+            | (_, false) => (st, QBase)
           end
         | None => (st, QBase)
       end.

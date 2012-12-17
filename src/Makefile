@@ -17,7 +17,7 @@ MODULES    := Ordering \
 	$(MEMEVALS:%=sep/%) \
 	$(PROVERS:%=provers/%Prover) \
 	SepExpr ReifySepExpr SepHeap SepUnify SepCancel \
-	Unfolder ReifyHints SepLemma \
+	Unfolder UnfolderTac ReifyHints SepLemma \
 	SymEval SymIL SymILProofs SymILTac \
 	IL ReifyIL ILEnv SepIL \
 	CancelIL \
