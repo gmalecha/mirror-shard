@@ -59,7 +59,8 @@ Module Type Canceller.
       SH.WellTyped_sheap tf tp tU tG r = true ->
          U.Subst_WellTyped tf tU tG s' 
       /\ SH.WellTyped_sheap tf tp tU tG l' = true
-      /\ SH.WellTyped_sheap tf tp tU tG r' = true.
+      /\ SH.WellTyped_sheap tf tp tU tG r' = true
+      /\ U.Subst_Extends s' s.
 
   End typed.
   
@@ -1076,7 +1077,8 @@ Module Make (U : Unifier) (SH : SepHeap)
       SH.WellTyped_sheap tf tp tU tG r = true ->
          U.Subst_WellTyped tf tU tG s' 
       /\ SH.WellTyped_sheap tf tp tU tG l' = true
-      /\ SH.WellTyped_sheap tf tp tU tG r' = true.
+      /\ SH.WellTyped_sheap tf tp tU tG r' = true
+      /\ U.Subst_Extends s' s.
     Proof. 
       unfold sepCancel. intros.
       consider (cancel_in_order bound summ (typeof_preds preds) (order_impures (SH.impures r))

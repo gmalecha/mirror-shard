@@ -130,6 +130,10 @@ Module Type Unifier.
     Parameter Subst_equations : 
       forall (funcs : functions types) (U G : env types), Subst types -> Prop.
 
+    Axiom Subst_equations_weaken : forall funcs U G s U' G',
+      Subst_equations funcs U G s ->
+      Subst_equations funcs (U ++ U') (G ++ G') s.
+
     Axiom Subst_equations_exprInstantiate : forall funcs U G e t sub,
       Subst_equations funcs U G sub ->
       exprD funcs U G (exprInstantiate sub e) t = exprD funcs U G e t.
@@ -1874,6 +1878,18 @@ Module SynUnifier (E : OrderedType.OrderedType with Definition t := uvar with De
               repeat match goal with 
                        | |- context [ match ?X with _ => _ end ] => destruct X
                      end; intuition. } } }
+    Qed.
+
+    Theorem Subst_equations_weaken : forall funcs U G s U' G',
+      Subst_equations funcs U G s ->
+      Subst_equations funcs (U ++ U') (G ++ G') s.
+    Proof.
+      intros. eapply Subst_equations_sem; intros.
+      eapply Subst_equations_sem in H; eauto.
+      consider (nth_error U k); intros; try contradiction.
+      erewrite nth_error_weaken by eauto.
+      consider (exprD funcs U G e (projT1 s0)); intros; try contradiction.
+      erewrite exprD_weaken; eassumption. 
     Qed.
 
 (*

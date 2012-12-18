@@ -18,14 +18,15 @@ Section unfolder.
   Variable preds : UNF.SH.SE.predicates types.
   Variable prover : ProverT types.
   Variable facts : Facts prover.
-  Variable hintsFwd : option (UNF.hintSide types).
-  Variable hintsBwd : option (UNF.hintSide types).
+  Variable hintsFwd : UNF.hintSide types.
+  Variable hintsBwd : UNF.hintSide types.
 
   Record unfolderResult : Type :=
   { Alls : list tvar
   ; Exs  : list tvar
   ; Lhs  : UNF.SH.SHeap types
   ; Rhs  : UNF.SH.SHeap types
+  ; Know : Facts prover
   }.
 
   Definition unfold (uvars : list tvar)
@@ -36,11 +37,7 @@ Section unfolder.
        ; UNF.Heap  := lhs
       |}
     in
-    match match hintsFwd with
-            | None => (pre, false)
-            | Some hints => UNF.refineForward prover hints 10 facts pre 
-          end
-      with
+    match UNF.refineForward prover hintsFwd 10 facts pre with
       | ({| UNF.Vars := vars' ; UNF.UVars := uvars' ; UNF.Heap := lhs |}, fprog) =>
         let post :=
           {| UNF.Vars  := vars'
@@ -48,13 +45,8 @@ Section unfolder.
            ; UNF.Heap  := rhs
           |}
         in
-        match match hintsBwd with
-                | None => (post, false)
-                | Some hints => 
-                  let facts' := Learn _ facts (UNF.SH.pures lhs) in
-                  UNF.refineBackward prover hints 10 facts' post
-              end
-        with
+        let facts' := Learn _ facts (UNF.SH.pures lhs) in
+        match UNF.refineBackward prover hintsBwd 10 facts' post with
           | ({| UNF.Vars := vars' ; UNF.UVars := uvars' ; UNF.Heap := rhs |}, bprog) =>
             let new_vars  := skipn (length ql) vars' in
             let new_uvars := skipn (length uvars) uvars' in
@@ -63,6 +55,7 @@ Section unfolder.
               ; Exs  := new_uvars
               ; Lhs  := lhs
               ; Rhs  := rhs
+              ; Know := facts'
               |}, fprog || bprog)
         end
     end.
@@ -82,14 +75,8 @@ Section unfolder.
     repeat (rewrite typeof_env_app || unfold typeof_env || rewrite map_app || rewrite map_rev || (f_equal; []) || assumption).
 
   Hypothesis prover_Correct : ProverT_correct prover funcs.
-  Hypothesis hintsFwd_Correct : match hintsFwd with
-                                  | Some hints => UNF.hintSideD funcs preds hints
-                                  | None => True
-                                end.
-  Hypothesis hintsBwd_Correct : match hintsBwd with
-                                  | Some hints => UNF.hintSideD funcs preds hints
-                                  | None => True
-                                end.
+  Hypothesis hintsFwd_Correct : UNF.hintSideD funcs preds hintsFwd.
+  Hypothesis hintsBwd_Correct : UNF.hintSideD funcs preds hintsBwd.
 
   Lemma ApplyUnfold_with_eq' : 
     forall (var_env meta_env : env types),
@@ -102,20 +89,24 @@ Section unfolder.
          ; Exs  := new_uvars
          ; Lhs  := lhs'
          ; Rhs  := rhs'
+         ; Know := facts'
          |} =>
-        Expr.forallEach new_vars (fun nvs : Expr.env types =>
-          let var_env := var_env ++ nvs in
+      UNF.SH.WellTyped_sheap (typeof_funcs funcs) (UNF.SH.SE.typeof_preds preds)
+        (typeof_env meta_env) (typeof_env var_env ++ new_vars) lhs' = true ->
+      UNF.SH.WellTyped_sheap (typeof_funcs funcs) (UNF.SH.SE.typeof_preds preds)
+        (typeof_env meta_env ++ new_uvars) (typeof_env var_env ++ new_vars) rhs' = true ->
+      Expr.forallEach new_vars (fun nvs : Expr.env types =>
+        let var_env := var_env ++ nvs in
+          Valid prover_Correct meta_env var_env facts' ->
           Expr.AllProvable_impl funcs meta_env var_env
-          (Expr.existsEach new_uvars (fun menv : Expr.env types =>
-            let meta_env := meta_env ++ menv in
-                (Expr.AllProvable_and funcs meta_env var_env
-                  (UNF.SH.SE.ST.himp
-                    (UNF.SH.SE.sexprD funcs preds meta_env var_env
-                      (UNF.SH.sheapD (UNF.SH.Build_SHeap (UNF.SH.impures lhs') nil (UNF.SH.other lhs'))))
-                    (UNF.SH.SE.sexprD funcs preds meta_env var_env
-                      (UNF.SH.sheapD (UNF.SH.Build_SHeap (UNF.SH.impures rhs') nil (UNF.SH.other rhs')))))
-                  (UNF.SH.pures rhs')) ))
-            (UNF.SH.pures lhs'))
+          (UNF.SH.SE.ST.himp
+            (UNF.SH.SE.sexprD funcs preds meta_env var_env
+              (UNF.SH.sheapD (UNF.SH.Build_SHeap (UNF.SH.impures lhs') nil (UNF.SH.other lhs'))))
+            (UNF.ST_EXT.existsEach (typeD := tvarD types) new_uvars (fun menv : Expr.env types =>
+              let meta_env := meta_env ++ menv in
+              UNF.SH.SE.sexprD funcs preds meta_env var_env
+              (UNF.SH.sheapD rhs'))))
+          (UNF.SH.pures lhs'))
     end ->
     UNF.SH.SE.ST.himp (@UNF.SH.SE.sexprD _ funcs preds meta_env var_env (UNF.SH.sheapD l))
                       (@UNF.SH.SE.sexprD _ funcs preds meta_env var_env (UNF.SH.sheapD r)).
@@ -144,40 +135,34 @@ Section unfolder.
         (fun vars_ext : list {t : tvar & tvarD types t} =>
           UNF.SH.SE.sexprD funcs preds meta_env 
           (var_env ++ vars_ext) (UNF.SH.sheapD Lhs0)))).
-    { clear H2 H1. destruct hintsFwd. 
-      { generalize (UNF.refineForward_Length H0).
-        eapply UNF.refineForward_Ok in H0; eauto using typeof_env_WellTyped_env.
-        intro. destruct H1. destruct H1. simpl in *. split; auto. split; auto.
-        subst.
-        rewrite ListFacts.firstn_app_exact; auto. unfold typeof_env. rewrite map_length. auto.
-        simpl; rewrite UNF.SH.WellTyped_sheap_WellTyped_sexpr; eassumption. }
-      { inversion H0; clear H0; subst. split; auto.
-        split. rewrite <- app_nil_r with (l := typeof_env var_env).
-        rewrite ListFacts.firstn_app_exact. rewrite app_nil_r. auto. unfold typeof_env. rewrite map_length; auto.
-        unfold typeof_env.
-        erewrite ListFacts.skipn_length_all by reflexivity.
-        rewrite UNF.ST_EXT.existsEach_nil. rewrite app_nil_r. reflexivity. } }
+    { clear H2 H1. 
+      generalize (UNF.refineForward_Length H0).
+      eapply UNF.refineForward_Ok in H0; eauto using typeof_env_WellTyped_env.
+      intro. destruct H1. destruct H1. simpl in *. split; auto. split; auto.
+      subst.
+      rewrite ListFacts.firstn_app_exact; auto. unfold typeof_env. rewrite map_length. auto.
+      simpl; rewrite UNF.SH.WellTyped_sheap_WellTyped_sexpr; eassumption. }
     destruct H4. destruct H7. rewrite H8; clear H8.
     rewrite UNF.ST_EXT.himp_existsEach_p; [ reflexivity | intros ].
 
-    destruct hintsBwd.
     { assert (Vars = typeof_env var_env ++ skipn (length var_env) Vars); intros.
       rewrite <- firstn_skipn with (n := length var_env) (l := Vars) at 1.
       rewrite <- H8. rewrite H7. reflexivity.
 
       generalize (UNF.refineBackward_Length H2); intros.
-      destruct H10; simpl in *. destruct H10. subst Vars0.
+      destruct H11; simpl in *. destruct H11. subst Vars.
 
       apply SH_UTIL.himp_pull_pures; intros.
 
+      generalize (UNF.refineBackward_WellTyped hintsBwd_Correct prover_Correct H2); simpl. intro.
       eapply UNF.refineBackward_Ok in H2.
       2: eassumption.
       2: eassumption.
       Focus 2. simpl. rewrite H4. eapply typeof_env_WellTyped_env.
       Focus 2. simpl. instantiate (1 := var_env ++ G). unfold WellTyped_env, typeof_env.
-      rewrite map_app. rewrite H9. rewrite <- H8. reflexivity.
+      rewrite map_app. rewrite H10. rewrite <- H8. reflexivity.
 
-      Focus 2. simpl. rewrite H9; clear H9. subst; simpl.
+      Focus 2. simpl. rewrite H10; clear H10. subst; simpl.
       clear - WTR.
       repeat rewrite UNF.SH.WellTyped_sheap_WellTyped_sexpr in *.
       eapply SH_UTIL.SEP_FACTS.WellTyped_sexpr_weaken with (U' := nil) in WTR. rewrite app_nil_r in WTR. eauto.
@@ -187,124 +172,40 @@ Section unfolder.
         rewrite app_nil_r.
         rewrite <- H2; clear H2. subst UVars0 Alls0.
         eapply forallEach_sem in H1.
-        Focus 2.
+        Focus 4.
         unfold typeof_env in *. rewrite map_length. eassumption.
         apply SH_UTIL.himp_pull_pures; intro.
         eapply AllProvable_impl_AllProvable in H1; eauto.
-        eapply existsEach_sem in H1. destruct H1. destruct H1.
-        eapply AllProvable_and_sem in H5. destruct H5.
         eapply SH_UTIL.sheapD_remove_pures_p. 
-        eapply UNF.ST_EXT.himp_existsEach_c. exists x0. split. subst UVars Exs0.
-        unfold typeof_env in *.
-        rewrite <- H6. rewrite map_length. reflexivity.
+        rewrite H1; clear H1. subst Exs0. unfold typeof_env. rewrite map_length.
+        eapply UNF.ST_EXT.himp_existsEach; intros. reflexivity.
 
-        eapply SH_UTIL.sheapD_remove_pures_c; eauto. rewrite <- H11; clear H11.
+        subst Know0. eapply Learn_correct; eauto. rewrite <- app_nil_r with (l := meta_env). eapply Valid_weaken. auto.
 
-        eapply SH_UTIL.SEP_FACTS.himp_WellTyped_sexpr; intros.
-        rewrite SH_UTIL.SEP_FACTS.sexprD_weaken_wt with (U' := x0) (G' := nil) by eassumption.
-        rewrite app_nil_r. reflexivity.  
+        Focus 3.
+        rewrite <- UNF.SH.WellTyped_sheap_WellTyped_sexpr. eassumption. 
 
-        rewrite <- UNF.SH.WellTyped_sheap_WellTyped_sexpr. eassumption. }
+        Focus 2.
+        revert H13. intro. cutrewrite (length (typeof_env var_env) = length var_env).
+        rewrite <- H10. rewrite <- H13. f_equal.
+        rewrite <- H6. rewrite <- H4. f_equal. rewrite ListFacts.rw_skipn_app; auto.
+        rewrite H10. rewrite H4. rewrite <- app_nil_r with (l := typeof_env meta_env).
+        repeat rewrite UNF.SH.WellTyped_sheap_WellTyped_sexpr in *.
+        eapply SH_UTIL.SEP_FACTS.WellTyped_sexpr_weaken. eassumption.
+        unfold typeof_env. rewrite map_length. auto.
+
+        eapply UNF.refineForward_WellTyped in H0; simpl in *; try eassumption.
+        Focus 2.
+        repeat rewrite UNF.SH.WellTyped_sheap_WellTyped_sexpr in *. eassumption.
+        rewrite H10 in *. rewrite H4 in H0.
+        rewrite UNF.SH.WellTyped_sheap_WellTyped_sexpr in *.
+        rewrite ListFacts.rw_skipn_app by reflexivity. 
+        eassumption. }
 
       eapply Valid_weaken with (ue := nil) (ge := G) in H.
       rewrite app_nil_r in *; eauto.
       eapply Learn_correct; eassumption. }
-    { inversion H2; clear H2; subst.
-      eapply forallEach_sem in H1. 
-      2: unfold typeof_env; rewrite map_length; eassumption.
-      apply SH_UTIL.himp_pull_pures; intro.
-      eapply AllProvable_impl_AllProvable in H1; eauto.
-      apply existsEach_sem in H1. destruct H1. destruct H1.
-      eapply AllProvable_and_sem in H4. destruct H4.
-
-      rewrite SH_UTIL.SEP_FACTS.sexprD_weaken_wt with (U' := x) (G' := G) (s := UNF.SH.sheapD Rhs0).
-      2: rewrite <- UNF.SH.WellTyped_sheap_WellTyped_sexpr; eassumption.
-
-      eapply SH_UTIL.SEP_FACTS.himp_WellTyped_sexpr; intros.
-      rewrite SH_UTIL.SEP_FACTS.sexprD_weaken_wt with (U' := x) (G' := nil) (s := UNF.SH.sheapD Lhs0) by eassumption.
-      clear H7.
-      rewrite app_nil_r.
-
-      eapply SH_UTIL.sheapD_remove_pures_p.
-      eapply SH_UTIL.sheapD_remove_pures_c; eauto. } 
   Qed.
-
-(*
-  Lemma ApplyCancelSep_with_eq : 
-    forall (algos_correct : ILAlgoTypes.AllAlgos_correct funcs preds algos),
-    forall (meta_env : env (Env.repr BedrockCoreEnv.core types)) (hyps : Expr.exprs (_)),
-
-    forall (l r : SEP.sexpr types BedrockCoreEnv.pc BedrockCoreEnv.st) res,
-    unfolder (typeof_env meta_env) hyps l r = Some res ->
-    Expr.AllProvable funcs meta_env nil hyps ->
-    forall (WTR : SEP.WellTyped_sexpr (typeof_funcs funcs) (SEP.typeof_preds preds) (typeof_env meta_env) nil r = true) cs,
-
-    match res with
-      | {| AllExt := new_vars
-         ; ExExt  := new_uvars
-         ; Lhs    := lhs'
-         ; Rhs    := rhs'
-         ; Subst  := subst
-         |} =>
-        Expr.forallEach new_vars (fun nvs : Expr.env types =>
-          let var_env := nvs in
-          Expr.AllProvable_impl funcs meta_env var_env
-          (existsSubst funcs var_env subst 0 
-            (map (fun x => existT (fun t => option (tvarD types t)) (projT1 x) (Some (projT2 x))) meta_env ++
-             map (fun x => existT (fun t => option (tvarD types t)) x None) new_uvars)
-            (fun meta_env : Expr.env types =>
-                (Expr.AllProvable_and funcs meta_env var_env
-                  (himp cs 
-                    (SEP.sexprD funcs preds meta_env var_env
-                      (SH.sheapD (SH.Build_SHeap _ _ (SH.impures lhs') nil (SH.other lhs'))))
-                    (SEP.sexprD funcs preds meta_env var_env
-                      (SH.sheapD (SH.Build_SHeap _ _ (SH.impures rhs') nil (SH.other rhs')))))
-                  (SH.pures rhs')) ))
-            (SH.pures lhs'))
-    end ->
-    himp cs (@SEP.sexprD _ _ _ funcs preds meta_env nil l)
-            (@SEP.sexprD _ _ _ funcs preds meta_env nil r).
-  Proof. intros. eapply ApplyCancelSep_with_eq'; eauto. Qed.
-
-  Lemma ApplyCancelSep : 
-    forall (algos_correct : ILAlgoTypes.AllAlgos_correct funcs preds algos),
-    forall (meta_env : env (Env.repr BedrockCoreEnv.core types)) (hyps : Expr.exprs (_)),
-    forall (l r : SEP.sexpr types BedrockCoreEnv.pc BedrockCoreEnv.st),
-      Expr.AllProvable funcs meta_env nil hyps ->
-    forall (WTR : SEP.WellTyped_sexpr (typeof_funcs funcs) (SEP.typeof_preds preds) (typeof_env meta_env) nil r = true) cs,
-    match unfolder (typeof_env meta_env) hyps l r with
-      | Some {| AllExt := new_vars
-         ; ExExt  := new_uvars
-         ; Lhs    := lhs'
-         ; Rhs    := rhs'
-         ; Subst  := subst
-         |} =>
-        Expr.forallEach new_vars (fun nvs : Expr.env types =>
-          let var_env := nvs in
-          Expr.AllProvable_impl funcs meta_env var_env
-          (existsSubst funcs var_env subst 0 
-            (map (fun x => existT (fun t => option (tvarD types t)) (projT1 x) (Some (projT2 x))) meta_env ++
-             map (fun x => existT (fun t => option (tvarD types t)) x None) new_uvars)
-            (fun meta_env : Expr.env types =>
-                (Expr.AllProvable_and funcs meta_env var_env
-                  (himp cs 
-                    (SEP.sexprD funcs preds meta_env var_env
-                      (SH.sheapD (SH.Build_SHeap _ _ (SH.impures lhs') nil (SH.other lhs'))))
-                    (SEP.sexprD funcs preds meta_env var_env
-                      (SH.sheapD (SH.Build_SHeap _ _ (SH.impures rhs') nil (SH.other rhs')))))
-                  (SH.pures rhs')) ))
-            (SH.pures lhs'))
-      | None => 
-        himp cs (@SEP.sexprD _ _ _ funcs preds meta_env nil l)
-                (@SEP.sexprD _ _ _ funcs preds meta_env nil r)
-    end ->
-    himp cs (@SEP.sexprD _ _ _ funcs preds meta_env nil l)
-            (@SEP.sexprD _ _ _ funcs preds meta_env nil r).
-  Proof. 
-    intros. consider (unfolder (typeof_env meta_env) hyps l r); intros; auto.
-    eapply ApplyCancelSep_with_eq; eauto.
-  Qed.
-*)
 
 End unfolder.
 End UnfolderTac.

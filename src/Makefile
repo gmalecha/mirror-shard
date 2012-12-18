@@ -20,7 +20,7 @@ MODULES    := Ordering \
 	Unfolder UnfolderTac ReifyHints SepLemma \
 	SymEval SymIL SymILProofs SymILTac \
 	IL ReifyIL ILEnv SepIL \
-	CancelIL \
+	CancelTac CancelIL \
 	ILTacCommon ILTac \
 	TypedPackage TacPackIL Allocated \
 	AMD64_gas
