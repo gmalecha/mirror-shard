@@ -83,12 +83,6 @@ Section parametric.
 
 End parametric.
 
-Theorem AllProvable_impl_sem : forall ts (funcs : functions ts)  U G P ps,
-  AllProvable_impl funcs U G P ps <-> (AllProvable funcs U G ps -> P).
-Proof.
-  induction ps; simpl in *; unfold Basics.impl; intuition.
-Qed.
-
 Lemma cancelLoop_ind_pf : forall 
   types (funcs : functions types) (preds : SE.predicates types) 
   prover hintsFwd hintsBwd
@@ -111,7 +105,7 @@ Proof.
     simpl in *.
     eapply UNF.HEAP_FACTS.himp_pull_pures; intros.
     repeat rewrite app_nil_r in *.
-    eapply AllProvable_impl_AllProvable in H5; eauto.
+    eapply AllProvable_impl_sem in H5; eauto.
     eapply CANCEL_TAC.existsSubst_sem in H5.
     rewrite map_map in *; simpl in *.
     eapply existsEach_sem in H5. destruct H5. intuition.
@@ -244,4 +238,156 @@ Proof.
       eapply UNF_TAC.SH_UTIL.sheapD_remove_pures_c; eauto. } }
 Qed.
 
+Lemma cancelLoop_with_eq' : forall 
+  types (funcs : functions types) (preds : SE.predicates types) 
+  prover hintsFwd hintsBwd
+  (bound : nat) uvars (lhs rhs : SH.SE.sexpr types) (hyps : exprs types) 
+  tfuncs tpreds tuvars
+  cr prog b,
+  forall (PC : ProverT_correct prover funcs),
+  typeof_funcs funcs = tfuncs ->
+  UNF.SH.SE.typeof_preds preds = tpreds ->
+  WellTyped_env tuvars uvars ->
+  UNF.SH.SE.WellTyped_sexpr tfuncs tpreds tuvars nil rhs = true ->
+  AllProvable funcs uvars nil hyps ->
+  UNF.hintSideD funcs preds hintsFwd ->
+  UNF.hintSideD funcs preds hintsBwd ->
+  ((let '(ql,lhs) := UNF.SH.hash lhs in
+   let '(qr,rhs) := UNF.SH.hash rhs in
+   let rhs := UNF.HEAP_FACTS.sheapSubstU 0 (length qr) (length tuvars) rhs in
+   let facts := Summarize prover (hyps ++ UNF.SH.pures lhs) in
+   let lhs' := SH.Build_SHeap (SH.impures lhs) nil (SH.other lhs) in
+   let '(cr',prog') := cancelLoop tpreds prover hintsFwd hintsBwd bound facts (tuvars ++ rev qr) (rev ql) lhs' rhs
+     (ExprUnify.UNIFIER.Subst_empty _) b in
+   match ql , qr , UNF.SH.pures lhs with
+     | nil , nil , nil => (cr', prog')
+     | _ , _ , ps => (Quant (rev ql) ps (rev qr) (ExprUnify.UNIFIER.Subst_empty _) cr', true)
+   end) = (cr, prog)) ->
+  (if prog then
+     cancelResultD funcs preds uvars nil cr
+   else
+     SE.himp funcs preds uvars nil lhs rhs) ->
+  SE.himp funcs preds uvars nil lhs rhs.
+Proof.
+  intros.
+  consider (UNF.SH.hash lhs); intros.
+  consider (UNF.SH.hash rhs); intros.
+  consider (UNF.HEAP_FACTS.sheapSubstU 0 (length v0) (length tuvars) s0); intros.
+  simpl in H10.
+  match goal with
+    | [ H : match ?X with _ => _ end = _ |- _ ] => consider X
+  end; intros.
+  destruct prog; [ | eassumption ].
 
+  rewrite UNF.SH.hash_denote with (s := lhs); rewrite H6.
+  rewrite UNF.SH.hash_denote with (s := rhs); rewrite H8.
+  simpl.
+  unfold WellTyped_funcs, WellTyped_env in *; subst.
+  unfold SE.himp.
+  rewrite UNF.HEAP_FACTS.SEP_FACTS.himp_existsEach_ST_EXT_existsEach.
+  eapply UNF.ST_EXT.himp_existsEach_p; intros.
+  change (map (projT1 (P:=tvarD types)) G) with (typeof_env G) in H.
+  subst.
+  eapply UNF.HEAP_FACTS.himp_pull_pures; intros.
+
+  rewrite UNF.HEAP_FACTS.SEP_FACTS.himp_existsEach_ST_EXT_existsEach.
+
+  assert ((G = nil /\ v0 = nil /\ UNF.SH.pures s = nil /\ c = cr /\ b0 = true) \/
+          (Quant (rev (typeof_env G)) (UNF.SH.pures s) (rev v0)
+               (ExprUnify.UNIFIER.Subst_empty types) c, true) = (cr, true)).
+  { destruct (G); destruct v0; destruct (UNF.SH.pures s); inversion H11; subst; intuition auto. }
+  clear H11.
+
+  intuition subst.
+  { rewrite UNF.HEAP_FACTS.SEP_FACTS.ST_EXT.existsEach_nil.
+    simpl in *. repeat rewrite app_nil_r in *.
+
+    change (@nil tvar) with (typeof_env (types := types) nil) in H10.
+    eapply cancelLoop_ind_pf with (funcs := funcs) (PC := PC) in H10; try eauto.
+    { apply UNF_TAC.SH_UTIL.sheapD_remove_pures_p. rewrite H10.
+      rewrite <- H9.
+      generalize (@UNF.HEAP_FACTS.sheapSubstU_sheapD types funcs preds uvars nil nil nil s0); simpl.
+      rewrite app_nil_r. intro. rewrite H0. unfold typeof_env in *. rewrite map_length. reflexivity. }
+    { generalize (@UNF.HEAP_FACTS.sheapSubstU_WellTyped types (typeof_funcs funcs) (UNF.SH.SE.typeof_preds preds) (typeof_env uvars) nil nil nil s0); simpl; rewrite app_nil_r.
+      rewrite <- H9. intro. eapply H0.
+      rewrite UNF.SH.WellTyped_hash in H2. rewrite H8 in *; simpl in *. auto. }
+    { eapply CANCEL.U.Subst_equations_empty. }
+    { eapply Summarize_correct. eapply AllProvable_app; eauto. } }
+
+  { inversion H1; clear H1; subst.
+    simpl in H7. eapply forallEach_sem in H7; eauto.
+    eapply AllProvable_impl_sem in H7.
+    eapply CANCEL_TAC.existsSubst_sem in H7.
+    eapply existsEach_sem in H7. destruct H7; intuition.
+    repeat (rewrite map_app in * || rewrite map_map in *); simpl in *.
+    eapply UNF.ST_EXT.himp_existsEach_c.
+    eexists. split.
+    Lemma map_projT1_from_app : forall types a b c,
+      typeof_env a = map (fun x : sigT (tvarD types) => projT1 x) b ++ map (fun x : tvar => x) c ->
+      map (projT1 (P := tvarD types)) (skipn (length b) a) = c.
+    Proof.
+      intros. unfold typeof_env in *.
+      rewrite <- firstn_skipn with (l := a) (n := (length b)) in H.
+      rewrite map_app in H. eapply ListFacts.app_inj_length in H.
+      intuition. rewrite map_id in *. auto.
+      repeat rewrite map_length. rewrite firstn_length. rewrite Min.min_l; auto.
+      rewrite <- map_app in H. rewrite firstn_skipn in *.
+      assert (length (map (projT1 (P:=tvarD types)) a) = length (map (fun x : sigT (tvarD types) => projT1 x) b ++
+        map (fun x : tvar => x) c)).
+      rewrite <- H. reflexivity.
+      repeat (rewrite map_length in * || rewrite app_length in * ).
+      omega.
+    Qed.
+    { eapply map_projT1_from_app in H1. instantiate (1 := rev (skipn (length uvars) x)).
+      rewrite <- rev_involutive. rewrite <- H1. rewrite map_rev. reflexivity. }
+    3: eapply typeof_env_rev.
+    eapply CANCEL_TAC.consistent_app in H0.
+    rewrite map_length in *.
+    destruct H0. eapply CANCEL_TAC.consistent_Some in H0.
+    specialize (map_projT1_from_app _ _ _ H1); intro.
+    rewrite <- H13 in H10. 
+    change (map (projT1 (P:=tvarD types)) (skipn (length uvars) x)) with (typeof_env (skipn (length uvars) x)) in H10.
+    rewrite <- typeof_env_app in H10. rewrite <- typeof_env_rev in H10.
+
+    eapply UNF.HEAP_FACTS.SEP_FACTS.himp_WellTyped_sexpr; intros.
+    eapply cancelLoop_ind_pf with (funcs := funcs) (PC := PC) in H10; try eauto using CANCEL.U.Subst_equations_empty.
+    { rewrite <- H9 in H10. unfold SE.himp in H10.
+      erewrite UNF.HEAP_FACTS.SEP_FACTS.sexprD_weaken with (U' := skipn (length uvars) x) (G' := nil).
+      repeat rewrite app_nil_r.
+
+      apply UNF_TAC.SH_UTIL.sheapD_remove_pures_p.
+      rewrite H10; clear H10. rewrite rev_involutive.
+      
+      generalize (@UNF.HEAP_FACTS.sheapSubstU_sheapD types funcs preds uvars nil (skipn (length uvars) x) (rev G) s0).
+      simpl. rewrite Plus.plus_0_r. intro X. rewrite <- rev_length with (l := v0). rewrite <- H13.
+      rewrite map_length. rewrite typeof_env_length. rewrite <- X.
+
+      rewrite SH.WellTyped_hash in H2. rewrite H8 in *. simpl in H2. rewrite <- H13 in H2.
+      clear - H2.
+      repeat rewrite SH.WellTyped_sheap_WellTyped_sexpr in *. rewrite app_nil_r in *.
+      change (map (projT1 (P:=tvarD types)) (skipn (length uvars) x)) with (typeof_env (skipn (length uvars) x)) in H2.
+
+      etransitivity; [ | eapply UNF.HEAP_FACTS.SEP_FACTS.sexprD_weaken_wt with (U' := nil) ].
+      rewrite app_nil_r. reflexivity. eauto. }
+    { rewrite <- H9; clear H9. 
+      generalize (@UNF.HEAP_FACTS.sheapSubstU_WellTyped types (typeof_funcs funcs) (SH.SE.typeof_preds preds)
+        (typeof_env uvars) nil (rev v0) (typeof_env (rev G)) s0); simpl.
+      rewrite Plus.plus_0_r. intro X. 
+      change (map (projT1 (P:=tvarD types)) (skipn (length uvars) x)) with (typeof_env (skipn (length uvars) x)) in H13.
+      rewrite <- H13 in X. repeat rewrite <- typeof_env_app in X. 
+      rewrite typeof_env_length in X. rewrite <- rev_length with (l := v0). rewrite <- H13. 
+      rewrite typeof_env_length. eapply X. clear X.
+
+      rewrite SH.WellTyped_hash in H2. rewrite H8 in *. simpl in H2.
+      rewrite app_nil_r in H2.
+
+      rewrite <- H13 in H2. clear - H2.
+      repeat rewrite SH.WellTyped_sheap_WellTyped_sexpr in *.
+      eapply CANCEL_TAC.SH_FACTS.SEP_FACTS.WellTyped_sexpr_weaken with (U' := nil) in H2.
+      rewrite app_nil_r in H2. rewrite typeof_env_app. eapply H2. }
+    { eapply Summarize_correct. eapply AllProvable_app.
+      eapply AllProvable_weaken in H3. eapply H3.
+      rewrite app_nil_r in H. eapply AllProvable_weaken in H. rewrite <- app_nil_r with (l := rev G). eapply H. }
+    { revert H12. rewrite H0 at 1. rewrite firstn_skipn. auto. }
+    { rewrite app_nil_r in *; auto. } }
+Qed.

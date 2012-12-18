@@ -130,6 +130,9 @@ Module Type Unifier.
     Parameter Subst_equations : 
       forall (funcs : functions types) (U G : env types), Subst types -> Prop.
 
+    Axiom Subst_equations_empty : forall funcs U G,
+      Subst_equations funcs U G Subst_empty.
+
     Axiom Subst_equations_weaken : forall funcs U G s U' G',
       Subst_equations funcs U G s ->
       Subst_equations funcs (U ++ U') (G ++ G') s.
@@ -1890,6 +1893,14 @@ Module SynUnifier (E : OrderedType.OrderedType with Definition t := uvar with De
       erewrite nth_error_weaken by eauto.
       consider (exprD funcs U G e (projT1 s0)); intros; try contradiction.
       erewrite exprD_weaken; eassumption. 
+    Qed.
+
+    Theorem Subst_equations_empty : forall funcs U G,
+      Subst_equations funcs U G Subst_empty.
+    Proof.
+      intros. eapply Subst_equations_sem; intros.
+      exfalso. unfold Subst_lookup, subst_lookup, Subst_empty, subst_empty in *.
+      simpl in *. rewrite MFACTS.PROPS.F.empty_o in H. congruence.
     Qed.
 
 (*

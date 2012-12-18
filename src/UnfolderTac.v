@@ -175,7 +175,7 @@ Section unfolder.
         Focus 4.
         unfold typeof_env in *. rewrite map_length. eassumption.
         apply SH_UTIL.himp_pull_pures; intro.
-        eapply AllProvable_impl_AllProvable in H1; eauto.
+        eapply AllProvable_impl_sem in H1; eauto.
         eapply SH_UTIL.sheapD_remove_pures_p. 
         rewrite H1; clear H1. subst Exs0. unfold typeof_env. rewrite map_length.
         eapply UNF.ST_EXT.himp_existsEach; intros. reflexivity.

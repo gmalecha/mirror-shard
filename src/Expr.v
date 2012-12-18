@@ -1069,11 +1069,12 @@ Section env.
       induction a; simpl; try solve [ intuition auto ]; intros.
     Qed.
     
-    Lemma AllProvable_impl_AllProvable : forall P ps,
-      AllProvable ps ->
-      AllProvable_impl P ps ->
-      P.
-    Proof. clear. induction ps; simpl; intros; eauto. intuition. Qed.
+    Lemma AllProvable_impl_sem : forall P ps,
+      AllProvable_impl P ps <->
+      (AllProvable ps -> P).
+    Proof. 
+      clear; induction ps; simpl; intros; unfold Basics.impl; intuition eauto. 
+    Qed.
 
     Lemma AllProvable_and_sem : forall P Ps,
       AllProvable_and P Ps <-> (AllProvable Ps /\ P).

@@ -169,7 +169,7 @@ Section canceller.
   Variable ts : list type.
   Let types := Env.repr BedrockCoreEnv.core ts.
   Variable funcs : functions types.
-  Variable preds : SEP.predicates types BedrockCoreEnv.pc BedrockCoreEnv.st.
+  Variable preds : SEP.predicates types.
   Variable algos : ILAlgoTypes.AllAlgos ts.
 
   Lemma ApplyCancelSep_with_eq : 
