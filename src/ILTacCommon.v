@@ -1,18 +1,21 @@
 Require Import IL SepIL.
 Require Import Word Memory.
 Import List.
-Require Import DepList EqdepClass.
 Require Import PropX.
-Require Import Expr SepExpr SepCancel.
+Require Import CancelLoopTac Expr SepExpr.
 Require Import Prover ILEnv.
 Require Import Tactics Reflection.
 Require Import TacPackIL.
 Require ExprUnify.
 
-Require Import SymILTac CancelIL.
+Require Import SymILTac CancelLoopTac.
 
 Set Implicit Arguments.
 Set Strict Implicit.
+
+Module SH := SepHeap.Make SepIL.SEP.
+
+Module CancelLoop := CancelLoopTac SH.
 
 (*TIME
 Add Rec LoadPath "/usr/local/lib/coq/user-contrib/" as Timing.  
@@ -172,77 +175,68 @@ Section canceller.
   Variable preds : SEP.predicates types.
   Variable algos : ILAlgoTypes.AllAlgos ts.
 
+  Definition call_canceller tpreds hyps meta_env lhs rhs : CancelLoop.cancelResult types * bool :=
+    let prover := match ILAlgoTypes.Prover algos with
+                     | None => ReflexivityProver.reflexivityProver
+                     | Some p => p
+                   end in
+    let hintsFwd := match ILAlgoTypes.Hints algos with
+                      | None => nil
+                      | Some h => UNF.Forward h
+                    end in
+    let hintsBwd := match ILAlgoTypes.Hints algos with
+                      | None => nil
+                      | Some h => UNF.Backward h
+                    end in
+    CancelLoop.cancel tpreds prover hintsFwd hintsBwd 2 hyps meta_env nil lhs rhs.
+
   Lemma ApplyCancelSep_with_eq : 
     forall (algos_correct : ILAlgoTypes.AllAlgos_correct funcs preds algos),
-    forall (meta_env : Expr.env (Env.repr BedrockCoreEnv.core types)) (hyps : Expr.exprs (_)),
+    forall (meta_env : Expr.env (Env.repr BedrockCoreEnv.core types)) (hyps : Expr.exprs (_))
+      tpreds meta_vars,
 
-    forall (l r : SEP.sexpr types BedrockCoreEnv.pc BedrockCoreEnv.st) res,
+    forall (l r : SEP.sexpr types) cr prog,
     Expr.AllProvable funcs meta_env nil hyps ->
-    canceller preds algos (typeof_env meta_env) hyps l r = Some res ->
-    forall (WTR : SEP.WellTyped_sexpr (typeof_funcs funcs) (SEP.typeof_preds preds) (typeof_env meta_env) nil r = true) cs,
-    match res with
-      | {| AllExt := new_vars
-         ; ExExt  := new_uvars
-         ; Lhs    := lhs'
-         ; Rhs    := rhs'
-         ; Subst  := subst
-         |} =>
-        Expr.forallEach new_vars (fun nvs : Expr.env types =>
-          let var_env := nvs in
-          Expr.AllProvable_impl funcs meta_env var_env
-          (existsSubst funcs var_env subst 0 
-            (map (fun x => existT (fun t => option (tvarD types t)) (projT1 x) (Some (projT2 x))) meta_env ++
-             map (fun x => existT (fun t => option (tvarD types t)) x None) new_uvars)
-            (fun meta_env : Expr.env types =>
-                (Expr.AllProvable_and funcs meta_env var_env
-                  (himp cs 
-                    (SEP.sexprD funcs preds meta_env var_env
-                      (SH.sheapD (SH.Build_SHeap _ _ (SH.impures lhs') nil (SH.other lhs'))))
-                    (SEP.sexprD funcs preds meta_env var_env
-                      (SH.sheapD (SH.Build_SHeap _ _ (SH.impures rhs') nil (SH.other rhs')))))
-                  (SH.pures rhs')) ))
-            (SH.pures lhs'))
-    end ->
-    himp cs (@SEP.sexprD _ _ _ funcs preds meta_env nil l)
-            (@SEP.sexprD _ _ _ funcs preds meta_env nil r).
-  Proof. intros. eapply ApplyCancelSep_with_eq'; eauto. Qed.
+    call_canceller tpreds hyps meta_vars l r = (cr, prog) ->
+    UNF.SH.SE.typeof_preds preds = tpreds ->
+    typeof_env meta_env = meta_vars ->
+    SEP.WellTyped_sexpr (typeof_funcs funcs) (SEP.typeof_preds preds) (typeof_env meta_env) nil r = true ->   
+    (if prog
+     then CancelLoop.cancelResultD funcs preds meta_env nil cr
+     else SH.SE.himp funcs preds meta_env nil l r) ->
+    himp (@SEP.sexprD _ funcs preds meta_env nil l)
+         (@SEP.sexprD _ funcs preds meta_env nil r).
+  Proof. 
+    intros. subst. eapply CancelLoop.cancelLoop_with_eq'; eauto.
+    { generalize (ILAlgoTypes.Acorrect_Prover algos_correct). clear.
+      destruct algos; simpl. destruct Prover; auto using ReflexivityProver.reflexivityProver_correct. }
+    { unfold WellTyped_env in *. auto. }
+    { generalize (ILAlgoTypes.Acorrect_Hints algos_correct); clear.
+      destruct algos; simpl; destruct Hints; auto.
+      eapply UNF.ForwardOk. intro.
+      constructor. }
+    { generalize (ILAlgoTypes.Acorrect_Hints algos_correct); clear.
+      destruct algos; simpl; destruct Hints; auto.
+      eapply UNF.BackwardOk. intro.
+      constructor. }
+  Qed.
 
   Lemma ApplyCancelSep : 
     forall (algos_correct : ILAlgoTypes.AllAlgos_correct funcs preds algos),
     forall (meta_env : env (Env.repr BedrockCoreEnv.core types)) (hyps : Expr.exprs (_)),
-    forall (l r : SEP.sexpr types BedrockCoreEnv.pc BedrockCoreEnv.st),
+    forall (l r : SEP.sexpr types),
       Expr.AllProvable funcs meta_env nil hyps ->
-    forall (WTR : SEP.WellTyped_sexpr (typeof_funcs funcs) (SEP.typeof_preds preds) (typeof_env meta_env) nil r = true) cs,
-    match canceller preds algos (typeof_env meta_env) hyps l r with
-      | Some {| AllExt := new_vars
-         ; ExExt  := new_uvars
-         ; Lhs    := lhs'
-         ; Rhs    := rhs'
-         ; Subst  := subst
-         |} =>
-        Expr.forallEach new_vars (fun nvs : Expr.env types =>
-          let var_env := nvs in
-          Expr.AllProvable_impl funcs meta_env var_env
-          (existsSubst funcs var_env subst 0 
-            (map (fun x => existT (fun t => option (tvarD types t)) (projT1 x) (Some (projT2 x))) meta_env ++
-             map (fun x => existT (fun t => option (tvarD types t)) x None) new_uvars)
-            (fun meta_env : Expr.env types =>
-                (Expr.AllProvable_and funcs meta_env var_env
-                  (himp cs 
-                    (SEP.sexprD funcs preds meta_env var_env
-                      (SH.sheapD (SH.Build_SHeap _ _ (SH.impures lhs') nil (SH.other lhs'))))
-                    (SEP.sexprD funcs preds meta_env var_env
-                      (SH.sheapD (SH.Build_SHeap _ _ (SH.impures rhs') nil (SH.other rhs')))))
-                  (SH.pures rhs')) ))
-            (SH.pures lhs'))
-      | None => 
-        himp cs (@SEP.sexprD _ _ _ funcs preds meta_env nil l)
-                (@SEP.sexprD _ _ _ funcs preds meta_env nil r)
-    end ->
-    himp cs (@SEP.sexprD _ _ _ funcs preds meta_env nil l)
-            (@SEP.sexprD _ _ _ funcs preds meta_env nil r).
+    forall (WTR : SEP.WellTyped_sexpr (typeof_funcs funcs) (SEP.typeof_preds preds) (typeof_env meta_env) nil r = true),
+    (match call_canceller (SEP.typeof_preds preds) hyps (typeof_env meta_env) l r with
+       | (cr, true) => CancelLoop.cancelResultD funcs preds meta_env nil cr
+       | (_, false) => SH.SE.himp funcs preds meta_env nil l r
+     end) ->
+    himp (@SEP.sexprD _ funcs preds meta_env nil l)
+         (@SEP.sexprD _ funcs preds meta_env nil r).
   Proof. 
-    intros. consider (canceller preds algos (typeof_env meta_env) hyps l r); intros; auto.
+    intros.
+    consider (call_canceller (SEP.typeof_preds preds) hyps (typeof_env meta_env) l r); intros.
+    destruct b; auto.
     eapply ApplyCancelSep_with_eq; eauto. 
   Qed.
 
@@ -257,7 +251,7 @@ Qed.
 
 Lemma interp_interp_himp : forall cs P Q stn_st,
   interp cs (![ P ] stn_st) ->
-  (himp cs P Q) ->
+  (himp P Q) ->
   interp cs (![ Q ] stn_st).
 Proof.
   unfold himp. intros. destruct stn_st.
@@ -266,14 +260,13 @@ Proof.
 Qed.
 
 Theorem change_Imply_himp : forall (specs : codeSpec W (settings * state)) p q s,
-  himp specs p q
+  himp p q
   -> interp specs (![p] s ---> ![q] s)%PropX.
 Proof.
   rewrite sepFormula_eq.
   unfold himp, sepFormula_def.
   eauto.
 Qed.
-
 
 Ltac change_to_himp := try apply ignore_regs;
   match goal with
@@ -284,8 +277,8 @@ Ltac change_to_himp := try apply ignore_regs;
     | _ => apply change_Imply_himp
   end.
 
-Definition smem_read stn := SepIL.ST.HT.smem_get_word (IL.implode stn).
-Definition smem_write stn := SepIL.ST.HT.smem_set_word (IL.explode stn).
+Definition smem_read stn := SepIL.smem_get_word (IL.implode stn).
+Definition smem_write stn := SepIL.smem_set_word (IL.explode stn).
 
 (** Symbolic Execution **)
 (************************)
