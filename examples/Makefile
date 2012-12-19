@@ -1,17 +1,5 @@
 ROOT    := ..
-MODULES := Conditional Lambda \
-           AutoSepExt PreAutoSep \
-           Wrap StreamParse ArrayQuery \
-           AutoSep \
-           LemmaTests \
-           Baby TrivialMem TrivialMem2 Arr \
-           ConditionalTest LambdaTest StreamParseTest ArrayQueryTest \
-           Indir Factorial Swap TrivialArray \
-           Pair SinglyLinkedList \
-           Malloc \
-           Sets ListSet TreeSet \
-           Bags Queue \
-           Memoize
+MODULES := UsingTheCanceler
 
 VS      := $(MODULES:%=%.v)
 
