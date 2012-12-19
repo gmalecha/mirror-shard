@@ -26,7 +26,6 @@ Module Make (SE : SepExpr).
     match P with
       | fun xs : ?T => forall x : ?T', @?f xs x =>
         match T' with
-(*        | PropX.codeSpec _ _ => fail 1 *)
           | _ => match type of T' with
                    | Prop => fail 1
                    | _ => let P := eval simpl in (fun x : ReifyExpr.VarType (T * T') =>
@@ -77,7 +76,6 @@ Module Make (SE : SepExpr).
     match P with
       | fun xs : ?T => forall x : ?T', @?f xs x =>
         match T' with
-(*        | PropX.codeSpec _ _ => fail 1 *)
           | _ => match type of T' with
                    | Prop => fail 1
                    | _ =>
