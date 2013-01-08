@@ -119,20 +119,11 @@ Module Type SepTheory_Kernel.
  
   Parameter himp : hprop -> hprop -> Prop.
   
-  Parameter heq : hprop -> hprop -> Prop.
-
   Parameter Refl_himp : Reflexive himp.
   Parameter Trans_himp : Transitive himp.
 
-  Parameter Refl_heq : Reflexive heq.
-  Parameter Sym_heq : Symmetric heq.
-  Parameter Trans_heq : Transitive heq.
-
   Local Notation "a ===> b" := (himp a b) (at level 60).
-  Local Notation "a <===> b" := (heq a b) (at level 60).
 
-  Parameter heq_defn : forall a b, (a ===> b /\ b ===> a) <-> a <===> b.
-  
   (* Definitions *)
   Parameter emp : hprop.
 
@@ -146,18 +137,15 @@ Module Type SepTheory_Kernel.
   Parameter himp_star_comm : forall P Q, 
     (star P Q) ===> (star Q P).
 
-  Parameter heq_star_assoc : forall P Q R, 
-    (star (star P Q) R) <===> (star P (star Q R)).
+  Parameter himp_star_assoc : forall P Q R, 
+    (star (star P Q) R) ===> (star P (star Q R)).
 
-  Parameter heq_star_emp_l : forall P, (star emp P) <===> P.
+  Parameter himp_star_emp_p : forall P, (star emp P) ===> P.
 
-  Parameter himp_subst_p : forall P Q R S,
-    P ===> S -> (star S Q) ===> R ->
-    (star P Q) ===> R.
+  Parameter himp_star_emp_c : forall P, P ===> (star emp P).
 
-  Parameter himp_subst_c : forall P Q R S,
-    S ===> Q -> P ===> (star S R) ->
-    P ===> (star Q R).
+  Parameter  himp_star_frame : forall P Q R S, 
+    P ===> Q -> R ===> S -> (star P R) ===> (star Q S).
 
   (** pure lemmas **)
   Parameter himp_star_pure_p : forall P Q F,
@@ -178,8 +166,11 @@ Module Type SepTheory_Kernel.
   Parameter himp_ex_c : forall T (P : T -> _) Q, 
     (exists v, Q ===> (P v)) -> Q ===> (ex P).
 
-  Parameter heq_ex_star : forall T (P : T -> _) Q,
-    (star (ex P) Q) <===> (ex (fun x => star (P x) Q)).
+  Parameter himp_ex_star : forall T (P : T -> _) Q,
+    (star (ex P) Q) ===> (ex (fun x => star (P x) Q)).
+
+  Parameter himp_star_ex : forall T (P : T -> _) Q,
+     (ex (fun x => star (P x) Q)) ===> (star (ex P) Q).
 
 End SepTheory_Kernel.
 
@@ -188,8 +179,25 @@ Module SepTheory_From_Kernel (Import K : SepTheory_Kernel) <:
 
   Include K.
 
+  Definition heq (a b : hprop) : Prop :=
+    himp a b /\ himp b a.
+
+  Global Instance Refl_heq : Reflexive heq.
+  Proof. unfold heq; red; intuition. Qed.
+    
+  Global Instance Sym_heq : Symmetric heq.
+  Proof. unfold heq; red; intuition. Qed.
+
+  Global Instance Trans_heq : Transitive heq.
+  Proof.
+    unfold heq; red; intros. intuition; etransitivity; eassumption.
+  Qed.    
+
   Local Notation "a ===> b" := (himp a b) (at level 60).
   Local Notation "a <===> b" := (heq a b) (at level 60).
+
+  Theorem heq_defn : forall a b, (a ===> b /\ b ===> a) <-> a <===> b.
+  Proof. unfold himp, heq; intuition. Qed.
 
   Theorem heq_himp : forall a b, a <===> b -> a ===> b.
   Proof.
@@ -199,32 +207,49 @@ Module SepTheory_From_Kernel (Import K : SepTheory_Kernel) <:
   Theorem heq_star_comm : forall P Q, 
     (star P Q) <===> (star Q P).
   Proof.
-    intros; apply heq_defn. intuition; apply himp_star_comm.
+    intros. unfold heq. intuition; apply himp_star_comm.
+  Qed.
+
+  Theorem heq_star_emp_l : forall a, (star emp a) <===> a.
+  Proof.
+    intros. unfold heq; split; apply himp_star_emp_p || apply himp_star_emp_c.
   Qed.
 
   Theorem heq_star_emp_r : forall a, (star a emp) <===> a.
   Proof.
     intros. etransitivity. apply heq_star_comm.
-    apply heq_star_emp_l.
+    unfold heq; split; apply himp_star_emp_p || apply himp_star_emp_c.
   Qed.
 
   Ltac break_heq := 
     intros;
       repeat match goal with
-               | [ H : _ <===> _ |- _ ] => apply heq_defn in H
-               | [ |- _ <===> _ ] => apply heq_defn
+               | [ H : _ <===> _ |- _ ] => unfold heq in H
+               | [ |- _ <===> _ ] => unfold heq
              end; intuition.
-
-  Theorem himp_star_frame : forall P Q R S, 
-    P ===> Q -> R ===> S -> (star P R) ===> (star Q S).
+  Theorem himp_subst_p : forall P Q R S,
+    P ===> S -> (star S Q) ===> R ->
+    (star P Q) ===> R.
   Proof.
-    intros.
-    eapply himp_subst_p; try eassumption.
-    etransitivity.
-    eapply himp_star_comm.
-    etransitivity. 2: eapply himp_star_comm.
-    eapply himp_subst_p; try eassumption.
-    reflexivity.
+    intros. rewrite <- H0. eapply himp_star_frame; auto. reflexivity.
+  Qed.
+
+  Theorem himp_subst_c : forall P Q R S,
+    S ===> Q -> P ===> (star S R) ->
+    P ===> (star Q R).
+  Proof.
+    intros. rewrite H0. eapply himp_subst_p. eassumption. reflexivity.
+  Qed.
+
+  Theorem heq_star_assoc : forall P Q R, 
+    (star (star P Q) R) <===> (star P (star Q R)).
+  Proof.
+    intros; eapply heq_defn; split; try eapply himp_star_assoc.
+    rewrite himp_star_comm. eapply himp_subst_p.
+    rewrite himp_star_comm. reflexivity.
+    etransitivity. eapply himp_star_assoc.
+    rewrite himp_star_comm. eapply himp_star_frame.
+    apply himp_star_comm. reflexivity.
   Qed.
 
   Theorem heq_star_frame : forall P Q R S, 
@@ -267,11 +292,10 @@ Module SepTheory_From_Kernel (Import K : SepTheory_Kernel) <:
     specialize (H v); break_heq; auto.
   Qed.    
 
-  Theorem himp_ex_star : forall T (P : T -> _) Q,
-    (star (ex P) Q) ===> (ex (fun x => star (P x) Q)).
+  Theorem heq_ex_star : forall T (P : T -> _) Q,
+    (star (ex P) Q) <===> (ex (fun x => star (P x) Q)).
   Proof.
-    intros. generalize (heq_ex_star P Q).
-    break_heq.
+    intros; split; eapply himp_ex_star || eapply himp_star_ex.
   Qed.
 
   Theorem himp_ex : forall T (P Q : T -> _), 
