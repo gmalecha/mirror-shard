@@ -1,5 +1,5 @@
 ROOT    := ..
-MODULES := UsingTheCanceler
+MODULES := SimpleSepTheory
 
 VS      := $(MODULES:%=%.v)
 
@@ -9,7 +9,7 @@ coq: Makefile.coq
 	COQC='time coqc' $(MAKE) -f Makefile.coq
 
 Makefile.coq: Makefile $(VS)
-	coq_makefile -R $(ROOT)/src Bedrock \
+	coq_makefile -R $(ROOT)/src MirrorShard \
 		     $(VS) -o Makefile.coq
 
 clean:: Makefile.coq

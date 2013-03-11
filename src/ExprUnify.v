@@ -9,8 +9,6 @@ Require Import Reflection.
 Set Implicit Arguments.
 Set Strict Implicit.
 
-(** TODO: factor out [exprInstantiate] **)
-
 Module Type Unifier.
   (** An environment that maintains a mapping from variables to their meaning **)
   Parameter Subst : list type -> Type.

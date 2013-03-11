@@ -1,4 +1,4 @@
-MODULE:=Bedrock
+MODULE:=MirrorShard
 
 .PHONY: all clean dist native ltac version
 
@@ -23,7 +23,7 @@ version:
 	$(MAKE) -C src version
 
 dist:
-	hg archive -t tgz /tmp/bedrock.tgz
+	git archive --format=tgz mirror-shard.tgz
 
 .dir-locals.el: tools/dir-locals.el Makefile
 	@ sed s,PWD,$(shell pwd -P),g tools/dir-locals.el | sed s,MOD,$(MODULE),g > .dir-locals.el

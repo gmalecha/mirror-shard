@@ -20,7 +20,7 @@ TESTS := UnfolderTests
 VS         := $(GENERIC:%=%.v) $(MODULES:%=%.v)
 TVS        := $(TESTS:%=%.v)
 
-ARGS :=-R . Bedrock
+ARGS :=-R . MirrorShard
 
 .PHONY: coq clean package native ltac version
 
