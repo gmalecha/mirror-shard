@@ -3,7 +3,7 @@ GENERIC := Reflection GenRec Tactics ListFacts Folds Multimap \
 PROVERS := Assumption Reflexivity
 #  Transitivity
 MODULES    := Ordering \
-	DiscreteMemory \
+	DiscreteMemory MultiMem \
 	Reflect \
 	Heaps SepTheory \
 	Env TypedPackage \
