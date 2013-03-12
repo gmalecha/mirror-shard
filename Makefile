@@ -28,6 +28,9 @@ dist:
 .dir-locals.el: tools/dir-locals.el Makefile
 	@ sed s,PWD,$(shell pwd -P),g tools/dir-locals.el | sed s,MOD,$(MODULE),g > .dir-locals.el
 
+install: 
+	$(MAKE) -C src install
+
 time:
 	@ rm -rf timing
 	@ ./tools/timer.py timing/ src/*.v examples/*.v src/*/*.v

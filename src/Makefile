@@ -2,9 +2,8 @@ GENERIC := Reflection GenRec Tactics ListFacts Folds Multimap \
 	   Decidables DepList EqdepClass NatMap
 PROVERS := Assumption Reflexivity
 #  Transitivity
-MODULES    := Ordering Word \
-	Nomega Word \
-	Memory DiscreteMemory \
+MODULES    := Ordering \
+	DiscreteMemory \
 	Reflect \
 	Heaps SepTheory \
 	Env TypedPackage \
@@ -26,6 +25,9 @@ ARGS :=-R . MirrorShard
 
 coq: Makefile.coq ILTac.v
 	$(MAKE) -f Makefile.coq
+
+install: coq
+	$(MAKE) -f Makefile.coq install
 
 Makefile.coq: Makefile $(VS)
 	coq_makefile $(ARGS) $(VS) -o Makefile.coq

@@ -1,5 +1,4 @@
 Require Import List.
-Require Import Word Memory.
 Require Import Expr SepExpr SepHeap SepCancel.
 Require Import Prover.
 Require Import Tactics Reflection.
