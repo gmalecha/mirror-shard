@@ -4,7 +4,7 @@ PROVERS := Assumption Reflexivity
 #  Transitivity
 MODULES    := Ordering \
 	DiscreteMemory MultiMem \
-	Reflect Quantifier \
+	Reify Quantifier \
 	Heaps SepTheory \
 	Env TypedPackage \
 	Expr ReifyExpr ExprUnify \

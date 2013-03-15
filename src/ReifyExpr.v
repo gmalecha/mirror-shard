@@ -3,7 +3,7 @@ Require Import Reflection.
 Require Import Expr. 
 
 (** Tactics **)
-Require Import Reflect.
+Require Import Reify.
 
 (*
 Ltac lift_signature s nt :=
