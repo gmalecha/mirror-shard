@@ -120,6 +120,12 @@ Module DiscreteHeap (B : Memory)
   Definition in_domain p m : Prop :=
     (smem_get p m = None) -> False.
 
+  Theorem in_domain_get : forall m p,
+    in_domain p m <-> smem_get p m <> None.
+  Proof.
+    unfold in_domain in *. intuition.
+  Qed.
+
   Definition same_domain m1 m2 : Prop :=
     forall p, in_domain p m1 <-> in_domain p m2.
 
@@ -213,7 +219,19 @@ Module DiscreteHeap (B : Memory)
       rewrite H0 in *; subst. destruct (hlist_hd b); auto.
       destruct (hlist_hd b); auto. subst; simpl in *; auto. }
     { destruct H. destruct H. subst. simpl in *. eauto. }
-  Qed.      
+  Qed.
+
+  Theorem split_disjoint : forall a b c,
+    split a b c ->
+      forall p, in_domain p b -> ~in_domain p c.
+  Proof.
+    unfold split, in_domain, disjoint, disjoint', join, smem_get, smem.
+    generalize dependent (BD.all_addr).
+    induction l; intros.
+    { exfalso. eapply H0. reflexivity. }
+    { intuition; try subst; simpl in *; destruct (addr_dec a p); auto;
+      eapply IHl; eauto. }
+  Qed.
 
   Theorem smem_get_sound : forall s m,
     models s m ->

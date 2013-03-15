@@ -29,13 +29,7 @@ Module Type Memory.
 End Memory.
 
 Module Type SeparationMemory.
-  Declare Module M : Memory.
-
   Parameter smem : Type.
-
-  Parameter models : smem -> M.mem -> Prop.
-
-  Parameter memoryIn : M.mem -> smem.
 
   Parameter smem_emp : smem.
 
@@ -43,7 +37,8 @@ Module Type SeparationMemory.
 
   Parameter smem_set : M.addr -> M.value -> smem -> option smem.
 
-  Parameter in_domain : M.addr -> smem -> Prop.
+  Definition in_domain (a : M.addr) (m : smem) : Prop :=
+    smem_get a m <> None.
 
   Definition same_domain (l r : smem) : Prop :=
     forall p, in_domain p l <-> in_domain p r.
@@ -63,6 +58,10 @@ Module Type SeparationMemory.
   Parameter split_in_domain : forall a b c,
     split a b c ->
     forall p, in_domain p a <-> (in_domain p b \/ in_domain p c).
+
+  Parameter split_disjoint : forall a b c,
+    split a b c ->
+      forall p, in_domain p b -> ~in_domain p c.
 
   Parameter memoryIn_sound : forall m,
     models (memoryIn m) m.
