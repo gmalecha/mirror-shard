@@ -27,11 +27,11 @@ Section PartialApply.
 End PartialApply.
 
 
-(** Reflect an application *)
-(*  ** - reflects all the non-dependent arguments of e into a tuple *)
-(*  ** - the tuple and the resulting function (may be partially applied) *)
-(*  **   are passed to the continuation [cc] *)
-(*  **)
+(** Reflect an application
+ ** - reflects all the non-dependent arguments of e into a tuple
+ ** - the tuple and the resulting function (may be partially applied)
+ **   are passed to the continuation [cc]
+ **)
 (* Ltac refl_app cc e := refl_app_cps e cc. *)
 Ltac refl_app cc e :=
   match e with
@@ -84,6 +84,42 @@ Ltac refl_app cc e :=
         end
       in
       match e with
+        | fun x => ?F (@?A x) (@?B x) (@?C x) (@?D x) (@?E x) (@?G x) (@?H x) (@?I x) (@?J x) (@?K x) (@?L x) (@?M x) (@?N x) (@?O x) =>
+          let As := constr:((A,(B,(C,(D,(E,(G,(H,(I,(J,(K,(L,(M,(N,(O,tt))))))))))))))) in
+          let Ts := getTypes As in
+          let Tf := type of F in
+          let Tb := constr:(@nil Type) in
+          papply cc F Tf Tb Ts As
+        | fun x => ?F (@?A x) (@?B x) (@?C x) (@?D x) (@?E x) (@?G x) (@?H x) (@?I x) (@?J x) (@?K x) (@?L x) (@?M x) (@?N x) =>
+          let As := constr:((A,(B,(C,(D,(E,(G,(H,(I,(J,(K,(L,(M,(N,tt)))))))))))))) in
+          let Ts := getTypes As in
+          let Tf := type of F in
+          let Tb := constr:(@nil Type) in
+          papply cc F Tf Tb Ts As
+        | fun x => ?F (@?A x) (@?B x) (@?C x) (@?D x) (@?E x) (@?G x) (@?H x) (@?I x) (@?J x) (@?K x) (@?L x) (@?M x) =>
+          let As := constr:((A,(B,(C,(D,(E,(G,(H,(I,(J,(K,(L,(M,tt))))))))))))) in
+          let Ts := getTypes As in
+          let Tf := type of F in
+          let Tb := constr:(@nil Type) in
+          papply cc F Tf Tb Ts As
+        | fun x => ?F (@?A x) (@?B x) (@?C x) (@?D x) (@?E x) (@?G x) (@?H x) (@?I x) (@?J x) (@?K x) (@?L x) =>
+          let As := constr:((A,(B,(C,(D,(E,(G,(H,(I,(J,(K,(L,tt)))))))))))) in
+          let Ts := getTypes As in
+          let Tf := type of F in
+          let Tb := constr:(@nil Type) in
+          papply cc F Tf Tb Ts As
+        | fun x => ?F (@?A x) (@?B x) (@?C x) (@?D x) (@?E x) (@?G x) (@?H x) (@?I x) (@?J x) (@?K x) =>
+          let As := constr:((A,(B,(C,(D,(E,(G,(H,(I,(J,(K,tt))))))))))) in
+          let Ts := getTypes As in
+          let Tf := type of F in
+          let Tb := constr:(@nil Type) in
+          papply cc F Tf Tb Ts As
+        | fun x => ?F (@?A x) (@?B x) (@?C x) (@?D x) (@?E x) (@?G x) (@?H x) (@?I x) (@?J x) =>
+          let As := constr:((A,(B,(C,(D,(E,(G,(H,(I,(J,tt)))))))))) in
+          let Ts := getTypes As in
+          let Tf := type of F in
+          let Tb := constr:(@nil Type) in
+          papply cc F Tf Tb Ts As
         | fun x => ?F (@?A x) (@?B x) (@?C x) (@?D x) (@?E x) (@?G x) (@?H x) (@?I x) =>
           let As := constr:((A,(B,(C,(D,(E,(G,(H,(I,tt))))))))) in
           let Ts := getTypes As in
