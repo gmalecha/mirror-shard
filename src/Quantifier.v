@@ -130,6 +130,9 @@ Section over_types.
     clear. induction a; simpl; intros; try f_equal; eauto.
   Qed.
 
+  Lemma appendQ_QBase_r : forall a, appendQ a QBase = a.
+  Proof. clear. induction a; simpl; intros; think; auto. Qed.
+
   Lemma appendQ_QAll : forall a b v,
     appendQ a (QAll v b) = appendQ (appendQ a (QAll v QBase)) b.
   Proof. clear.

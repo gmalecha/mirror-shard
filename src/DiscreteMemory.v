@@ -215,6 +215,15 @@ Module DiscreteHeap (B : Memory)
     { destruct H. destruct H. subst. simpl in *. eauto. }
   Qed.      
 
+  Theorem split_disjoint : forall a b c,
+    split a b c ->
+      (forall p, in_domain p b -> ~in_domain p c).
+  Proof.
+    unfold split, disjoint, join, smem, in_domain, smem_get.
+    generalize BD.all_addr. induction l; simpl; intros; auto.
+    destruct (addr_dec a p); subst; intuition; subst; eauto.
+  Qed.
+
   Theorem smem_get_sound : forall s m,
     models s m ->
     forall a v, smem_get a s = Some v ->

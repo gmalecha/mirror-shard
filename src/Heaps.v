@@ -63,6 +63,10 @@ Module Type SeparationMemory.
   Parameter split_in_domain : forall a b c,
     split a b c ->
     forall p, in_domain p a <-> (in_domain p b \/ in_domain p c).
+  
+  Parameter split_disjoint : forall a b c,
+    split a b c ->
+      (forall p, in_domain p b -> ~in_domain p c).
 
   Parameter memoryIn_sound : forall m,
     models (memoryIn m) m.
