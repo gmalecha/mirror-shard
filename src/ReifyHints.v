@@ -54,7 +54,6 @@ Module Make (SE : SepExpr.SepExpr) (SL : SepLemmaType SE).
   (* Now we repeat this sequence of tactics for reflection itself. *)
   
   Ltac reify_hint' pcType stateType isConst P types funcs preds vars k :=
-    idtac "P' = " P ;
     match P with
       | fun x => @?H x -> @?P x =>
         ReifyExpr.reify_expr isConst H types funcs (@nil tvar) vars ltac:(fun _ funcs H =>
@@ -62,28 +61,19 @@ Module Make (SE : SepExpr.SepExpr) (SL : SepLemmaType SE).
             let lem := eval simpl in (@SepLemma.Build_lemma types (@SL.sepConcl types) vars (H :: SepLemma.Hyps P) (SepLemma.Concl P)) in
             k funcs preds lem))
       | fun x => @SE.ST.himp (@?L x) (@?R x) =>
-        idtac "L = " L ;
         SEP_REIFY.reify_sexpr isConst L types funcs pcType stateType preds (@nil tvar) vars ltac:(fun _uvars funcs preds L =>
-          idtac "R = " R ;
           SEP_REIFY.reify_sexpr isConst R types funcs pcType stateType preds (@nil tvar) vars ltac:(fun _uvars funcs preds R =>
-            idtac "Lem = " ;
             let lem := constr:(@SepLemma.Build_lemma types (@SL.sepConcl types) vars nil (L, R)) in
-              idtac lem ;
             k funcs preds lem))
       | fun x => ?Z (@?L x) (@?R x) =>
         let a := constr:(@SE.ST.himp) in
-        idtac "in default case" Z a ;
-        idtac "L = " L ;
         SEP_REIFY.reify_sexpr isConst L types funcs pcType stateType preds (@nil tvar) vars ltac:(fun _ funcs preds L =>
-          idtac "R = " R ;
           SEP_REIFY.reify_sexpr isConst R types funcs pcType stateType preds (@nil tvar) vars ltac:(fun _ funcs preds R =>
-            idtac "Lem = " ;
             let lem := constr:(@SepLemma.Build_lemma types (@SL.sepConcl types) vars nil (L, R)) in
             k funcs preds lem))
     end.
 
   Ltac reify_hint pcType stateType isConst P types funcs preds vars k :=
-    idtac "P = " P ;
     match P with
       | fun xs : ?T => forall x : ?T', @?f xs x =>
         match T' with
@@ -106,17 +96,13 @@ Module Make (SE : SepExpr.SepExpr) (SL : SepLemmaType SE).
       | tt => k funcs preds (@nil (SepLemma.lemma types (@SL.sepConcl types))) || fail 2
       | (?P1, ?P2) =>
         reify_hints unfoldTac pcType stateType isConst P1 types funcs preds ltac:(fun funcs preds P1 =>
-          idtac P1 ;
           reify_hints unfoldTac pcType stateType isConst P2 types funcs preds ltac:(fun funcs preds P2 =>
-            idtac P2 ;
             k funcs preds (P1 ++ P2)))
         || fail 2
       | _ =>
-        idtac "HERE" ;
         let T := type of Ps in
         let T := eval simpl in T in
         let T := unfoldTac T in
-          idtac T ;
           reify_hint pcType stateType isConst (fun _ : ReifyExpr.VarType unit => T) types funcs preds (@nil tvar) ltac:(fun funcs preds P =>
             k funcs preds (P :: nil))
     end.
