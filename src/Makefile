@@ -10,6 +10,7 @@ MODULES    := Ordering \
 	Expr ReifyExpr ExprUnify \
 	Prover \
 	$(PROVERS:%=provers/%Prover) \
+	Provers \
 	SepExpr ReifySepExpr SepHeap SepUnify SepCancel \
 	Unfolder UnfolderTac ReifyHints SepLemma \
 	CancelTac CancelLoopTac \
