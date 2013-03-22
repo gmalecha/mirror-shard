@@ -36,25 +36,25 @@ Module ReifySepExpr (Import SEP : SepExpr).
    **)
   Ltac collectTypes_sexpr isConst s types k :=
     match s with
-      | fun x : ReifyExpr.VarType ?T => @ST.star _ _ _ (@?L x) (@?R x) =>
+      | fun x : ReifyExpr.VarType ?T => @ST.star (@?L x) (@?R x) =>
         collectTypes_sexpr isConst L types ltac:(fun types =>
           collectTypes_sexpr isConst R types k)
-      | fun x : ?T => @ST.ex _ _ _ ?T' (fun y : ?T' => @?B x y) =>
+      | fun x : ?T => @ST.ex ?T' (fun y : ?T' => @?B x y) =>
         let v := constr:(fun x : ReifyExpr.VarType (T * T') => 
           B (@openUp _ T (@fst _ _) x) (@openUp _ T' (@snd _ _) x)) in
         let v := eval simpl in v in
         collectTypes_sexpr isConst v types k
-      | fun x : ?T => @ST.inj _ _ _ (@?P x) =>
+      | fun x : ?T => @ST.inj (@?P x) =>
          collectTypes_expr isConst P types k
-      | fun x : ?T => @ST.emp _ _ _ => k types
-      | @ST.emp _ _ _ => k types
-      | @ST.inj _ _ _ ?P =>
+      | fun x : ?T => @ST.emp => k types
+      | @ST.emp => k types
+      | @ST.inj ?P =>
         collectTypes_expr isConst P types k
-      | @ST.inj _ _ _ ?PX => k types
-      | @ST.star _ _ _ ?L ?R =>
+      | @ST.inj ?PX => k types
+      | @ST.star ?L ?R =>
         collectTypes_sexpr isConst L types
           ltac:(fun Ltypes => collectTypes_sexpr isConst R Ltypes k)
-      | @ST.ex _ _ _ ?T (fun x : ?T => @?B x) =>
+      | @ST.ex ?T (fun x : ?T => @?B x) =>
         let v := constr:(fun x : ReifyExpr.VarType T => B (@openUp _ T (fun x => x) x)) in
         let v := eval simpl in v in 
         collectTypes_sexpr isConst v types k
@@ -117,7 +117,7 @@ Module ReifySepExpr (Import SEP : SepExpr).
   Ltac reify_sfunction pcT stT types f :=
     match f with
       | fun _ => _ =>
-        constr:(@PSig types pcT stT (@nil tvar) f)
+        constr:(@PSig types (@nil tvar) f)
       | _ =>
         let T := type of f in
           let rec refl dom T :=
@@ -129,7 +129,7 @@ Module ReifySepExpr (Import SEP : SepExpr).
                     refl dom B 
               | _ =>
                 let dom := eval simpl rev in (rev dom) in
-                  constr:(@PSig types pcT stT dom f)
+                  constr:(@PSig types dom f)
             end
             in refl (@nil tvar) T
     end.
@@ -152,7 +152,7 @@ Module ReifySepExpr (Import SEP : SepExpr).
            ** it instantiates unification variables that should not be instantiated
            **)
           match F with 
-            | @PSig _ _ _ _ ?F =>
+            | @PSig _ _ ?F =>
               match F with
                 | f => k sfuncs acc 
                 | _ => 
@@ -161,7 +161,7 @@ Module ReifySepExpr (Import SEP : SepExpr).
               end
             | _ => 
               match eval hnf in F with
-                | @PSig _ _ _ _ ?F =>
+                | @PSig _ _ ?F =>
                   match F with
                     | f => k sfuncs acc 
                     | _ => 
@@ -196,50 +196,50 @@ Module ReifySepExpr (Import SEP : SepExpr).
       match s with
         | fun _ => ?s =>
           reflect s funcs sfuncs uvars vars k
-        | fun x : ReifyExpr.VarType ?T => @ST.star _ _ _ (@?L x) (@?R x) =>
+        | fun x : ReifyExpr.VarType ?T => @ST.star (@?L x) (@?R x) =>
           reflect L funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs L =>
             reflect R funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs R => 
-              let r := constr:(@Star types pcType stateType L R) in
+              let r := constr:(@Star types L R) in
               k uvars funcs sfuncs r))
-        | fun x : ?T => @ST.ex _ _ _ ?T' (fun y => @?B x y) =>
+        | fun x : ?T => @ST.ex ?T' (fun y => @?B x y) =>
           let v := constr:(fun x : ReifyExpr.VarType (T' * T) => 
             B (@openUp _ T (@snd _ _) x) (@openUp _ T' (@fst _ _) x)) in
           let v := eval simpl in v in
           let nv := reflectType types T' in
           reflect v funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs B =>
-            let r := constr:(@Exists types pcType stateType nv B) in
+            let r := constr:(@Exists types nv B) in
             k uvars funcs sfuncs r)
-        | fun x : ?T => @ST.emp _ _ _ => 
+        | fun x : ?T => @ST.emp => 
           let r := constr:(@Emp types pcType stateType) in
           k uvars funcs sfuncs r
 
-        | fun x : ?T => @ST.inj _ _ _ (@?P x) =>
+        | fun x : ?T => @ST.inj (@?P x) =>
           reify_expr isConst P types funcs uvars vars ltac:(fun uvars funcs P =>
-            let r := constr:(@Inj types pcType stateType P) in
+            let r := constr:(@Inj types P) in
             k uvars funcs sfuncs r)
 
-        | @ST.emp _ _ _ => 
+        | @ST.emp => 
           let r := constr:(@Emp types pcType stateType) in
           k uvars funcs sfuncs r
 
-        | @ST.inj _ _ _ ?P =>
+        | @ST.inj ?P =>
           reify_expr isConst P types funcs uvars vars ltac:(fun uvars funcs P =>
-            let r := constr:(@Inj types pcType stateType P) in
+            let r := constr:(@Inj types P) in
             k uvars funcs sfuncs r)
-        | @ST.inj _ _ _ ?PX =>
-          let r := constr:(@Const types pcType stateType PX) in
+        | @ST.inj ?PX =>
+          let r := constr:(@Const types PX) in
           k uvars funcs sfuncs r
-        | @ST.star _ _ _ ?L ?R =>
+        | @ST.star ?L ?R =>
           reflect L funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs L => 
             reflect R funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs R => 
-              let r := constr:(@Star types pcType stateType L R) in
+              let r := constr:(@Star types L R) in
               k uvars funcs sfuncs r))
-        | @ST.ex _ _ _ ?T (fun x => @?B x) =>
+        | @ST.ex ?T (fun x => @?B x) =>
           let v := constr:(fun x : ReifyExpr.VarType (T * unit) => B (@openUp _ T (@fst _ _) x)) in
           let v := eval simpl in v in
           let nv := reflectType types T in
           reflect v funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs B =>
-            let r := constr:(@Exists types pcType stateType nv B) in
+            let r := constr:(@Exists types nv B) in
             k uvars funcs sfuncs r)
         | ?X =>
           let rec bt_args args uvars funcs k :=
@@ -257,7 +257,7 @@ Module ReifySepExpr (Import SEP : SepExpr).
           let cc f Ts As :=
             getSFunction pcType stateType types f sfuncs ltac:(fun sfuncs F =>
             bt_args As uvars funcs ltac:(fun uvars funcs args =>
-            let r := constr:(@Func types pcType stateType F args) in
+            let r := constr:(@Func types F args) in
             k uvars funcs sfuncs r))
           in
           refl_app cc X

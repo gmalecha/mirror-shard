@@ -68,8 +68,8 @@ Remove Hints FM.Raw.Proofs.L.PX.eqk_refl FM.Raw.Proofs.L.PX.eqk_sym
 
 Module Type Unfolder.
   Declare Module SH : SepHeap.
+  Declare Module LEM : SepLemma.SepLemmaType SH.SE.
   Module ST_EXT := SepTheory.SepTheory_Ext SH.SE.ST.
-  Module LEM := SepLemma.SepLemma SH.SE.
   
   Section parametric.
     Variable types : list type.
@@ -158,12 +158,15 @@ Module Type Unfolder.
   End parametric.
 End Unfolder.
 
-Module Make (SH : SepHeap) (U : Unifier) <: Unfolder with Module SH := SH.
+Module Make (SH : SepHeap) (U : Unifier) 
+            (LEM : SepLemma.SepLemmaType SH.SE)
+            <: Unfolder with Module SH := SH
+                        with Module LEM := LEM.
   Module Import SH := SH.
   Module HEAP_FACTS := SepHeapFacts SH.
+  Module LEM := LEM.
   Import HEAP_FACTS.
   Module ST_EXT := SepTheory.SepTheory_Ext SE.ST.
-  Module LEM := SepLemma.SepLemma SH.SE.
 
   Section env.
     Variable types : list type.

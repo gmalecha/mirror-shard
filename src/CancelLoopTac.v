@@ -8,11 +8,9 @@ Require UnfolderTac CancelTac.
 Set Implicit Arguments.
 Set Strict Implicit.
 
+Module CancelLoopTac (SH : SepHeap.SepHeap) (SL : SepLemma.SepLemmaType SH.SE).
 
-
-Module CancelLoopTac (SH : SepHeap.SepHeap).
-
-Module UNF := Unfolder.Make SH ExprUnify.UNIFIER.
+Module UNF := Unfolder.Make SH ExprUnify.UNIFIER SL.
 Module UNF_TAC := UnfolderTac.UnfolderTac UNF.
 
 Module CANCEL := SepCancel.Make ExprUnify.UNIFIER SH.
