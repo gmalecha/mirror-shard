@@ -44,6 +44,12 @@ Module ReifySepExpr (Import SEP : SepExpr).
           B (@openUp _ T (@fst _ _) x) (@openUp _ T' (@snd _ _) x)) in
         let v := eval simpl in v in
         collectTypes_sexpr isConst v types k
+      | fun x : ?T => @ST.ex ?T' (@?B x) =>
+        let v := constr:(fun x : ReifyExpr.VarType (T * T') => 
+          B (@openUp _ T (@fst _ _) x) (@openUp _ T' (@snd _ _) x)) in
+        let v := eval simpl in v in
+        collectTypes_sexpr isConst v types k
+
       | fun x : ?T => @ST.inj (@?P x) =>
          collectTypes_expr isConst P types k
       | fun x : ?T => @ST.emp => k types
@@ -55,6 +61,10 @@ Module ReifySepExpr (Import SEP : SepExpr).
         collectTypes_sexpr isConst L types
           ltac:(fun Ltypes => collectTypes_sexpr isConst R Ltypes k)
       | @ST.ex ?T (fun x : ?T => @?B x) =>
+        let v := constr:(fun x : ReifyExpr.VarType T => B (@openUp _ T (fun x => x) x)) in
+        let v := eval simpl in v in 
+        collectTypes_sexpr isConst v types k
+      | @ST.ex ?T ?B =>
         let v := constr:(fun x : ReifyExpr.VarType T => B (@openUp _ T (fun x => x) x)) in
         let v := eval simpl in v in 
         collectTypes_sexpr isConst v types k
@@ -189,10 +199,8 @@ Module ReifySepExpr (Import SEP : SepExpr).
    ** sexpr.
    **)
   Ltac reify_sexpr isConst s types funcs pcType stateType sfuncs uvars vars k :=
-    let implicits ctor :=
-      constr:(ctor types pcType stateType)
-    in
     let rec reflect s funcs sfuncs uvars vars k :=
+      let v := ST.ex in
       match s with
         | fun _ => ?s =>
           reflect s funcs sfuncs uvars vars k
@@ -209,8 +217,18 @@ Module ReifySepExpr (Import SEP : SepExpr).
           reflect v funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs B =>
             let r := constr:(@Exists types nv B) in
             k uvars funcs sfuncs r)
+
+        | fun x : ?T => @ST.ex ?T' (@?B x) =>
+          let v := constr:(fun x : ReifyExpr.VarType (T' * T) => 
+            B (@openUp _ T (@snd _ _) x) (@openUp _ T' (@fst _ _) x)) in
+          let v := eval simpl in v in
+          let nv := reflectType types T' in
+          reflect v funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs B =>
+            let r := constr:(@Exists types nv B) in
+            k uvars funcs sfuncs r)
+
         | fun x : ?T => @ST.emp => 
-          let r := constr:(@Emp types pcType stateType) in
+          let r := constr:(@Emp types) in
           k uvars funcs sfuncs r
 
         | fun x : ?T => @ST.inj (@?P x) =>
@@ -219,7 +237,7 @@ Module ReifySepExpr (Import SEP : SepExpr).
             k uvars funcs sfuncs r)
 
         | @ST.emp => 
-          let r := constr:(@Emp types pcType stateType) in
+          let r := constr:(@Emp types) in
           k uvars funcs sfuncs r
 
         | @ST.inj ?P =>
@@ -235,6 +253,13 @@ Module ReifySepExpr (Import SEP : SepExpr).
               let r := constr:(@Star types L R) in
               k uvars funcs sfuncs r))
         | @ST.ex ?T (fun x => @?B x) =>
+          let v := constr:(fun x : ReifyExpr.VarType (T * unit) => B (@openUp _ T (@fst _ _) x)) in
+          let v := eval simpl in v in
+          let nv := reflectType types T in
+          reflect v funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs B =>
+            let r := constr:(@Exists types nv B) in
+            k uvars funcs sfuncs r)
+        | @ST.ex ?T ?B =>
           let v := constr:(fun x : ReifyExpr.VarType (T * unit) => B (@openUp _ T (@fst _ _) x)) in
           let v := eval simpl in v in
           let nv := reflectType types T in
@@ -264,5 +289,17 @@ Module ReifySepExpr (Import SEP : SepExpr).
       end
     in
     reflect s funcs sfuncs uvars vars k.
+
+(*
+  Parameter f : nat -> nat -> ST.hprop.
+
+  Check @Exists.
+
+  Goal True.
+    let isConst x := false in
+    let types := constr:(default_type nat :: nil) in
+    reify_sexpr isConst (ST.ex (fun x => (ST.ex (f x)))) types (@nil (Expr.signature types)) (tvType 0) (tvType 1) (@nil (SEP.predicate types)) tt tt ltac:(fun u f p s => pose s).
+*)
+
 
 End ReifySepExpr.

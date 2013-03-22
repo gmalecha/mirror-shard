@@ -66,7 +66,6 @@ Module Make (SE : SepExpr.SepExpr) (SL : SepLemmaType SE).
             let lem := constr:(@SepLemma.Build_lemma types (@SL.sepConcl types) vars nil (L, R)) in
             k funcs preds lem))
       | fun x => ?Z (@?L x) (@?R x) =>
-        let a := constr:(@SE.ST.himp) in
         SEP_REIFY.reify_sexpr isConst L types funcs pcType stateType preds (@nil tvar) vars ltac:(fun _ funcs preds L =>
           SEP_REIFY.reify_sexpr isConst R types funcs pcType stateType preds (@nil tvar) vars ltac:(fun _ funcs preds R =>
             let lem := constr:(@SepLemma.Build_lemma types (@SL.sepConcl types) vars nil (L, R)) in
@@ -103,14 +102,17 @@ Module Make (SE : SepExpr.SepExpr) (SL : SepLemmaType SE).
         let T := type of Ps in
         let T := eval simpl in T in
         let T := unfoldTac T in
+        idtac T ;
+        let v := SE.ST.himp in
+          idtac v ;
           reify_hint pcType stateType isConst (fun _ : ReifyExpr.VarType unit => T) types funcs preds (@nil tvar) ltac:(fun funcs preds P =>
             k funcs preds (P :: nil))
     end.
 
 (*
-  Parameter f : nat -> SE.ST.hprop.
-  Theorem foo : forall x, SE.ST.himp (f x) (f x).
-  Proof. reflexivity. Qed.
+  Parameter f : nat -> nat -> SE.ST.hprop.
+  Theorem foo : SE.ST.himp (SE.ST.ex (fun x => (SE.ST.ex (f x)))) SE.ST.emp.
+  Proof. Admitted.
 
   Goal True.
     let isConst x := false in
