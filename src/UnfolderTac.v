@@ -8,14 +8,18 @@ Require SepHeap.
 Set Implicit Arguments.
 Set Strict Implicit.
 
-Module UnfolderTac (UNF : Unfolder.Unfolder).
-  Module SH_UTIL := SepHeap.SepHeapFacts UNF.SH.
-  Module SE_EXT := SepExpr.SepExprFacts UNF.SH.SE.
+Module UnfolderTac (ST : SepTheory.SepTheory)
+                   (SE : SepExpr ST)
+                   (SH : SepHeap.SepHeap ST SE)
+                   (LEM : SepLemma.SepLemmaType ST SE)
+                   (UNF : Unfolder.Unfolder ST SE SH LEM).
+  Module SH_UTIL := SepHeap.SepHeapFacts ST SE SH.
+  Module SE_EXT := SepExpr.SepExprFacts ST SE.
 
 Section unfolder.
   Variable types : list type.
   Variable funcs : functions types.
-  Variable preds : UNF.SH.SE.predicates types.
+  Variable preds : SE.predicates types.
   Variable prover : ProverT types.
   Variable facts : Facts prover.
   Variable hintsFwd : UNF.hintSide types.
@@ -24,13 +28,13 @@ Section unfolder.
   Record unfolderResult : Type :=
   { Alls : list tvar
   ; Exs  : list tvar
-  ; Lhs  : UNF.SH.SHeap types
-  ; Rhs  : UNF.SH.SHeap types
+  ; Lhs  : SH.SHeap types
+  ; Rhs  : SH.SHeap types
   ; Know : Facts prover
   }.
 
   Definition unfold (uvars : list tvar)
-    (ql : list tvar) (lhs rhs : UNF.SH.SHeap types) : unfolderResult * bool :=
+    (ql : list tvar) (lhs rhs : SH.SHeap types) : unfolderResult * bool :=
     let pre :=
       {| UNF.Vars  := ql
        ; UNF.UVars := uvars
@@ -45,7 +49,7 @@ Section unfolder.
            ; UNF.Heap  := rhs
           |}
         in
-        let facts' := Learn _ facts (UNF.SH.pures lhs) in
+        let facts' := Learn _ facts (SH.pures lhs) in
         match UNF.refineBackward prover hintsBwd 10 facts' post with
           | ({| UNF.Vars := vars' ; UNF.UVars := uvars' ; UNF.Heap := rhs |}, bprog) =>
             let new_vars  := skipn (length ql) vars' in
@@ -81,8 +85,8 @@ Section unfolder.
   Lemma ApplyUnfold_with_eq' : 
     forall (var_env meta_env : env types),
     Valid prover_Correct meta_env var_env facts ->
-    forall (l r : UNF.SH.SHeap types) res,
-    forall (WTR : UNF.SH.WellTyped_sheap (typeof_funcs funcs) (UNF.SH.SE.typeof_preds preds) (typeof_env meta_env) (typeof_env var_env) r = true) b,
+    forall (l r : SH.SHeap types) res,
+    forall (WTR : SH.WellTyped_sheap (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env meta_env) (typeof_env var_env) r = true) b,
     unfold (typeof_env meta_env) (typeof_env var_env) l r = (res, b) ->
     match res with
       | {| Alls := new_vars
@@ -91,25 +95,25 @@ Section unfolder.
          ; Rhs  := rhs'
          ; Know := facts'
          |} =>
-      UNF.SH.WellTyped_sheap (typeof_funcs funcs) (UNF.SH.SE.typeof_preds preds)
+      SH.WellTyped_sheap (typeof_funcs funcs) (SE.typeof_preds preds)
         (typeof_env meta_env) (typeof_env var_env ++ new_vars) lhs' = true ->
-      UNF.SH.WellTyped_sheap (typeof_funcs funcs) (UNF.SH.SE.typeof_preds preds)
+      SH.WellTyped_sheap (typeof_funcs funcs) (SE.typeof_preds preds)
         (typeof_env meta_env ++ new_uvars) (typeof_env var_env ++ new_vars) rhs' = true ->
       Expr.forallEach new_vars (fun nvs : Expr.env types =>
         let var_env := var_env ++ nvs in
           Valid prover_Correct meta_env var_env facts' ->
           Expr.AllProvable_impl funcs meta_env var_env
-          (UNF.SH.SE.ST.himp
-            (UNF.SH.SE.sexprD funcs preds meta_env var_env
-              (UNF.SH.sheapD (UNF.SH.Build_SHeap (UNF.SH.impures lhs') nil (UNF.SH.other lhs'))))
+          (ST.himp
+            (SE.sexprD funcs preds meta_env var_env
+              (SH.sheapD (SH.Build_SHeap (SH.impures lhs') nil (SH.other lhs'))))
             (UNF.ST_EXT.existsEach (typeD := tvarD types) new_uvars (fun menv : Expr.env types =>
               let meta_env := meta_env ++ menv in
-              UNF.SH.SE.sexprD funcs preds meta_env var_env
-              (UNF.SH.sheapD rhs'))))
-          (UNF.SH.pures lhs'))
+              SE.sexprD funcs preds meta_env var_env
+              (SH.sheapD rhs'))))
+          (SH.pures lhs'))
     end ->
-    UNF.SH.SE.ST.himp (@UNF.SH.SE.sexprD _ funcs preds meta_env var_env (UNF.SH.sheapD l))
-                      (@UNF.SH.SE.sexprD _ funcs preds meta_env var_env (UNF.SH.sheapD r)).
+    ST.himp (@SE.sexprD _ funcs preds meta_env var_env (SH.sheapD l))
+                      (@SE.sexprD _ funcs preds meta_env var_env (SH.sheapD r)).
   Proof.
     Opaque Env.repr.
     intros. unfold unfold in *.
@@ -129,19 +133,19 @@ Section unfolder.
 
     assert (UVars = typeof_env meta_env /\ 
       typeof_env var_env = firstn (length var_env) Vars /\
-    UNF.SH.SE.ST.himp 
-      (UNF.SH.SE.sexprD funcs preds meta_env var_env (UNF.SH.sheapD l))
+    ST.himp 
+      (SE.sexprD funcs preds meta_env var_env (SH.sheapD l))
       (UNF.ST_EXT.existsEach (skipn (length var_env) Vars)
         (fun vars_ext : list {t : tvar & tvarD types t} =>
-          UNF.SH.SE.sexprD funcs preds meta_env 
-          (var_env ++ vars_ext) (UNF.SH.sheapD Lhs0)))).
+          SE.sexprD funcs preds meta_env 
+          (var_env ++ vars_ext) (SH.sheapD Lhs0)))).
     { clear H2 H1. 
       generalize (UNF.refineForward_Length H0).
       eapply UNF.refineForward_Ok in H0; eauto using typeof_env_WellTyped_env.
       intro. destruct H1. destruct H1. simpl in *. split; auto. split; auto.
       subst.
       rewrite ListFacts.firstn_app_exact; auto. unfold typeof_env. rewrite map_length. auto.
-      simpl; rewrite UNF.SH.WellTyped_sheap_WellTyped_sexpr; eassumption. }
+      simpl; rewrite SH.WellTyped_sheap_WellTyped_sexpr; eassumption. }
     destruct H4. destruct H7. rewrite H8; clear H8.
     rewrite UNF.ST_EXT.himp_existsEach_p; [ reflexivity | intros ].
 
@@ -164,11 +168,11 @@ Section unfolder.
 
       Focus 2. simpl. rewrite H10; clear H10. subst; simpl.
       clear - WTR.
-      repeat rewrite UNF.SH.WellTyped_sheap_WellTyped_sexpr in *.
+      repeat rewrite SH.WellTyped_sheap_WellTyped_sexpr in *.
       eapply SH_UTIL.SEP_FACTS.WellTyped_sexpr_weaken with (U' := nil) in WTR. rewrite app_nil_r in WTR. eauto.
       
       { simpl in *.
-        rewrite SH_UTIL.SEP_FACTS.sexprD_weaken_wt with (U' := nil) (G' := G) (s := UNF.SH.sheapD r).
+        rewrite SH_UTIL.SEP_FACTS.sexprD_weaken_wt with (U' := nil) (G' := G) (s := SH.sheapD r).
         rewrite app_nil_r.
         rewrite <- H2; clear H2. subst UVars0 Alls0.
         eapply forallEach_sem in H1.
@@ -183,22 +187,22 @@ Section unfolder.
         subst Know0. eapply Learn_correct; eauto. rewrite <- app_nil_r with (l := meta_env). eapply Valid_weaken. auto.
 
         Focus 3.
-        rewrite <- UNF.SH.WellTyped_sheap_WellTyped_sexpr. eassumption. 
+        rewrite <- SH.WellTyped_sheap_WellTyped_sexpr. eassumption. 
 
         Focus 2.
         revert H13. intro. cutrewrite (length (typeof_env var_env) = length var_env).
         rewrite <- H10. rewrite <- H13. f_equal.
         rewrite <- H6. rewrite <- H4. f_equal. rewrite ListFacts.rw_skipn_app; auto.
         rewrite H10. rewrite H4. rewrite <- app_nil_r with (l := typeof_env meta_env).
-        repeat rewrite UNF.SH.WellTyped_sheap_WellTyped_sexpr in *.
+        repeat rewrite SH.WellTyped_sheap_WellTyped_sexpr in *.
         eapply SH_UTIL.SEP_FACTS.WellTyped_sexpr_weaken. eassumption.
         unfold typeof_env. rewrite map_length. auto.
 
         eapply UNF.refineForward_WellTyped in H0; simpl in *; try eassumption.
         Focus 2.
-        repeat rewrite UNF.SH.WellTyped_sheap_WellTyped_sexpr in *. eassumption.
+        repeat rewrite SH.WellTyped_sheap_WellTyped_sexpr in *. eassumption.
         rewrite H10 in *. rewrite H4 in H0.
-        rewrite UNF.SH.WellTyped_sheap_WellTyped_sexpr in *.
+        rewrite SH.WellTyped_sheap_WellTyped_sexpr in *.
         rewrite ListFacts.rw_skipn_app by reflexivity. 
         eassumption. }
 

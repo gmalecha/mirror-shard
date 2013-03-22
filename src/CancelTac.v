@@ -7,8 +7,11 @@ Require ExprUnify.
 Set Implicit Arguments.
 Set Strict Implicit.
 
-Module CancellerTac (C : Canceller).
-  Module SH_FACTS := SepHeap.SepHeapFacts C.SH.
+Module CancellerTac (ST : SepTheory.SepTheory)
+                    (SE : SepExpr ST)
+                    (SH : SepHeap ST SE)
+                    (C : Canceller ST SE SH).
+  Module SH_FACTS := SepHeap.SepHeapFacts ST SE SH.
   
 Section existsSubst.
   Variable types : list type.
@@ -110,19 +113,19 @@ Qed.
 Section canceller.
   Variable types : list type.
   Variable funcs : functions types.
-  Variable preds : C.SH.SE.predicates types.
+  Variable preds : SE.predicates types.
   Variable prover : ProverT types.
 
   Record CancellerResult : Type :=
-  { Lhs    : C.SH.SHeap types
-  ; Rhs    : C.SH.SHeap types
+  { Lhs    : SH.SHeap types
+  ; Rhs    : SH.SHeap types
   ; Subst  : C.U.Subst types
   }.
   
   Let bound := 10.
 
   Definition canceller tpreds (facts : Facts prover)
-    (lhs rhs : C.SH.SHeap types) (sub : C.U.Subst types) : CancellerResult * bool :=
+    (lhs rhs : SH.SHeap types) (sub : C.U.Subst types) : CancellerResult * bool :=
     match C.sepCancel prover bound tpreds facts lhs rhs sub with
       | Some (l,r,s) =>
         ({| Lhs := l ; Rhs := r ; Subst := s |}, true)
@@ -170,33 +173,33 @@ Section canceller.
     (facts : Facts prover) (sub : C.U.Subst _),
     Valid PC meta_env var_env facts ->
     C.U.Subst_equations funcs meta_env var_env sub ->
-    forall (l r : C.SH.SHeap types) res prog,
-    forall (WTR : C.SH.WellTyped_sheap (typeof_funcs funcs) (C.SH.SE.typeof_preds preds) (typeof_env meta_env) (typeof_env var_env) r = true),
-    forall (WTL : C.SH.WellTyped_sheap (typeof_funcs funcs) (C.SH.SE.typeof_preds preds) (typeof_env meta_env) (typeof_env var_env) l = true),
-    canceller (C.SH.SE.typeof_preds preds) facts l r sub = (res, prog) ->
+    forall (l r : SH.SHeap types) res prog,
+    forall (WTR : SH.WellTyped_sheap (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env meta_env) (typeof_env var_env) r = true),
+    forall (WTL : SH.WellTyped_sheap (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env meta_env) (typeof_env var_env) l = true),
+    canceller (SE.typeof_preds preds) facts l r sub = (res, prog) ->
     match res with
       | {| Lhs    := lhs'
          ; Rhs    := rhs'
          ; Subst  := subst
          |} =>
       C.U.Subst_Extends subst sub ->
-      C.SH.WellTyped_sheap (typeof_funcs funcs) (C.SH.SE.typeof_preds preds) (typeof_env meta_env) (typeof_env var_env) lhs' = true ->
-      C.SH.WellTyped_sheap (typeof_funcs funcs) (C.SH.SE.typeof_preds preds) (typeof_env meta_env) (typeof_env var_env) rhs' = true ->
+      SH.WellTyped_sheap (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env meta_env) (typeof_env var_env) lhs' = true ->
+      SH.WellTyped_sheap (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env meta_env) (typeof_env var_env) rhs' = true ->
         existsSubst funcs var_env subst 0 
           (map (fun x => existT (fun t => option (tvarD types t)) (projT1 x) (Some (projT2 x))) meta_env)
           (fun meta_env : Expr.env types =>
-            C.SH.SE.ST.himp
-              (C.SH.SE.sexprD funcs preds meta_env var_env (C.SH.sheapD lhs'))
-              (C.SH.SE.sexprD funcs preds meta_env var_env (C.SH.sheapD rhs')))
+            ST.himp
+              (SE.sexprD funcs preds meta_env var_env (SH.sheapD lhs'))
+              (SE.sexprD funcs preds meta_env var_env (SH.sheapD rhs')))
               
     end ->
-    C.SH.SE.ST.himp (@C.SH.SE.sexprD _ funcs preds meta_env var_env (C.SH.sheapD l))
-                    (@C.SH.SE.sexprD _ funcs preds meta_env var_env (C.SH.sheapD r)).
+    ST.himp (@SE.sexprD _ funcs preds meta_env var_env (SH.sheapD l))
+                    (@SE.sexprD _ funcs preds meta_env var_env (SH.sheapD r)).
   Proof.
     Opaque Env.repr.
     intros. unfold canceller in *.
 
-    consider (C.sepCancel prover bound (C.SH.SE.typeof_preds preds) facts l r sub); intros.
+    consider (C.sepCancel prover bound (SE.typeof_preds preds) facts l r sub); intros.
     { destruct p. destruct p. inversion H3; clear H3; subst.
       generalize H1. simpl in *. intros;  eapply C.sepCancel_PureFacts in H1; intuition eauto.
 
@@ -227,8 +230,8 @@ Section canceller.
 
   Theorem canceller_PuresPrem : forall tp U G bound s l r cr b,
       canceller bound tp l r s = (cr, b) ->
-      AllProvable funcs U G (C.SH.pures l) ->
-      AllProvable funcs U G (C.SH.pures (Lhs cr)).
+      AllProvable funcs U G (SH.pures l) ->
+      AllProvable funcs U G (SH.pures (Lhs cr)).
   Proof.
     clear; unfold canceller; simpl in *; intros.
     consider (C.sepCancel prover bound bound0 tp l r s); intros.
@@ -240,17 +243,17 @@ Section canceller.
   (** Shouldn't be necessary any more **)
   Theorem canceller_PureFacts : forall tU tG facts l r s cr b,
       let tf := typeof_funcs funcs in
-      let tp := C.SH.SE.typeof_preds preds in
+      let tp := SE.typeof_preds preds in
       canceller tp facts l r s = (cr,b) ->
       C.U.Subst_WellTyped tf tU tG s ->
-      C.SH.WellTyped_sheap tf tp tU tG l = true ->
-      C.SH.WellTyped_sheap tf tp tU tG r = true ->
+      SH.WellTyped_sheap tf tp tU tG l = true ->
+      SH.WellTyped_sheap tf tp tU tG r = true ->
          C.U.Subst_WellTyped (types := types) tf tU tG (Subst cr) 
-      /\ C.SH.WellTyped_sheap (types := types) tf tp tU tG (Lhs cr) = true
-      /\ C.SH.WellTyped_sheap (types := types) tf tp tU tG (Rhs cr) = true.
+      /\ SH.WellTyped_sheap (types := types) tf tp tU tG (Lhs cr) = true
+      /\ SH.WellTyped_sheap (types := types) tf tp tU tG (Rhs cr) = true.
   Proof.
     clear. unfold canceller; simpl in *; intros.
-    consider (C.sepCancel prover bound (C.SH.SE.typeof_preds preds) facts l r s); intros.
+    consider (C.sepCancel prover bound (SE.typeof_preds preds) facts l r s); intros.
     destruct p. destruct p. inversion H3; clear H3; subst.
     eapply C.sepCancel_PureFacts in H; intuition eauto.
     inversion H3; clear H3; subst; auto.

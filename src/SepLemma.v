@@ -92,7 +92,7 @@ Section typed.
 
 End typed.
 
-Module Type SepLemmaType (SE : SepExpr).
+Module Type SepLemmaType (ST : SepTheory.SepTheory) (SE : SepExpr ST).
 
   Section typed.
     Variable types : list type.
@@ -127,7 +127,7 @@ Module Type SepLemmaType (SE : SepExpr).
 
 End SepLemmaType.
 
-Module SepLemma (SE : SepExpr) <: SepLemmaType SE.
+Module SepLemma (ST : SepTheory.SepTheory) (SE : SepExpr ST) <: SepLemmaType ST SE.
 
   Section typed.
     Variable types : list type.

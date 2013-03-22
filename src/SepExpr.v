@@ -12,8 +12,7 @@ Definition BadInj types (e : expr types) := False.
 Definition BadPred (f : func) := False.
 Definition BadPredApply types (f : func) (es : list (expr types)) (_ : env types) := False.
 
-Module Type SepExpr.
-  Declare Module ST : SepTheory.SepTheory.
+Module Type SepExpr (ST : SepTheory.SepTheory).
 
   Section env.
     Variable types : list type.
@@ -134,8 +133,8 @@ End SepExpr.
 
 Require Import Reflection.
 
-Module SepExprFacts (SE : SepExpr).
-  Module SEP_FACTS := SepTheory_Rewrites SE.ST.
+Module SepExprFacts (ST : SepTheory) (SE : SepExpr ST).
+  Module SEP_FACTS := SepTheory_Rewrites ST.
 
   Section env.
     Variable types : list type.
@@ -179,14 +178,14 @@ Module SepExprFacts (SE : SepExpr).
        @SE.himp types funcs preds U G Q P) <->
       (@SE.heq types funcs preds U G P Q).
     Proof.
-      unfold SE.heq, SE.himp. intros; apply SE.ST.heq_defn. 
+      unfold SE.heq, SE.himp. intros; apply ST.heq_defn. 
     Qed.
 
     Lemma heq_himp : forall P Q,
       @SE.heq types funcs preds U G P Q ->
       @SE.himp types funcs preds U G P Q.
     Proof.
-      unfold SE.heq, SE.himp. intros. apply SE.ST.heq_defn in H; intuition.
+      unfold SE.heq, SE.himp. intros. apply ST.heq_defn in H; intuition.
     Qed.
 
     Lemma himp_not_WellTyped : forall tfuncs tG tU f P Q l,
@@ -200,11 +199,11 @@ Module SepExprFacts (SE : SepExpr).
       SE.himp funcs preds U G (SE.Star (SE.Func f l) P) Q.
     Proof.
       intros. unfold SE.himp in *; simpl in *. consider (nth_error preds f); intros;
-        try solve [ eapply SE.ST.himp_star_pure_c; contradiction ].
+        try solve [ eapply ST.himp_star_pure_c; contradiction ].
       match goal with
         | [ |- context [ match ?X with | _ => _ end ] ] =>
           case_eq X
-      end; intros; try solve [ eapply SE.ST.himp_star_pure_c; contradiction ].
+      end; intros; try solve [ eapply ST.himp_star_pure_c; contradiction ].
       specialize (H3 _ refl_equal). rewrite <- H3. rewrite H4. reflexivity.
 
       clear H2. clear H3. destruct p; simpl in *. generalize dependent l.
@@ -260,14 +259,14 @@ Module SepExprFacts (SE : SepExpr).
     Qed.
 
     Global Add Parametric Morphism : (SE.sexprD funcs preds U G) with 
-      signature (SE.heq funcs preds U G ==> SE.ST.heq)
+      signature (SE.heq funcs preds U G ==> ST.heq)
       as heq_ST_heq_mor.
     Proof.
       unfold SE.heq; simpl; auto.
     Qed.
 
     Global Add Parametric Morphism : (SE.sexprD funcs preds U G) with 
-      signature (SE.himp funcs preds U G ==> SE.ST.himp)
+      signature (SE.himp funcs preds U G ==> ST.himp)
       as himp_ST_himp_mor.
     Proof.
       unfold SE.himp; simpl; auto.
@@ -288,13 +287,13 @@ Module SepExprFacts (SE : SepExpr).
     Lemma heq_star_assoc : forall P Q R, 
       SE.heq funcs preds U G (SE.Star (SE.Star P Q) R) (SE.Star P (SE.Star Q R)).
     Proof.
-      unfold SE.heq; simpl; intros; autorewrite with hprop. rewrite SE.ST.heq_star_assoc. reflexivity.
+      unfold SE.heq; simpl; intros; autorewrite with hprop. rewrite ST.heq_star_assoc. reflexivity.
     Qed.
 
     Lemma heq_star_comm : forall P Q, 
       SE.heq funcs preds U G (SE.Star P Q) (SE.Star Q P).
     Proof.
-      unfold SE.heq; simpl; intros; apply SE.ST.heq_star_comm.
+      unfold SE.heq; simpl; intros; apply ST.heq_star_comm.
     Qed.
 
     Lemma heq_star_frame : forall P Q R S, 
@@ -302,7 +301,7 @@ Module SepExprFacts (SE : SepExpr).
       SE.heq funcs preds U G Q S ->
       SE.heq funcs preds U G (SE.Star P Q) (SE.Star R S).
     Proof.
-      unfold SE.heq; simpl; intros. eapply SE.ST.heq_star_frame; auto.
+      unfold SE.heq; simpl; intros. eapply ST.heq_star_frame; auto.
     Qed.
     
     Lemma himp_star_frame : forall P Q R S,
@@ -421,16 +420,16 @@ Module SepExprFacts (SE : SepExpr).
 
     Theorem sexprD_weaken_wt : forall U U' G' s G,
       SE.WellTyped_sexpr (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env U) (typeof_env G) s = true -> 
-      SE.ST.heq (SE.sexprD funcs preds U G s) 
+      ST.heq (SE.sexprD funcs preds U G s) 
                 (SE.sexprD funcs preds (U ++ U') (G ++ G') s).
     Proof.
       induction s; simpl; intros; think; try reflexivity.
       { consider (exprD funcs U G e tvProp); intros.
         erewrite exprD_weaken by eauto. reflexivity.
-        rewrite <- SE.ST.heq_star_emp_r.
+        rewrite <- ST.heq_star_emp_r.
         eapply is_well_typed_correct in H; eauto using typeof_env_WellTyped_env, typeof_funcs_WellTyped_funcs.
         rewrite H0 in H. exfalso; destruct H; congruence. }
-      { eapply SE.ST.heq_ex. intros. rewrite IHs; eauto. reflexivity. }
+      { eapply ST.heq_ex. intros. rewrite IHs; eauto. reflexivity. }
       { unfold SE.typeof_preds in *. rewrite map_nth_error_full in H.
         consider (nth_error preds f); intros; try reflexivity. inversion H1; subst.
         clear H1 H. destruct p; simpl in *. generalize dependent SDomain.
@@ -440,38 +439,38 @@ Module SepExprFacts (SE : SepExpr).
     Qed.
  
     Theorem sexprD_weaken : forall s U G G' U',
-      SE.ST.himp (SE.sexprD funcs preds U G s) 
+      ST.himp (SE.sexprD funcs preds U G s) 
                     (SE.sexprD funcs preds (U ++ U') (G ++ G') s).
     Proof.
       induction s; simpl; intros; try reflexivity.
       { consider (exprD funcs U G e tvProp); intros.
         erewrite exprD_weaken by eauto. reflexivity.
-        rewrite <- SE.ST.heq_star_emp_r.
-        eapply SE.ST.himp_star_pure_c. contradiction. }
+        rewrite <- ST.heq_star_emp_r.
+        eapply ST.himp_star_pure_c. contradiction. }
       { rewrite IHs1. rewrite IHs2. reflexivity. }
-      { apply SE.ST.himp_ex. intros. rewrite IHs with (U' := U') (G' := G'). reflexivity. }
+      { apply ST.himp_ex. intros. rewrite IHs with (U' := U') (G' := G'). reflexivity. }
       { destruct (nth_error preds f); try reflexivity.
         match goal with
-          | [ |- SE.ST.himp match ?X with _ => _ end _ ] => 
+          | [ |- ST.himp match ?X with _ => _ end _ ] => 
             consider X
         end; intros.
         erewrite Expr.applyD_weaken by eauto. reflexivity.
-        rewrite <- SE.ST.heq_star_emp_r.
-        eapply SE.ST.himp_star_pure_c. unfold BadPredApply. contradiction. }
+        rewrite <- ST.heq_star_emp_r.
+        eapply ST.himp_star_pure_c. unfold BadPredApply. contradiction. }
     Qed.
 
     Theorem liftSExpr_sexprD : forall s U U' U'' G G' G'', 
-      SE.ST.heq (SE.sexprD funcs preds (U ++ U') (G ++ G') s)
+      ST.heq (SE.sexprD funcs preds (U ++ U') (G ++ G') s)
                 (SE.sexprD funcs preds (U ++ U'' ++ U') (G ++ G'' ++ G') 
                   (SE.liftSExpr (length U) (length U'') (length G) (length G'') s)).
     Proof.
       do 7 intro. revert G. induction s; simpl; intros; think; try reflexivity.
       rewrite <- liftExpr_ext. reflexivity.
-      apply SE.ST.heq_ex. intros. etransitivity. 
+      apply ST.heq_ex. intros. etransitivity. 
       change (existT (tvarD types) t v :: G ++ G') with ((existT (tvarD types) t v :: G) ++ G'). eapply IHs. reflexivity.
       destruct (nth_error preds f); try reflexivity.
       match goal with
-        | [ |- SE.ST.heq match ?X with _ => _ end match ?Y with _ => _ end ] =>
+        | [ |- ST.heq match ?X with _ => _ end match ?Y with _ => _ end ] =>
           cutrewrite (X = Y); try reflexivity
       end.
       destruct p; simpl. clear. revert l; induction SDomain; destruct l; simpl; auto.
@@ -498,16 +497,16 @@ Module SepExprFacts (SE : SepExpr).
 
   Theorem himp_not_WellTyped_sexpr : forall ts funcs (preds : SE.predicates ts) s vars uvars,
     SE.WellTyped_sexpr (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env uvars) (typeof_env vars) s = false ->
-    SE.ST.himp (SE.sexprD funcs preds uvars vars s) (SE.ST.inj False).
+    ST.himp (SE.sexprD funcs preds uvars vars s) (ST.inj False).
   Proof.
     induction s; simpl; intros; auto; try congruence.
     { consider (exprD funcs uvars vars e tvProp); intros; try reflexivity.
       eapply is_well_typed_correct_only in H0; eauto using typeof_env_WellTyped_env, typeof_funcs_WellTyped_funcs. congruence. }
     { apply andb_false_iff in H. destruct H.
-      rewrite IHs1 by auto. eapply SE.ST.himp_star_pure_c; contradiction.
-      rewrite SE.ST.heq_star_comm.
-      rewrite IHs2 by auto. eapply SE.ST.himp_star_pure_c; contradiction. }
-    { eapply SE.ST.himp_ex_p. intros.
+      rewrite IHs1 by auto. eapply ST.himp_star_pure_c; contradiction.
+      rewrite ST.heq_star_comm.
+      rewrite IHs2 by auto. eapply ST.himp_star_pure_c; contradiction. }
+    { eapply ST.himp_ex_p. intros.
       rewrite IHs. reflexivity. auto. }
     { unfold SE.typeof_preds in H. 
       rewrite map_nth_error_full in H. destruct (nth_error preds f); try reflexivity.
@@ -524,26 +523,26 @@ Module SepExprFacts (SE : SepExpr).
     
   Theorem himp_WellTyped_sexpr : forall ts funcs (preds : SE.predicates ts) s vars uvars Q,
     (SE.WellTyped_sexpr (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env uvars) (typeof_env vars) s = true ->
-     SE.ST.himp (SE.sexprD funcs preds uvars vars s) Q) ->
-    SE.ST.himp (SE.sexprD funcs preds uvars vars s) Q.
+     ST.himp (SE.sexprD funcs preds uvars vars s) Q) ->
+    ST.himp (SE.sexprD funcs preds uvars vars s) Q.
   Proof.
     intros. consider (SE.WellTyped_sexpr (typeof_funcs funcs) (SE.typeof_preds preds)
         (typeof_env uvars) (typeof_env vars) s); intros; auto.
     rewrite himp_not_WellTyped_sexpr; auto.
-    rewrite <- SE.ST.heq_star_emp_r.
-    eapply SE.ST.himp_star_pure_c; contradiction. 
+    rewrite <- ST.heq_star_emp_r.
+    eapply ST.himp_star_pure_c; contradiction. 
   Qed.
 
-  Module ST_EXT := SepTheory.SepTheory_Ext SE.ST.
+  Module ST_EXT := SepTheory.SepTheory_Ext ST.
 
   Lemma himp_existsEach_ST_EXT_existsEach : forall types funcs preds U (P : SE.sexpr types) vars G,
-    SE.ST.heq (SE.sexprD funcs preds U G (SE.existsEach vars P)) 
+    ST.heq (SE.sexprD funcs preds U G (SE.existsEach vars P)) 
            (ST_EXT.existsEach vars (fun env => SE.sexprD funcs preds U (rev env ++ G) P)).
   Proof.
     Opaque ST_EXT.existsEach.
     induction vars; simpl; intros. rewrite ST_EXT.existsEach_nil. simpl. reflexivity.
     change (a :: vars) with ((a :: nil) ++ vars). rewrite ST_EXT.existsEach_app.
-    rewrite ST_EXT.existsEach_cons. apply SE.ST.heq_ex. intros. rewrite ST_EXT.existsEach_nil. rewrite IHvars.
+    rewrite ST_EXT.existsEach_cons. apply ST.heq_ex. intros. rewrite ST_EXT.existsEach_nil. rewrite IHvars.
     simpl. eapply ST_EXT.heq_existsEach. intros. rewrite app_ass. reflexivity.
   Qed.
 
@@ -560,9 +559,7 @@ Module SepExprFacts (SE : SepExpr).
 
 End SepExprFacts.
 
-Module Make (ST' : SepTheory.SepTheory) <: SepExpr with Module ST := ST'.
-  Module ST := ST'.
-
+Module Make (ST : SepTheory.SepTheory) <: SepExpr ST.
   Section env.
     Variable types : list type.
     Variable pcType : tvar.

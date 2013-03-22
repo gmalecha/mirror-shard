@@ -13,8 +13,7 @@ Module Type CoreEnv.
   Parameter st : tvar.
 End CoreEnv.
 
-Module Type Package.
-  Declare Module SEP : SepExpr.
+Module Type Package (ST : SepTheory.SepTheory) (SEP : SepExpr ST).
   Declare Module CE : CoreEnv.
 
   Record TypeEnv : Type :=
@@ -65,7 +64,7 @@ Module Type Package.
     
 End Package.
 
-Module Type AlgoTypes (SEP : SepExpr) (CE : CoreEnv).
+Module Type AlgoTypes (ST : SepTheory.SepTheory) (SEP : SepExpr ST) (CE : CoreEnv).
   Parameter AlgoImpl  : list type -> Type.
   Parameter AlgoProof : forall ts : list type, 
     functions (repr CE.core ts) -> 
@@ -73,8 +72,8 @@ Module Type AlgoTypes (SEP : SepExpr) (CE : CoreEnv).
     AlgoImpl ts -> Type.
 End AlgoTypes.
 
-Module Make (SEP' : SepExpr) (CE' : CoreEnv) <: Package with Module SEP := SEP' with Module CE := CE'.
-  Module SEP := SEP'.
+Module Make (ST : SepTheory.SepTheory) (SEP : SepExpr ST) (CE' : CoreEnv) 
+  <: Package ST SEP with Module CE := CE'.
   Module CE := CE'.
 
   Section TypeEnv.
@@ -113,7 +112,7 @@ Module Make (SEP' : SepExpr) (CE' : CoreEnv) <: Package with Module SEP := SEP' 
     
 End Make.
 
-Module AlgoPack (P : Package) (A : AlgoTypes P.SEP P.CE).
+Module AlgoPack (ST : SepTheory.SepTheory) (SEP : SepExpr ST) (P : Package ST SEP) (A : AlgoTypes ST SEP P.CE).
 
   Record TypedPackage : Type :=
   { Env   : P.TypeEnv 

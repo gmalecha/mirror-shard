@@ -4,8 +4,9 @@ Require Import Expr.
 Require Import SepExpr SepLemma.
 Require Import Env.
 
-Module Make (SE : SepExpr.SepExpr) (SL : SepLemmaType SE).
-  Module SEP_REIFY := ReifySepExpr.ReifySepExpr SE.
+Module Make (ST : SepTheory.SepTheory) (SE : SepExpr.SepExpr ST) 
+            (SL : SepLemmaType ST SE).
+  Module SEP_REIFY := ReifySepExpr.ReifySepExpr ST SE.
 
   (* This tactic processes the part of a lemma statement after the quantifiers. *)
   Ltac collectTypes_hint' isConst P types k :=
@@ -13,7 +14,7 @@ Module Make (SE : SepExpr.SepExpr) (SL : SepLemmaType SE).
       | fun x => @?H x -> @?P x =>
          ReifyExpr.collectTypes_expr ltac:(isConst) H types ltac:(fun types => 
           collectTypes_hint' ltac:(isConst) P types k)
-      | fun x => forall cs, @SE.ST.himp (@?L x) (@?R x) =>
+      | fun x => forall cs, @ST.himp (@?L x) (@?R x) =>
         SEP_REIFY.collectTypes_sexpr ltac:(isConst) L types ltac:(fun types =>
           SEP_REIFY.collectTypes_sexpr ltac:(isConst) R types k)
       | fun x => _ (@?L x) (@?R x) =>
@@ -60,7 +61,7 @@ Module Make (SE : SepExpr.SepExpr) (SL : SepLemmaType SE).
           reify_hint' pcType stateType isConst P types funcs preds vars ltac:(fun funcs preds P =>
             let lem := eval simpl in (@SepLemma.Build_lemma types (@SL.sepConcl types) vars (H :: SepLemma.Hyps P) (SepLemma.Concl P)) in
             k funcs preds lem))
-      | fun x => @SE.ST.himp (@?L x) (@?R x) =>
+      | fun x => @ST.himp (@?L x) (@?R x) =>
         SEP_REIFY.reify_sexpr isConst L types funcs pcType stateType preds (@nil tvar) vars ltac:(fun _uvars funcs preds L =>
           SEP_REIFY.reify_sexpr isConst R types funcs pcType stateType preds (@nil tvar) vars ltac:(fun _uvars funcs preds R =>
             let lem := constr:(@SepLemma.Build_lemma types (@SL.sepConcl types) vars nil (L, R)) in
@@ -103,15 +104,15 @@ Module Make (SE : SepExpr.SepExpr) (SL : SepLemmaType SE).
         let T := eval simpl in T in
         let T := unfoldTac T in
         idtac T ;
-        let v := SE.ST.himp in
+        let v := ST.himp in
           idtac v ;
           reify_hint pcType stateType isConst (fun _ : ReifyExpr.VarType unit => T) types funcs preds (@nil tvar) ltac:(fun funcs preds P =>
             k funcs preds (P :: nil))
     end.
 
 (*
-  Parameter f : nat -> nat -> SE.ST.hprop.
-  Theorem foo : SE.ST.himp (SE.ST.ex (fun x => (SE.ST.ex (f x)))) SE.ST.emp.
+  Parameter f : nat -> nat -> ST.hprop.
+  Theorem foo : ST.himp (ST.ex (fun x => (ST.ex (f x)))) ST.emp.
   Proof. Admitted.
 
   Goal True.

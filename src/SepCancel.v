@@ -14,20 +14,21 @@ Require SepUnify.
 Set Implicit Arguments.
 Set Strict Implicit.
 
-Module Type Canceller.
+Module Type Canceller (ST : SepTheory.SepTheory)
+                      (SE : SepExpr ST)
+                      (SH : SepHeap ST SE).
   Declare Module U : Unifier.
-  Declare Module SH : SepHeap.
 
   Section typed.
     Variable types : list type.
     Variable funcs : functions types.
-    Variable preds : SH.SE.predicates types.
+    Variable preds : SE.predicates types.
     Variable prover : ProverT types.
 
     (** TODO: it would be good to keep this somewhat general with respect to the order so that we can play around with it
      ** NOTE: return None if we don't make progress
      **)
-    Parameter sepCancel : forall (bound : nat) (tpreds : SH.SE.tpredicates)
+    Parameter sepCancel : forall (bound : nat) (tpreds : SE.tpredicates)
       (facts : Facts (types := types) prover) 
       (l r : SH.SHeap types) (s : U.Subst types),
       option (SH.SHeap types * SH.SHeap types * U.Subst types).
@@ -37,13 +38,13 @@ Module Type Canceller.
 
     Axiom sepCancel_correct : forall U G bound facts l r l' r' sub sub',
       U.Subst_WellTyped (typeof_funcs funcs) (typeof_env U) (typeof_env G) sub' ->
-      SH.WellTyped_sheap (typeof_funcs funcs) (SH.SE.typeof_preds preds) (typeof_env U) (typeof_env G) l = true ->
-      SH.WellTyped_sheap (typeof_funcs funcs) (SH.SE.typeof_preds preds) (typeof_env U) (typeof_env G) r = true ->
+      SH.WellTyped_sheap (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env U) (typeof_env G) l = true ->
+      SH.WellTyped_sheap (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env U) (typeof_env G) r = true ->
       Valid PC U G facts ->
-      sepCancel bound (SH.SE.typeof_preds preds) facts l r sub' = Some (l', r', sub) ->
-      SH.SE.himp funcs preds U G (SH.sheapD l') (SH.sheapD r') ->
+      sepCancel bound (SE.typeof_preds preds) facts l r sub' = Some (l', r', sub) ->
+      SE.himp funcs preds U G (SH.sheapD l') (SH.sheapD r') ->
       U.Subst_equations funcs U G sub ->
-      SH.SE.himp funcs preds U G (SH.sheapD l) (SH.sheapD r).
+      SE.himp funcs preds U G (SH.sheapD l) (SH.sheapD r).
 
     Axiom sepCancel_PuresPrem : forall tp U G bound facts l r l' r' s s',
       sepCancel bound tp facts l r s = Some (l', r', s') ->
@@ -52,7 +53,7 @@ Module Type Canceller.
 
     Axiom sepCancel_PureFacts : forall tU tG bound facts l r l' r' s s',
       let tf := typeof_funcs funcs in
-      let tp := SH.SE.typeof_preds preds in
+      let tp := SE.typeof_preds preds in
       sepCancel bound tp facts l r s = Some (l', r', s') ->
       U.Subst_WellTyped tf tU tG s ->
       SH.WellTyped_sheap tf tp tU tG l = true ->
@@ -66,14 +67,15 @@ Module Type Canceller.
   
 End Canceller.
 
-Module Make (U : Unifier) (SH : SepHeap)
-  : Canceller with Module U := U
-              with Module SH := SH.
-  Module Import SE := SH.SE.
-  Module HEAP_FACTS := SepHeapFacts SH.
+Module Make (U : Unifier)
+            (ST : SepTheory.SepTheory)
+            (Import SE : SepExpr ST)
+            (SH : SepHeap ST SE)
+  : Canceller ST SE SH with Module U := U.
+  Module HEAP_FACTS := SepHeapFacts ST SE SH.
   Module Import SEP_FACTS := HEAP_FACTS.SEP_FACTS.
   Import HEAP_FACTS.
-  Module Import SEP_UFACTS := SepUnify.Make U SH.
+  Module Import SEP_UFACTS := SepUnify.Make U ST SE SH.
 
   Section env.
     Variable types : list type.
@@ -286,10 +288,10 @@ Module Make (U : Unifier) (SH : SepHeap)
         U.Subst_WellTyped tfuncs tU tG S ->
         Valid Prover_correct U G summ ->
         nth_error preds f = Some p ->
-        all2 (@is_well_typed _ tfuncs tU tG) l (SDomain p) = true ->
+        all2 (@is_well_typed _ tfuncs tU tG) l (SE.SDomain p) = true ->
         forall r r' S' P,
-          List.Forall (fun r => all2 (@is_well_typed _ tfuncs tU tG) r (SDomain p) = true) r ->
-          unify_remove bound summ l (SDomain p) r S = Some (r', S') ->
+          List.Forall (fun r => all2 (@is_well_typed _ tfuncs tU tG) r (SE.SDomain p) = true) r ->
+          unify_remove bound summ l (SE.SDomain p) r S = Some (r', S') ->
           U.Subst_equations funcs U G S' ->
           forall Q,
           SE.himp funcs preds U G (SH.starred (SE.Func f) r' Q) P ->
@@ -316,12 +318,12 @@ Module Make (U : Unifier) (SH : SepHeap)
           inversion H3; clear H3; subst.
           rewrite SH.starred_def in H6. simpl in H6. rewrite <- SH.starred_def in H6.
           eapply IHr in H7; eauto.
-          Focus 2. instantiate (2 := (SH.SE.Star (Func f a) Q)). instantiate (1 := P).
+          Focus 2. instantiate (2 := (SE.Star (Func f a) Q)). instantiate (1 := P).
           etransitivity; [ | eapply H6 ].
           rewrite SH.starred_base. rewrite heq_star_assoc. 
           rewrite SH.starred_base with (base := Q). reflexivity.
           intuition. rewrite starred_cons. rewrite <- H3. 
-          rewrite SH.starred_base. rewrite SH.starred_base with (base := SH.SE.Star (Func f a) Q). 
+          rewrite SH.starred_base. rewrite SH.starred_base with (base := SE.Star (Func f a) Q). 
           rewrite heq_star_assoc. reflexivity. }
       Qed.
 
@@ -463,7 +465,7 @@ Module Make (U : Unifier) (SH : SepHeap)
      ** r ===> l ->
      ** rem ===> ls * acc
      **)
-    Fixpoint cancel_in_order (bound : nat) (summ : Facts Prover) (tpreds : SH.SE.tpredicates)
+    Fixpoint cancel_in_order (bound : nat) (summ : Facts Prover) (tpreds : SE.tpredicates)
       (ls : cancel_list) (acc rem : MM.mmap (exprs types)) (sub : U.Subst types)
       (progress : bool)
       : option (MM.mmap (exprs types) * MM.mmap (exprs types) * U.Subst types) :=
@@ -719,7 +721,7 @@ Module Make (U : Unifier) (SH : SepHeap)
         U.Subst_WellTyped (typeof_funcs funcs) (typeof_env U) (typeof_env G) S ->
         U.Subst_equations funcs U G S ->
         Valid Prover_correct U G summ ->
-        cancel_in_order bound summ (SH.SE.typeof_preds preds) ls acc rem sub progress = Some (L, R, S) ->
+        cancel_in_order bound summ (SE.typeof_preds preds) ls acc rem sub progress = Some (L, R, S) ->
         allb
         (fun v : list (expr types) * func =>
           match nth_error (typeof_preds preds) (snd v) with
@@ -772,11 +774,11 @@ Module Make (U : Unifier) (SH : SepHeap)
                   (map (U.exprInstantiate S) (fst v)) ts
                 | None => false
               end) ls = true ->
-            cancel_in_order bound summ (SH.SE.typeof_preds preds) ls (MM.mmap_add n e acc) rem sub progress = Some (L, R, S) ->
+            cancel_in_order bound summ (SE.typeof_preds preds) ls (MM.mmap_add n e acc) rem sub progress = Some (L, R, S) ->
             himp funcs preds U G
             (Star (SH.impuresD (impuresInstantiate S rem)) P)
             (Star (Star
-              (SH.SE.Star (Func n (map (U.exprInstantiate S) e))
+              (SE.Star (Func n (map (U.exprInstantiate S) e))
                 (SH.starred
                   (fun v : list (expr types) * func =>
                     Func (snd v) (map (U.exprInstantiate S) (fst v))) ls Emp))
@@ -922,7 +924,7 @@ Module Make (U : Unifier) (SH : SepHeap)
     (** TODO: it would be good to keep this somewhat general with respect to the order so that we can play around with it
      ** NOTE: return None if we don't make progress
      **)
-    Definition sepCancel (bound : nat) (tpreds : SH.SE.tpredicates) (summ : Facts Prover) (l r : SH.SHeap types) (s : U.Subst types) 
+    Definition sepCancel (bound : nat) (tpreds : SE.tpredicates) (summ : Facts Prover) (l r : SH.SHeap types) (s : U.Subst types) 
       : option (SH.SHeap _ * SH.SHeap _ * U.Subst types) :=
       let ordered_r := order_impures (SH.impures r) in
       let sorted_l := FM.map (fun v => Ordering.sort _ meta_order_args v) (SH.impures l) in 
@@ -1118,10 +1120,10 @@ Module Make (U : Unifier) (SH : SepHeap)
              end.
       do 2 rewrite SH.sheapD_def. simpl. 
       eapply cancel_in_orderOk with (U := U) (G := G) 
-        (P := Star (SH.starred (@SH.SE.Inj _) pures SH.SE.Emp)
-                   (SH.starred (@SH.SE.Const _) other SH.SE.Emp)) 
-        (Q := Star (SH.starred (@SH.SE.Inj _) pures0 SH.SE.Emp)
-                   (SH.starred (@SH.SE.Const _) other0 SH.SE.Emp)) in H3;
+        (P := Star (SH.starred (@SE.Inj _) pures SE.Emp)
+                   (SH.starred (@SE.Const _) other SE.Emp)) 
+        (Q := Star (SH.starred (@SE.Inj _) pures0 SE.Emp)
+                   (SH.starred (@SE.Const _) other0 SE.Emp)) in H3;
         eauto using typeof_env_WellTyped_env, typeof_funcs_WellTyped_funcs, U.Subst_empty_WellTyped.
       { clear H4.
         do 2 rewrite impuresD_forget_impuresInstantiate in H3 by eassumption. 
@@ -1152,6 +1154,5 @@ Module Make (U : Unifier) (SH : SepHeap)
   End env.
 
   Module U := U.
-  Module SH := SH.
 
 End Make.
