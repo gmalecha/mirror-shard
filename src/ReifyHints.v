@@ -1,5 +1,5 @@
 Require Import List.
-Require Reflect ReifySepExpr.
+Require Reify ReifySepExpr.
 Require Import Expr.
 Require Import SepExpr SepLemma.
 Require Import Env.
@@ -30,7 +30,7 @@ Module Make (SE : SepExpr).
                    | Prop => fail 1
                    | _ => let P := eval simpl in (fun x : ReifyExpr.VarType (T * T') =>
                      f (@ReifyExpr.openUp _ T (@fst _ _) x) (@ReifyExpr.openUp _ T' (@snd _ _) x)) in
-                   let types := Reflect.cons_uniq T' types in
+                   let types := Reify.cons_uniq T' types in
                      collectTypes_hint ltac:(isConst) P types k
                  end
         end

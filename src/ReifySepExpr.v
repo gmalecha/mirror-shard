@@ -1,5 +1,5 @@
 Require Import Expr ReifyExpr.
-Require Import Reflect.
+Require Import Reify.
 Require Import SepExpr.
 Require Import List.
 
@@ -9,7 +9,7 @@ Set Strict Implicit.
 Module ReifySepExpr (Import SEP : SepExpr).  
 
   (** Reflection **)
-  Import Reflect.
+  Import Reify.
 
 (*
   Ltac lift_predicate s nt pc st :=
