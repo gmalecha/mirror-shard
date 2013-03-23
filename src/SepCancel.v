@@ -71,7 +71,7 @@ Module Make (U : Unifier)
             (ST : SepTheory.SepTheory)
             (Import SE : SepExpr ST)
             (SH : SepHeap ST SE)
-  : Canceller ST SE SH with Module U := U.
+  <: Canceller ST SE SH with Module U := U.
   Module HEAP_FACTS := SepHeapFacts ST SE SH.
   Module Import SEP_FACTS := HEAP_FACTS.SEP_FACTS.
   Import HEAP_FACTS.
