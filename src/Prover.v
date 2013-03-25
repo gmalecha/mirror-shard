@@ -11,32 +11,32 @@ Definition ProverCorrect types (fs : functions types) (summary : Type)
     (** Some prover work only needs to be done once per set of hypotheses,
        so we do it once and save the outcome in a summary of this type. *)
   (valid : env types -> env types -> summary -> Prop)
-  (prover : summary -> expr types -> bool) : Prop :=
+  (prover : types_eq types -> summary -> expr types -> bool) : Prop :=
   forall vars uvars sum,
     valid uvars vars sum ->
-    forall goal, 
-      prover sum goal = true ->
+    forall types_eq goal, 
+      prover types_eq sum goal = true ->
       ValidProp fs uvars vars goal ->
       Provable fs uvars vars goal.
 
 Record ProverT (types : list type) : Type :=
 { Facts : Type
-; Summarize : exprs types -> Facts
-; Learn : Facts -> exprs types -> Facts
-; Prove : Facts -> expr types -> bool
+; Summarize : types_eq types -> exprs types -> Facts
+; Learn : types_eq types -> Facts -> exprs types -> Facts
+; Prove : types_eq types -> Facts -> expr types -> bool
 }.
 
 Record ProverT_correct (types : list type) (P : ProverT types) (funcs : functions types) : Type :=
 { Valid : env types -> env types -> Facts P -> Prop
 ; Valid_weaken : forall u g f ue ge,
   Valid u g f -> Valid (u ++ ue) (g ++ ge) f
-; Summarize_correct : forall uvars vars hyps, 
+; Summarize_correct : forall types_eq uvars vars hyps, 
   AllProvable funcs uvars vars hyps ->
-  Valid uvars vars (Summarize P hyps)
-; Learn_correct : forall uvars vars facts,
+  Valid uvars vars (P.(Summarize) types_eq hyps)
+; Learn_correct : forall types_eq uvars vars facts,
   Valid uvars vars facts -> forall hyps,
   AllProvable funcs uvars vars hyps ->
-  Valid uvars vars (Learn P facts hyps)
+  Valid uvars vars (P.(Learn) types_eq facts hyps)
 ; Prove_correct : ProverCorrect funcs Valid (Prove P)
 }.
 
@@ -131,14 +131,14 @@ Section composite.
 
   Definition composite_ProverT : ProverT types :=
   {| Facts := Facts pl * Facts pr
-   ; Summarize := fun hyps =>
-     (Summarize pl hyps, Summarize pr hyps)
-   ; Learn := fun facts hyps =>
+   ; Summarize := fun types_eq hyps =>
+     (pl.(Summarize) types_eq hyps, pr.(Summarize) types_eq hyps)
+   ; Learn := fun types_eq facts hyps =>
      let (fl,fr) := facts in
-     (Learn pl fl hyps, Learn pr fr hyps)
-   ; Prove := fun facts goal =>
+     (pl.(Learn) types_eq fl hyps, pr.(Learn) types_eq fr hyps)
+   ; Prove := fun types_eq facts goal =>
      let (fl,fr) := facts in
-     (Prove pl fl goal) || (Prove pr fr goal)
+     (pl.(Prove) types_eq fl goal) || (pr.(Prove) types_eq fr goal)
    |}.
 
   Variable funcs : functions types.

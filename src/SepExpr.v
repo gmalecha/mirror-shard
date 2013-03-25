@@ -1,6 +1,6 @@
 Require Import List.
 Require Import SepTheory.
-Require Import RelationClasses EqdepClass.
+Require Import RelationClasses.
 Require Import Expr.
 Require Import Setoid.
 Require Import Folds Bool Tactics.

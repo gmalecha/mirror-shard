@@ -114,6 +114,7 @@ Section canceller.
   Variable types : list type.
   Variable funcs : functions types.
   Variable preds : SE.predicates types.
+  Variable teq : types_eq types.
   Variable prover : ProverT types.
 
   Record CancellerResult : Type :=
@@ -126,7 +127,7 @@ Section canceller.
 
   Definition canceller tpreds (facts : Facts prover)
     (lhs rhs : SH.SHeap types) (sub : C.U.Subst types) : CancellerResult * bool :=
-    match C.sepCancel prover bound tpreds facts lhs rhs sub with
+    match C.sepCancel teq prover bound tpreds facts lhs rhs sub with
       | Some (l,r,s) =>
         ({| Lhs := l ; Rhs := r ; Subst := s |}, true)
       | None => 
@@ -199,7 +200,7 @@ Section canceller.
     Opaque Env.repr.
     intros. unfold canceller in *.
 
-    consider (C.sepCancel prover bound (SE.typeof_preds preds) facts l r sub); intros.
+    consider (C.sepCancel teq prover bound (SE.typeof_preds preds) facts l r sub); intros.
     { destruct p. destruct p. inversion H3; clear H3; subst.
       generalize H1. simpl in *. intros;  eapply C.sepCancel_PureFacts in H1; intuition eauto.
 
@@ -234,7 +235,7 @@ Section canceller.
       AllProvable funcs U G (SH.pures (Lhs cr)).
   Proof.
     clear; unfold canceller; simpl in *; intros.
-    consider (C.sepCancel prover bound bound0 tp l r s); intros.
+    consider (C.sepCancel teq prover bound bound0 tp l r s); intros.
     destruct p; destruct p. inversion H1; clear H1; subst.
     eapply C.sepCancel_PuresPrem. 2: eassumption. eassumption.
     inversion H1; clear H1; subst; simpl. eassumption.
@@ -253,7 +254,7 @@ Section canceller.
       /\ SH.WellTyped_sheap (types := types) tf tp tU tG (Rhs cr) = true.
   Proof.
     clear. unfold canceller; simpl in *; intros.
-    consider (C.sepCancel prover bound (SE.typeof_preds preds) facts l r s); intros.
+    consider (C.sepCancel teq prover bound (SE.typeof_preds preds) facts l r s); intros.
     destruct p. destruct p. inversion H3; clear H3; subst.
     eapply C.sepCancel_PureFacts in H; intuition eauto.
     inversion H3; clear H3; subst; auto.

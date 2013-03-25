@@ -1,4 +1,4 @@
-Require Import List.
+Require Import List DepList.
 Require Import Expr Env.
 Require Import Prover.
 
@@ -15,27 +15,27 @@ Section ReflexivityProver.
   
   Definition reflexivityValid (_ _ : env types) (_ : unit) := True.
 
-  Definition reflexivitySummarize (_ : list (expr types)) := tt.
+  Definition reflexivitySummarize (_ : hlist Pkg types) (_ : list (expr types)) := tt.
 
-  Definition reflexivityProve (_ : unit) (goal : expr types) := 
+  Definition reflexivityProve (types_eq : hlist Pkg types) (_ : unit) (goal : expr types) := 
     match goal with
-      | Equal _ x y => if expr_seq_dec x y then true else false
+      | Equal _ x y => if expr_seq_dec types_eq x y then true else false
       | _ => false
     end.
 
-  Definition reflexivityLearn (sum : unit) (hyps : list (expr types)) := sum.
+  Definition reflexivityLearn (types_eq : hlist Pkg types) (sum : unit) (hyps : list (expr types)) := sum.
 
-  Lemma reflexivitySummarizeCorrect : forall uvars vars hyps,
+  Lemma reflexivitySummarizeCorrect : forall types_eq uvars vars hyps,
     AllProvable fs uvars vars hyps ->
-    reflexivityValid uvars vars (reflexivitySummarize hyps).
+    reflexivityValid uvars vars (reflexivitySummarize types_eq hyps).
   Proof.
     unfold reflexivityValid; auto.
   Qed.
 
-  Lemma reflexivityLearnCorrect : forall uvars vars sum,
+  Lemma reflexivityLearnCorrect : forall teq uvars vars sum,
     reflexivityValid uvars vars sum -> forall hyps, 
     AllProvable fs uvars vars hyps ->
-    reflexivityValid uvars vars (reflexivityLearn sum hyps).
+    reflexivityValid uvars vars (reflexivityLearn teq sum hyps).
   Proof.
     unfold reflexivityValid; auto.
   Qed.
@@ -46,8 +46,8 @@ Section ReflexivityProver.
 
   Definition reflexivityProver : ProverT types :=
   {| Facts := unit
-   ; Summarize := fun _ => tt
-   ; Learn := fun x _ => x
+   ; Summarize := reflexivitySummarize
+   ; Learn := reflexivityLearn
    ; Prove := reflexivityProve
    |}.
   Definition reflexivityProver_correct : ProverT_correct reflexivityProver fs.
@@ -58,7 +58,7 @@ Section ReflexivityProver.
 End ReflexivityProver.
 
 Definition ReflexivityProver : ProverPackage :=
-{| ProverTypes := nil_Repr EmptySet_type
+{| ProverTypes := nil_Repr (Empty_set : Type)
  ; ProverFuncs := fun ts => nil_Repr (Default_signature ts)
  ; Prover_correct := fun ts fs => reflexivityProver_correct fs
 |}.

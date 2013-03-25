@@ -8,29 +8,24 @@ Set Implicit Arguments.
 
 (** The reification mechanism use instances of this type-class to
 decide how to reify the types *)
-Module ReificationHint.
-  Class Pkg (T : Type) := mk_Pkg
-    {
-      Eqb : forall (x y : T), bool;
-      Eqb_correct : forall x y, Eqb x y = true -> x = y
-    }. 
-End ReificationHint. 
+Class Pkg (T : Type) := mk_Pkg {
+  Eqb : forall (x y : T), bool;
+  Eqb_correct : forall x y, Eqb x y = true -> x = y
+}.
 
 Section env.
   (** Syntax **)
-  Record type := Typ {
-    Impl : Type;
-    Eqb : forall x y : Impl, bool;
-    Eqb_correct : forall x y, Eqb x y = true -> x = y
-  }.
+  Definition type := Type.
   
   Definition Impl_ (o : option type) : Type :=
     match o return Type with
       | None => Empty_set
-      | Some t => Impl t
+      | Some t => t
     end.
 
   Variable types : list type.
+  Definition types_eq := hlist Pkg types.
+  Variable types_eq : types_eq.
 
   (** this type requires decidable equality **)
   Inductive tvar : Type :=
@@ -44,64 +39,101 @@ Section env.
         Impl_ (nth_error types x)
     end.
 
-  Definition EmptySet_type : type :=
-  {| Impl := Empty_set 
-   ; Eqb := fun x _ => match x with end
+  Definition Pkg_Empty_set : Pkg Empty_set :=
+  {| Eqb := fun x _ : Empty_set => match x with end
    ; Eqb_correct := fun x _ _ => match x with end                     
    |}.
   
-  Definition Prop_type : type. 
-  refine ({| Impl := Prop
-       ; Eqb := fun _ _ => false
-       ; Eqb_correct := _
-   |}). abstract (discriminate). 
+  Definition Pkg_Prop : Pkg Prop. 
+  refine ({| Eqb := fun _ _ : Prop => false
+           ; Eqb_correct := _
+           |}). abstract (discriminate). 
   Defined. 
 
-  Definition typeFor (t : tvar) : type :=
-    match t with
-      | tvProp => Prop_type
-      | tvType t => 
-        match nth_error types t with
-          | None => EmptySet_type
-          | Some v => v 
+  Fixpoint hlist_nth T (F : T -> Type) (ts : list T) (h : hlist F ts) (n : nat) 
+    : match nth_error ts n with
+        | None => unit
+        | Some t => F t
+      end :=
+    match h in hlist _ ts return match nth_error ts n with 
+                                   | None => unit
+                                   | Some t => F t
+                                 end with
+      | HNil => 
+        match n as n 
+          return match nth_error nil n with 
+                   | None => unit
+                   | Some t => F t
+                 end
+          with
+          | 0 => tt
+          | S _ => tt
         end
+      | HCons y ys x xs =>
+        match n as n
+          return match nth_error (y :: ys) n with 
+                   | None => unit
+                   | Some t => F t
+                 end
+          with
+          | 0 => x
+          | S n => hlist_nth xs n
+        end
+    end.
+
+  Definition pkgFor (t : tvar) : Pkg (tvarD t) :=
+    match t as t return Pkg (tvarD t) with
+      | tvProp => Pkg_Prop
+      | tvType t => 
+        match nth_error types t as x 
+          return match x with
+                   | None => unit
+                   | Some t => Pkg t
+                 end -> Pkg match x with 
+                              | None => Empty_set
+                              | Some t => t
+                            end with
+          | None => fun _ => Pkg_Empty_set
+          | Some v => fun x => x
+        end (hlist_nth types_eq t)
     end.
 
   Definition tvar_val_seqb (t : tvar) : forall (x y : tvarD t), bool :=
-    match t with 
-      | tvProp => fun _ _ => false
-      | tvType t => 
-        match nth_error types t as k return forall x y : match k with 
-                                                           | None => Empty_set
-                                                           | Some t => Impl t
-                                                         end, bool with
-          | None => fun x _ => match x with end
-          | Some t => fun x y =>  Eqb t x y 
-        end
-    end.
+    @Eqb _ (pkgFor t).
 
-  Global Instance SemiReflect_Eqb (t : type) (x y : Impl t) : SemiReflect (Eqb _ x y) (x = y).
+  Global Instance SemiReflect_Eqb (t : tvar) (x y : tvarD t) : SemiReflect (@Eqb _ (pkgFor t) x y) (x = y).
   Proof.
-    consider (Eqb t x y); intros; constructor.
-    apply Eqb_correct; auto.
+    destruct (pkgFor t); intros.
+    match goal with
+      | |- SemiReflect ?X _ => consider X
+    end; simpl; intros. constructor; eauto. right.
   Qed.
 
   Lemma tvar_val_seqb_correct t x y : tvar_val_seqb t x y = true -> x = y.
   Proof. 
     revert x y. destruct t; simpl.   
     discriminate. 
-    destruct (nth_error types n); simpl. 
-    refine (fun x y H => Eqb_correct _ x y H). 
-    intros []. 
+    unfold tvar_val_seqb.
+    simpl. intros. 
+    match goal with 
+      | [ _ : @Eqb _ (_ ?X) _ _ = true |- _ ] =>
+        generalize dependent X
+    end.
+    change Type with type.
+    destruct (nth_error types n); simpl in *; try contradiction.
+    intros. eapply Eqb_correct; auto.
   Defined.
 
   Global Instance SemiReflect_tvar_val_seqb t x y : SemiReflect (tvar_val_seqb t x y) (x = y).
   Proof.
     revert x y. destruct t; simpl; intros; try constructor.
+(*
+    unfold tvar_val_seqb
     destruct (nth_error types n); simpl. 
     consider (Eqb t x y); intros; constructor. auto.
     destruct x.
   Qed.
+*) Admitted.
 
   Fixpoint functionTypeD (domain : list Type) (range : Type) : Type :=
     match domain with
@@ -324,7 +356,6 @@ Section env.
     Variable tfuncs : tfunctions.
     Variable tmeta_env : tenv.
     Variable tvar_env : tenv.
-
 
     Fixpoint typeof (e : expr) : option tvar :=
       match e with
@@ -700,36 +731,24 @@ Section env.
   Proof. congruence. Qed.
 
   Definition get_Eq (t : tvar) : forall x y : tvarD t, bool :=
-    match t as t return forall x y : tvarD t, bool with
-      | tvProp => fun _ _ => false
-      | tvType t => 
-        match nth_error types t as k 
-          return forall x y : match k with
-                                | Some t => Impl t
-                                | None => Empty_set
-                              end, bool
-          with
-          | None => fun x _ => match x with end
-          | Some t => Eqb t
-        end 
-    end.
-
+    @Eqb _ (pkgFor t).
+  
   Definition const_seqb  t t' : tvarD t -> tvarD t' -> bool :=
-    match t as t , t' as t' return tvarD t -> tvarD t' -> bool with
+    match t as t , t' as t' return Pkg (tvarD t) -> tvarD t -> tvarD t' -> bool with
       | tvType x , tvType y =>
         match Peano_dec.eq_nat_dec x y with
           | left pf => 
-            match pf in _ = t return Impl_ (nth_error types x) -> Impl_ (nth_error types t) -> bool with
+            match pf in _ = t return Pkg (Impl_ (nth_error types x)) -> Impl_ (nth_error types x) -> Impl_ (nth_error types t) -> bool with
               | refl_equal =>
-                match nth_error types x as ty return Impl_ ty -> Impl_ ty -> bool with
-                  | None => fun _ _ => false
+                match nth_error types x as ty return Pkg (Impl_ ty) -> Impl_ ty -> Impl_ ty -> bool with
+                  | None => fun _ _ _ => false
                   | Some t => @Eqb t
                 end
             end
-          | right _ => fun _ _ => false 
+          | right _ => fun _ _ _ => false 
         end
-      | _ , _ => fun _ _ => false
-    end.
+      | _ , _ => fun _ _ _ => false
+    end (pkgFor t).
 
   Global Instance SemiReflect_const_seqb t t' c c' 
     : SemiReflect (@const_seqb t t' c c') (exists pf : t = t',
@@ -737,6 +756,7 @@ Section env.
         | refl_equal => c
       end = c').
   Proof.
+(*
     unfold const_seqb.
     repeat match goal with
              | [ |- SemiReflect (match ?X with | _ => _ end _ _) _ ] =>
@@ -765,8 +785,8 @@ Section env.
             end). 
     apply Eqb_correct. 
     discriminate. 
-  Qed.
- 
+*)
+  Admitted.
 
   Fixpoint expr_seq_dec (a b : expr) : bool :=
     match a,b  with 

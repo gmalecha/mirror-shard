@@ -3,6 +3,7 @@ Require Import NatMap.
 Require Import EquivDec.
 Require Import List Bool.
 Require Import GenRec.
+Require Import DepList.
 Require Folds.
 Require Import Reflection.
 
@@ -41,7 +42,7 @@ Module Type Unifier.
     Parameter Subst_domain : Subst types -> list uvar.
 
     (** The actual unification algorithm **)
-    Parameter exprUnify : nat -> expr types -> expr types -> Subst types -> option (Subst types).
+    Parameter exprUnify : hlist Pkg types -> nat -> expr types -> expr types -> Subst types -> option (Subst types).
     
     (** Substitute meta variables **)
     Parameter exprInstantiate : Subst types -> expr types -> expr types.
@@ -94,22 +95,22 @@ Module Type Unifier.
       exprInstantiate a (@Const types t v) = (@Const types t v).
 
     (** This is the soundness statement. **)
-    Axiom exprUnify_sound : forall n l r sub sub',
-      exprUnify n l r sub = Some sub' ->
+    Axiom exprUnify_sound : forall teq n l r sub sub',
+      exprUnify teq n l r sub = Some sub' ->
       exprInstantiate sub' l = exprInstantiate sub' r.
 
-    Axiom exprUnify_sound' : forall n l r sub sub',
-      exprUnify n l r sub = Some sub' ->
+    Axiom exprUnify_sound' : forall teq n l r sub sub',
+      exprUnify teq n l r sub = Some sub' ->
       forall funcs U G t,
       exprD funcs U G (exprInstantiate sub' l) t = 
       exprD funcs U G (exprInstantiate sub' r) t.
 
-    Axiom exprUnify_Extends : forall n l r sub sub',
-      exprUnify n l r sub = Some sub' ->
+    Axiom exprUnify_Extends : forall teq n l r sub sub',
+      exprUnify teq n l r sub = Some sub' ->
       Subst_Extends sub' sub.
 
-    Axiom exprUnify_WellTyped : forall n l r sub sub',
-      exprUnify n l r sub = Some sub' ->
+    Axiom exprUnify_WellTyped : forall teq n l r sub sub',
+      exprUnify teq n l r sub = Some sub' ->
       forall funcs U G t,
         is_well_typed funcs U G l t = true ->
         is_well_typed funcs U G r t = true ->
@@ -263,6 +264,7 @@ Module SynUnifier (E : OrderedType.OrderedType with Definition t := uvar with De
 
   Section typed.
     Variable types : list type.
+    Variable types_eq : hlist Pkg types.
 
     Section Normalization.
       Variable ctx : FM.t (expr types).
@@ -689,7 +691,7 @@ Module SynUnifier (E : OrderedType.OrderedType with Definition t := uvar with De
               match equiv_dec t t' with
                 | left pf => match pf in _ = k return tvarD _ k -> _ with
                                | refl_equal => fun v' =>
-                                 if get_Eq types t v v'
+                                 if get_Eq types_eq t v v'
                                    then Some sub
                                    else None
                              end v'
@@ -858,7 +860,7 @@ Module SynUnifier (E : OrderedType.OrderedType with Definition t := uvar with De
           match equiv_dec t t' with
             | left pf => match pf in _ = k return tvarD _ k -> _ with
                            | refl_equal => fun v' =>
-                             if get_Eq types t v v'
+                             if get_Eq types_eq t v v'
                                then Some sub
                                else None
                          end v'

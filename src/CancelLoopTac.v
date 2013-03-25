@@ -21,8 +21,6 @@ Module CANCEL_TAC := CancelTac.CancellerTac ST SE SH CANCEL.
 
 Section parametric.
   Variable ts : list type.
-  Variable tpreds : SE.tpredicates.
-  Variable prover : ProverT ts.
   
   Inductive cancelResult : Type :=
   | Done : forall (lhs rhs : SH.SHeap ts), cancelResult
@@ -31,8 +29,11 @@ Section parametric.
 
   Variable fs : functions ts.
   Variable ps : SE.predicates ts.
+  Variable teq : types_eq ts.
+  Variable tpreds : SE.tpredicates.
+  Variable prover : ProverT ts.
 
-  Fixpoint cancelResultD (U G : env ts) (cr : cancelResult) {struct cr} : Prop :=
+  Fixpoint cancelResultD (U G : env ts) (from : nat) (cr : cancelResult) {struct cr} : Prop :=
     match cr with
       | Done l r =>
         (** TODO: Should I perform the substitution now? *)
@@ -44,10 +45,10 @@ Section parametric.
         forallEach alls (fun Aext => 
           let G := G ++ Aext in
           AllProvable_impl fs U G
-            (@CANCEL_TAC.existsSubst ts fs G sub 0 
+            (@CANCEL_TAC.existsSubst ts fs G sub from
               (map (fun x => @existT _ (fun tv => option (tvarD ts tv)) (projT1 x) (Some (projT2 x))) U ++
                map (fun x => @existT _ _ x None) exs)
-              (fun U => cancelResultD U G r))
+              (fun U => cancelResultD U G (length U) r))
           pures)
     end.
 
@@ -63,10 +64,10 @@ Section parametric.
         (Quant nil (SH.pures l) nil sub (Done Lhs' r), true)
       | S n =>
         (** Start by doing refinement **)
-        let '(unf, prog') := @UNF_TAC.unfold ts prover facts hintsFwd hintsBwd uvars vars l r in
+        let '(unf, prog') := @UNF_TAC.unfold ts teq prover facts hintsFwd hintsBwd uvars vars l r in
         @UNF_TAC.unfolderResult_rect ts prover _ 
           (fun alls exs lhs rhs know =>
-            let '(cncl, prog'') := @CANCEL_TAC.canceller ts prover tpreds know lhs rhs sub in
+            let '(cncl, prog'') := @CANCEL_TAC.canceller ts teq prover tpreds know lhs rhs sub in
             if prog' || prog'' then
               match cncl with
                 | {| CANCEL_TAC.Lhs := Lhs; CANCEL_TAC.Rhs := Rhs; CANCEL_TAC.Subst := Subst |} =>
@@ -84,7 +85,7 @@ Section parametric.
     let '(ql,lhs) := SH.hash l in
     let '(qr,rhs) := SH.hash r in
     let rhs := HEAP_FACTS.sheapSubstU 0 (length qr) (length tuvars) rhs in
-    let facts := Summarize prover (hyps ++ SH.pures lhs) in
+    let facts := prover.(Summarize) teq (hyps ++ SH.pures lhs) in
     let lhs' := SH.Build_SHeap (SH.impures lhs) nil (SH.other lhs) in
     let '(cr',prog') := cancelLoop n facts (tuvars ++ rev qr) (rev ql) lhs' rhs
       (ExprUnify.UNIFIER.Subst_empty _) false in
@@ -95,127 +96,139 @@ Section parametric.
 
 End parametric.
 
-Lemma cancelLoop_ind_pf : forall 
-  types (funcs : functions types) (preds : SE.predicates types) 
+Lemma cancelLoop_ind_pf : forall types (funcs : functions types) (preds : SE.predicates types)
+  (teq : types_eq types) 
   prover hintsFwd hintsBwd
-  (bound : nat) uvars vars (lhs rhs : SH.SHeap types) (facts : Facts prover) sub_init
+  (bound : nat) uvars vars (lhs rhs : SH.SHeap types) (facts : Facts prover) sub_init from
   cr prog b,
+  from <= length uvars ->
   forall (PC : ProverT_correct prover funcs),
   SH.WellTyped_sheap (typeof_funcs funcs) (SE.typeof_preds preds)
     (typeof_env uvars) (typeof_env vars) rhs = true ->
-  CANCEL.U.Subst_equations funcs uvars vars sub_init ->
+  CANCEL.U.Subst_equations_to funcs uvars vars sub_init 0 (firstn from uvars) ->
   Valid PC uvars vars facts ->
   UNF.hintSideD funcs preds hintsFwd ->
   UNF.hintSideD funcs preds hintsBwd ->
-  cancelLoop (SE.typeof_preds preds) prover hintsFwd hintsBwd bound facts (typeof_env uvars) (typeof_env vars) lhs rhs
+  cancelLoop teq (SE.typeof_preds preds) prover hintsFwd hintsBwd bound facts (typeof_env uvars) (typeof_env vars) lhs rhs
     sub_init b = (cr, prog) ->
-  (cancelResultD funcs preds uvars vars cr) ->
+  (cancelResultD funcs preds uvars vars 0 cr) ->
   SE.himp funcs preds uvars vars (SH.sheapD lhs) (SH.sheapD rhs).
 Proof.
   induction bound; simpl; intros.
-  { inversion H4; clear H4; subst.
+  { inversion H5; clear H5; subst.
     simpl in *.
     eapply HEAP_FACTS.himp_pull_pures; intros.
     repeat rewrite app_nil_r in *.
-    eapply AllProvable_impl_sem in H5; eauto.
-    eapply CANCEL_TAC.existsSubst_sem in H5.
+    eapply AllProvable_impl_sem in H6; eauto.
+    eapply CANCEL_TAC.existsSubst_sem in H6.
     rewrite map_map in *; simpl in *.
-    eapply existsEach_sem in H5. destruct H5. intuition.
-    eapply CANCEL_TAC.consistent_Some in H5. subst.
-    eapply AllProvable_and_sem in H9. intuition.
+    eapply existsEach_sem in H6. destruct H6. intuition.
+    eapply CANCEL_TAC.consistent_Some in H6. subst.
+    eapply AllProvable_and_sem in H10. intuition.
     eapply UNF_TAC.SH_UTIL.sheapD_remove_pures_p.
     eapply UNF_TAC.SH_UTIL.sheapD_remove_pures_c; eauto. }
-  { consider (UNF_TAC.unfold prover facts hintsFwd hintsBwd 
+  { consider (UNF_TAC.unfold teq prover facts hintsFwd hintsBwd 
               (typeof_env uvars) (typeof_env vars) lhs rhs); intros.
     destruct u; simpl in *.
-    consider (CANCEL_TAC.canceller prover (SE.typeof_preds preds) Know Lhs Rhs sub_init); intros.
+    consider (CANCEL_TAC.canceller teq prover (SE.typeof_preds preds) Know Lhs Rhs sub_init); intros.
     destruct (b0 || b1).
     { destruct c.
       match goal with
         | [ H : match ?X with _ => _ end = _ |- _ ] =>
           consider X
       end; intros.
-      inversion H8; clear H8; subst.
-      simpl in *.
+      inversion H9; clear H9; subst; simpl in *.
       eapply CANCEL_TAC.SH_FACTS.SEP_FACTS.himp_WellTyped_sexpr; intro.
-      eapply UNF_TAC.ApplyUnfold_with_eq' in H4; try eassumption. intros.
+      Check UNF_TAC.ApplyUnfold_with_eq'.
+      eapply UNF_TAC.ApplyUnfold_with_eq' in H5; try eassumption. intros.
       eapply forallEach_sem; intros.
 
       eapply AllProvable_impl_sem; intros.
-      generalize (CANCEL_TAC.canceller_PuresPrem _ _ _ _ _ _ _ _ _ H6 H13). simpl; intro.
+      generalize (CANCEL_TAC.canceller_PuresPrem _ _ _ _ _ _ _ _ _ _ H7 H14). simpl; intro.
 
-      eapply forallEach_sem in H5; try eassumption.
-      eapply AllProvable_impl_sem in H5; try eassumption.
-      eapply CANCEL_TAC.existsSubst_sem in H5.
-      eapply existsEach_sem in H5. destruct H5; intuition.
+      eapply forallEach_sem in H6; try eassumption.
+      eapply AllProvable_impl_sem in H6; try eassumption.
+      eapply CANCEL_TAC.existsSubst_sem in H6.
+      eapply existsEach_sem in H6. destruct H6; intuition.
 
       eapply UNF.ST_EXT.himp_existsEach_c.
-      eapply CANCEL_TAC.consistent_app in H5. intuition.
+      eapply CANCEL_TAC.consistent_app in H6. intuition.
       rewrite map_length in *.
       rewrite map_app in *; repeat rewrite map_map in *; simpl in *.
       rewrite map_id in *. exists (skipn (length uvars) x).
-      rewrite <- firstn_skipn with (l := x) (n := length uvars) in H15.
-      unfold typeof_env in H15; rewrite map_app in H15.
-      eapply ListFacts.app_inj_length in H15.
+      rewrite <- firstn_skipn with (l := x) (n := length uvars) in H16.
+      unfold typeof_env in H16; rewrite map_app in H16.
+      eapply ListFacts.app_inj_length in H16.
       intuition.
 
       eapply CANCEL_TAC.ApplyCancelSep_with_eq' with (funcs := funcs)
-        (meta_env := (uvars ++ skipn (length uvars) x)) (var_env := var_env) in H6.
-      intuition.
-      rewrite <- H6.
-      eapply UNF_TAC.SH_UTIL.sheapD_remove_pures_c.
-      rewrite <- app_nil_r with (l := var_env). eapply AllProvable_weaken. eassumption.
-      rewrite <- app_nil_r with (l := var_env) at 2.
-      eapply HEAP_FACTS.SEP_FACTS.sexprD_weaken.
-      rewrite <- app_nil_r with (l := var_env). eapply Valid_weaken. eassumption.
-      subst var_env.
-      eapply CANCEL_TAC.consistent_Some in H17. rewrite H17.
-      rewrite <- H17 at 2. rewrite firstn_skipn.
-
-      { clear - H0 H17. 
+        (meta_env := uvars ++ skipn (length uvars) x) (var_env := var_env) in H7.
+      { rewrite <- H7.
+        eapply UNF_TAC.SH_UTIL.sheapD_remove_pures_c.
+        rewrite <- app_nil_r with (l := var_env). eapply AllProvable_weaken. eassumption.
+        rewrite <- app_nil_r with (l := var_env) at 2.
+        eapply HEAP_FACTS.SEP_FACTS.sexprD_weaken. }
+      { rewrite <- app_nil_r with (l := var_env). eapply Valid_weaken. eassumption. }
+      { subst var_env.
+        eapply CANCEL_TAC.consistent_Some in H18. rewrite H18.
+        rewrite <- H18 at 2. rewrite firstn_skipn.
+        assert (CANCEL.U.Subst_Extends Subst sub_init) by admit.
+        eapply CANCEL.U.Subst_equations_Extends. eassumption.
+        eapply CANCEL.U.Subst_equations_to_Subst_equations; eauto.
+        admit. }
+(*      { eassumption. }
+      { subst var_env.
+        eapply CANCEL_TAC.consistent_Some in H17. rewrite H17.
+        rewrite <- H17 at 2. rewrite firstn_skipn.
+        clear - H0 H17. 
         rewrite <- firstn_skipn with (l := x) (n := length uvars).        
         simpl in *. cutrewrite (firstn (length uvars) x ++ skipn (length uvars) x = uvars ++ skipn (length uvars) x).
         eapply ExprUnify.UNIFIER.Subst_equations_weaken; eauto.
         f_equal. symmetry. apply H17. }
+*)
+      { unfold typeof_env in *. rewrite map_app. rewrite H21.
+        unfold var_env. rewrite map_app. rewrite H12.
+        eassumption. }
 
-      unfold typeof_env in *. rewrite map_app. rewrite H20.
-      unfold var_env. rewrite map_app. rewrite H11.
-      eassumption.
+      { unfold typeof_env in *. rewrite map_app. rewrite H21.
+        unfold var_env. rewrite map_app. rewrite H12.
+        rewrite SH.WellTyped_sheap_WellTyped_sexpr. 
+        rewrite <- app_nil_r with (l := map (projT1 (P:=tvarD types)) vars ++ Alls).
+        eapply HEAP_FACTS.SEP_FACTS.WellTyped_sexpr_weaken.
+        rewrite <- SH.WellTyped_sheap_WellTyped_sexpr. eassumption. }
+      { rewrite <- H21 in H8. rewrite <- H12 in H8.
+        change (map (projT1 (P:=tvarD types)) (skipn (length uvars) x)) with (typeof_env (skipn (length uvars) x)) in H8.
+        repeat rewrite <- typeof_env_app in H8.
 
-      unfold typeof_env in *. rewrite map_app. rewrite H20.
-      unfold var_env. rewrite map_app. rewrite H11.
-      rewrite SH.WellTyped_sheap_WellTyped_sexpr. 
-      rewrite <- app_nil_r with (l := map (projT1 (P:=tvarD types)) vars ++ Alls).
-      eapply HEAP_FACTS.SEP_FACTS.WellTyped_sexpr_weaken.
-      rewrite <- SH.WellTyped_sheap_WellTyped_sexpr. eassumption.
-
-      rewrite <- H20 in H7. rewrite <- H11 in H7.
-      change (map (projT1 (P:=tvarD types)) (skipn (length uvars) x)) with (typeof_env (skipn (length uvars) x)) in H7.
-      repeat rewrite <- typeof_env_app in H7.
-
-      simpl; intros.
-      eapply IHbound in H7; try eassumption.
-      { simpl; intros. 
-        eapply CANCEL_TAC.existsSubst_sem.
-        rewrite map_map. simpl.
-        eapply existsEach_sem.
-        exists (uvars ++ skipn (length uvars) x).
-        { intuition.
-          eapply CANCEL_TAC.consistent_Some; reflexivity.
-          { assert (x = uvars ++ skipn (length uvars) x).
-            { rewrite <- firstn_skipn with (l := x) (n := length uvars) at 1.
-              f_equal. eapply CANCEL_TAC.consistent_Some in H17. auto. }
-            rewrite <- H23 in *. eassumption. }
-          unfold SE.himp in H7.
-          subst var_env. rewrite <- H7.
-          eapply UNF_TAC.SH_UTIL.sheapD_remove_pures_p. reflexivity. } }
-      { assert (x = uvars ++ skipn (length uvars) x).
-        { rewrite <- firstn_skipn with (l := x) (n := length uvars) at 1.
-          f_equal. eapply CANCEL_TAC.consistent_Some in H17. auto. }
-        rewrite <- H23 in *.
-        eapply CANCEL.U.Subst_equations_to_Subst_equations; eauto.
-        eapply CANCEL_TAC.canceller_PureFacts in H6.
-        simpl in *. intuition. eapply H24.
+        simpl; intros.
+        eapply IHbound in H8; try eassumption.
+        { eapply CANCEL_TAC.existsSubst_sem.
+          rewrite map_map. simpl.
+          eapply existsEach_sem.
+          exists (uvars ++ skipn (length uvars) x).
+          { intuition.
+            eapply CANCEL_TAC.consistent_Some; reflexivity.
+            { assert (x = uvars ++ skipn (length uvars) x).
+              { rewrite <- firstn_skipn with (l := x) (n := length uvars) at 1.
+                f_equal. eapply CANCEL_TAC.consistent_Some in H18. auto. }
+              rewrite <- H24 in *. eassumption. }
+            unfold SE.himp in H8.
+            subst var_env. rewrite <- H8.
+            eapply UNF_TAC.SH_UTIL.sheapD_remove_pures_p. reflexivity. } }
+        { reflexivity. }
+        { assert (x = uvars ++ skipn (length uvars) x).
+          { rewrite <- firstn_skipn with (l := x) (n := length uvars) at 1.
+            f_equal. eapply CANCEL_TAC.consistent_Some in H18. auto. }
+          rewrite <- H24 in *.
+          Theorem firstn_length_eq : forall {T} (ls : list T),
+            firstn (length ls) ls = ls.
+          Proof.
+            induction ls; simpl; intuition. f_equal; auto.
+          Qed.
+          rewrite firstn_length_eq. eauto. }
+(*
+        { eapply CANCEL_TAC.canceller_PureFacts in H7.
+          simpl in *. intuition. eapply H26.
         rewrite H23. 
         eapply CANCEL.U.Subst_equations_weaken in H0.
         eapply CANCEL.U.Subst_equations_WellTyped in H0.
@@ -229,29 +242,82 @@ Proof.
         rewrite H23. rewrite <- H11 in *. rewrite <- H20 in *. repeat rewrite typeof_env_app.
         repeat rewrite SH.WellTyped_sheap_WellTyped_sexpr in *.
         unfold typeof_env in *. eassumption. }
+*)
+        { rewrite <- app_nil_r with (l := vars ++ env).
+          eapply Valid_weaken; eauto. }
 
-      rewrite <- app_nil_r with (l := vars ++ env).
-      eapply Valid_weaken; eauto.
-
-      eapply CANCEL_TAC.consistent_Some in H17.
-      rewrite H17 at 1. rewrite firstn_skipn. eassumption. 
-
-      repeat rewrite map_length. rewrite firstn_length.
-      rewrite Min.min_l; auto.
-      clear - H15.
-      rewrite <- map_app in H15. rewrite firstn_skipn in H15.
-      assert (length (map (projT1 (P:=tvarD types)) x) =
-        length (map (fun x : sigT (tvarD types) => projT1 x) uvars ++ Exs)).
-      { rewrite H15; auto. }
-      repeat rewrite map_length in *. rewrite app_length in *.
-      rewrite map_length in *. omega. }
-    { inversion H7; clear H7; subst. simpl in *.
-      eapply AllProvable_and_sem in H5. destruct H5.
+        { eapply CANCEL_TAC.consistent_Some in H18.
+          rewrite H18 at 1. rewrite firstn_skipn.
+          Theorem cancelResultD_lift (types : list type) (funcs : functions types) (preds : SE.predicates types) :
+            forall (c : cancelResult types) (x : env types) (Subst : CANCEL.U.Subst types) (vars : env types)
+              (env : env types) (n : nat),
+              CANCEL.U.Subst_equations_to funcs x (vars ++ env) Subst n x ->
+              cancelResultD funcs preds x (vars ++ env) (length x) c ->
+              cancelResultD funcs preds x (vars ++ env) n c.
+          Proof.
+            induction c; simpl; intros.
+            { assumption. }
+            { eapply forallEach_sem; intros. eapply forallEach_sem in H0; eauto.
+              eapply AllProvable_impl_sem; intros.
+              eapply AllProvable_impl_sem in H0; eauto.
+              eapply CANCEL_TAC.existsSubst_sem in H0.
+              apply existsEach_sem in H0. destruct H0; intuition.
+              eapply CANCEL_TAC.existsSubst_sem. 
+              repeat rewrite map_app in *. repeat rewrite map_map in *; simpl in *.
+              apply existsEach_sem. eexists. intuition try eassumption.
+              Theorem Subst_equations_to_weaken (types : list type) (funcs : functions types) :
+                forall G G' U U' x' Subst n,
+                  CANCEL.U.Subst_equations_to funcs U G Subst n x' ->
+                  CANCEL.U.Subst_equations_to funcs (U ++ U') (G ++ G') Subst n x'.
+              Proof.
+                induction x'; simpl; intros; auto.
+                intuition.
+                consider (CANCEL.U.Subst_lookup n Subst); intros; auto.
+                match goal with
+                  | [ _ : match ?X with _ => _ end |- _ ] => consider X; intros; try contradiction
+                end.
+                eapply exprD_weaken with (uvars' := U') (vars' := G') in H0. rewrite H0. auto.
+              Qed.
+              Theorem Subst_equations_to_split (types : list type) (funcs : functions types) : forall U G sub a n b,
+                (CANCEL.U.Subst_equations_to funcs U G sub n a /\
+                CANCEL.U.Subst_equations_to funcs U G sub (length a + n) b) <->
+                CANCEL.U.Subst_equations_to funcs U G sub n (a ++ b).
+              Proof.
+                induction a; simpl; intros; intuition.
+                { eapply IHa; intuition. replace (length a0 + S n) with (S (length a0 + n)) by omega. auto. }
+                { apply IHa in H1; intuition. }
+                { apply IHa in H1; intuition.
+                  replace (length a0 + S n) with (S (length a0 + n)) in H2 by omega. auto. }
+              Qed.
+              apply CANCEL_TAC.consistent_app in H0.
+              rewrite map_length in H0.
+              intuition.
+              eapply CANCEL_TAC.consistent_Some in H5.
+              assert (x0 = x ++ skipn (length x) x0).
+              { rewrite H5 at 1. rewrite firstn_skipn. reflexivity. }
+              rewrite H0.
+              apply Subst_equations_to_split; split.
+              { eapply Subst_equations_to_weaken; eauto. admit. }
+              { admit. } }
+          Qed.
+          admit. } }
+      { repeat rewrite map_length. rewrite firstn_length.
+        rewrite Min.min_l; auto.
+        clear - H16.
+        rewrite <- map_app in H16. rewrite firstn_skipn in H16.
+        assert (length (map (projT1 (P:=tvarD types)) x) =
+          length (map (fun x : sigT (tvarD types) => projT1 x) uvars ++ Exs)).
+        { rewrite H16; auto. }
+        repeat rewrite map_length in *. rewrite app_length in *.
+        rewrite map_length in *. omega. } }
+    { inversion H8; clear H8; subst. simpl in *.
+      eapply AllProvable_and_sem in H6. destruct H6.
       eapply UNF_TAC.SH_UTIL.sheapD_remove_pures_c; eauto. } }
 Qed.
 
 Lemma cancelLoop_with_eq' : forall 
   types (funcs : functions types) (preds : SE.predicates types) 
+  (teq : types_eq types)
   prover hintsFwd hintsBwd
   (bound : nat) uvars (lhs rhs : SE.sexpr types) (hyps : exprs types) 
   tfuncs tpreds tuvars
@@ -264,9 +330,9 @@ Lemma cancelLoop_with_eq' : forall
   AllProvable funcs uvars nil hyps ->
   UNF.hintSideD funcs preds hintsFwd ->
   UNF.hintSideD funcs preds hintsBwd ->
-  (cancel tpreds prover hintsFwd hintsBwd bound hyps tuvars nil lhs rhs = (cr, prog)) ->
+  (cancel teq tpreds prover hintsFwd hintsBwd bound hyps tuvars nil lhs rhs = (cr, prog)) ->
   (if prog then
-     cancelResultD funcs preds uvars nil cr
+     cancelResultD funcs preds uvars nil 0 cr
    else
      SE.himp funcs preds uvars nil lhs rhs) ->
   SE.himp funcs preds uvars nil lhs rhs.
@@ -313,7 +379,7 @@ Proof.
     { generalize (@HEAP_FACTS.sheapSubstU_WellTyped types (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env uvars) nil nil nil s0); simpl; rewrite app_nil_r.
       rewrite <- H9. intro. eapply H0.
       rewrite SH.WellTyped_hash in H2. rewrite H8 in *; simpl in *. auto. }
-    { eapply CANCEL.U.Subst_equations_empty. }
+    { admit. (* eapply CANCEL.U.Subst_equations_empty. *) }
     { eapply Summarize_correct. eapply AllProvable_app; eauto. } }
 
   { inversion H1; clear H1; subst.
@@ -387,10 +453,11 @@ Proof.
       repeat rewrite SH.WellTyped_sheap_WellTyped_sexpr in *.
       eapply CANCEL_TAC.SH_FACTS.SEP_FACTS.WellTyped_sexpr_weaken with (U' := nil) in H2.
       rewrite app_nil_r in H2. rewrite typeof_env_app. eapply H2. }
+    { admit. }
     { eapply Summarize_correct. eapply AllProvable_app.
       eapply AllProvable_weaken in H3. eapply H3.
       rewrite app_nil_r in H. eapply AllProvable_weaken in H. rewrite <- app_nil_r with (l := rev G). eapply H. }
-    { revert H12. rewrite H0 at 1. rewrite firstn_skipn. auto. }
+    { revert H12. rewrite H0 at 1. rewrite firstn_skipn. auto. admit. }
     { rewrite app_nil_r in *; auto. } }
 Qed.
 

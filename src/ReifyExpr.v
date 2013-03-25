@@ -19,34 +19,15 @@ Ltac lift_signatures fs nt :=
   map_tac (signature nt) f fs.
 *)
 
-Definition default_type (T : Type) : type. 
+Definition default_type (T : Type) : Pkg T.
 Proof. 
-  refine ({| Impl := T
-             ; Eqb := fun _ _ => false
-             ; Eqb_correct := _
+  refine ({| Eqb := fun _ _ => false
+           ; Eqb_correct := _
           |}). abstract (discriminate). 
 Defined. 
-
-(* (* TODO: remove this type-class... *) *)
-(* Global Instance SemiDec_nat : SemiDec nat.  *)
-(* constructor. intros. *)
-(* destruct (Peano_dec.eq_nat_dec a b). refine (Some e). refine (None).  *)
-(* Defined.  *)
-      
-Definition type_of_ReificationHint T : ReificationHint.Pkg T -> type. 
-intros [Eqb EqbH]; apply (@Typ T Eqb EqbH). 
-Defined. 
-
-Global Instance ReificationHintNat : ReificationHint.Pkg nat :=
-           ReificationHint.mk_Pkg EqNat.beq_nat EqNat.beq_nat_true. 
-
-Ltac build_default_type T := 
-  match goal with
-    | [ |- _ ] => let C := constr:(_ : ReificationHint.Pkg T) in 
-                 let t := constr:(type_of_ReificationHint C) in 
-                   t
-    | [ |- _ ] => constr:(default_type T)
-  end.
+    
+Global Instance ReificationHintNat : Pkg nat :=
+  mk_Pkg EqNat.beq_nat EqNat.beq_nat_true. 
 
 Ltac extend_type T types :=
   match T with
@@ -56,7 +37,7 @@ Ltac extend_type T types :=
         match types with
           | nil => constr:(false)
           | ?a :: ?b =>
-            match unifies (Impl a) T with
+            match unifies a T with
               | true => constr:(true)
               | false => find b
             end
@@ -65,8 +46,7 @@ Ltac extend_type T types :=
       match find types with
         | true => types
         | _ =>
-          let D := build_default_type T in
-          eval simpl app in (types ++ (D :: @nil type))
+          eval simpl app in (types ++ (@cons type T (@nil type)))
       end
   end.
 
@@ -236,7 +216,7 @@ Ltac typesIndex x types :=
   let rec search xs :=
     match xs with
       | ?X :: ?XS =>
-        match unifies (Impl X) x with
+        match unifies X x with
           | true => constr:(0)
           | false => 
             let r := search XS in

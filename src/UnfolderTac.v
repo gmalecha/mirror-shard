@@ -20,6 +20,7 @@ Section unfolder.
   Variable types : list type.
   Variable funcs : functions types.
   Variable preds : SE.predicates types.
+  Variable teq : types_eq types.
   Variable prover : ProverT types.
   Variable facts : Facts prover.
   Variable hintsFwd : UNF.hintSide types.
@@ -41,7 +42,7 @@ Section unfolder.
        ; UNF.Heap  := lhs
       |}
     in
-    match UNF.refineForward prover hintsFwd 10 facts pre with
+    match UNF.refineForward teq prover 5 hintsFwd 10 facts pre with
       | ({| UNF.Vars := vars' ; UNF.UVars := uvars' ; UNF.Heap := lhs |}, fprog) =>
         let post :=
           {| UNF.Vars  := vars'
@@ -49,8 +50,8 @@ Section unfolder.
            ; UNF.Heap  := rhs
           |}
         in
-        let facts' := Learn _ facts (SH.pures lhs) in
-        match UNF.refineBackward prover hintsBwd 10 facts' post with
+        let facts' := prover.(Learn) teq facts (SH.pures lhs) in
+        match UNF.refineBackward teq prover 5 hintsBwd 10 facts' post with
           | ({| UNF.Vars := vars' ; UNF.UVars := uvars' ; UNF.Heap := rhs |}, bprog) =>
             let new_vars  := skipn (length ql) vars' in
             let new_uvars := skipn (length uvars) uvars' in

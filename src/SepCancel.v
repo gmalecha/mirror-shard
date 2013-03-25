@@ -1,4 +1,4 @@
-Require Import List.
+Require Import List DepList.
 Require Import SepTheory.
 Require Import RelationClasses EqdepClass.
 Require Import Expr ExprUnify.
@@ -23,17 +23,17 @@ Module Type Canceller (ST : SepTheory.SepTheory)
     Variable types : list type.
     Variable funcs : functions types.
     Variable preds : SE.predicates types.
-    Variable prover : ProverT types.
 
     (** TODO: it would be good to keep this somewhat general with respect to the order so that we can play around with it
      ** NOTE: return None if we don't make progress
      **)
-    Parameter sepCancel : forall (bound : nat) (tpreds : SE.tpredicates)
+    Parameter sepCancel : forall (types_eq : Expr.types_eq types) (prover : ProverT types) (bound : nat) (tpreds : SE.tpredicates)
       (facts : Facts (types := types) prover) 
       (l r : SH.SHeap types) (s : U.Subst types),
       option (SH.SHeap types * SH.SHeap types * U.Subst types).
 
-
+    Variable types_eq : Expr.types_eq types.
+    Variable prover : ProverT types.
     Variable PC : ProverT_correct prover funcs.
 
     Axiom sepCancel_correct : forall U G bound facts l r l' r' sub sub',
@@ -41,20 +41,20 @@ Module Type Canceller (ST : SepTheory.SepTheory)
       SH.WellTyped_sheap (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env U) (typeof_env G) l = true ->
       SH.WellTyped_sheap (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env U) (typeof_env G) r = true ->
       Valid PC U G facts ->
-      sepCancel bound (SE.typeof_preds preds) facts l r sub' = Some (l', r', sub) ->
+      sepCancel types_eq prover bound (SE.typeof_preds preds) facts l r sub' = Some (l', r', sub) ->
       SE.himp funcs preds U G (SH.sheapD l') (SH.sheapD r') ->
       U.Subst_equations funcs U G sub ->
       SE.himp funcs preds U G (SH.sheapD l) (SH.sheapD r).
 
     Axiom sepCancel_PuresPrem : forall tp U G bound facts l r l' r' s s',
-      sepCancel bound tp facts l r s = Some (l', r', s') ->
+      sepCancel types_eq prover bound tp facts l r s = Some (l', r', s') ->
       AllProvable funcs U G (SH.pures l) ->
       AllProvable funcs U G (SH.pures l').
 
     Axiom sepCancel_PureFacts : forall tU tG bound facts l r l' r' s s',
       let tf := typeof_funcs funcs in
       let tp := SE.typeof_preds preds in
-      sepCancel bound tp facts l r s = Some (l', r', s') ->
+      sepCancel types_eq prover bound tp facts l r s = Some (l', r', s') ->
       U.Subst_WellTyped tf tU tG s ->
       SH.WellTyped_sheap tf tp tU tG l = true ->
       SH.WellTyped_sheap tf tp tU tG r = true ->
@@ -79,9 +79,9 @@ Module Make (U : Unifier)
 
   Section env.
     Variable types : list type.
-
     Variable funcs : functions types.
     Variable preds : SE.predicates types.
+    Variable types_eq : hlist Pkg types.
 
     (** The actual tactic code **)
     Variable Prover : ProverT types.
@@ -92,9 +92,9 @@ Module Make (U : Unifier)
       : option (U.Subst types) :=
       Folds.fold_left_3_opt 
         (fun l r t (acc : U.Subst _) =>
-          if Prove Prover summ (Expr.Equal t (U.exprInstantiate acc l) (U.exprInstantiate acc r))
+          if Prover.(Prove) types_eq summ (Expr.Equal t (U.exprInstantiate acc l) (U.exprInstantiate acc r))
             then Some acc
-            else U.exprUnify bound l r acc)
+            else U.exprUnify types_eq bound l r acc)
         l r ts sub.
 
     Fixpoint unify_remove (bound : nat) (summ : Facts Prover) (l : exprs types) (ts : list tvar) (r : list (exprs types))
@@ -146,8 +146,8 @@ Module Make (U : Unifier)
                   eapply is_well_typed_correct in H;
                     rewrite H' in H ; destruct H; congruence
           end ].
-          consider (Prove Prover summ (Equal t (U.exprInstantiate S a) (U.exprInstantiate S e))); simpl; eauto.
-          consider (U.exprUnify bound a e S); intros; try congruence.
+          consider (Prover.(Prove) types_eq summ (Equal t (U.exprInstantiate S a) (U.exprInstantiate S e))); simpl; eauto.
+          consider (U.exprUnify types_eq bound a e S); intros; try congruence.
           eapply IHl in H6; eauto using U.exprUnify_WellTyped.
           intuition. etransitivity; eauto using U.exprUnify_Extends. }
       Qed.          
@@ -160,26 +160,26 @@ Module Make (U : Unifier)
         @is_well_typed _ tfuncs tU tG a t = true ->
         @is_well_typed _ tfuncs tU tG e t = true ->
         match
-          (if Prove Prover summ
+          (if Prover.(Prove) types_eq summ
             (Equal t (U.exprInstantiate S a) (U.exprInstantiate S e))
             then Some S
-            else U.exprUnify bound a e S)
+            else U.exprUnify types_eq bound a e S)
           with
           | Some acc =>
             fold_left_3_opt
             (fun (l r : expr types) (t : tvar) (acc0 : U.Subst types) =>
-              if Prove Prover summ
+              if Prover.(Prove) types_eq summ
                 (Equal t (U.exprInstantiate acc0 l)
                   (U.exprInstantiate acc0 r))
                 then Some acc0
-                else U.exprUnify bound l r acc0) l r ts acc
+                else U.exprUnify types_eq bound l r acc0) l r ts acc
           | None => None
         end = Some S' ->
         U.Subst_Extends S' S /\ U.Subst_WellTyped tfuncs tU tG S'.
       Proof.
-        intros. destruct (Prove Prover summ (Equal t (U.exprInstantiate S a) (U.exprInstantiate S e))).
+        intros. destruct (Prove Prover types_eq summ (Equal t (U.exprInstantiate S a) (U.exprInstantiate S e))).
         apply unifyArgs_Extends_WellTyped in H4; eauto; intuition.
-        revert H4. case_eq (U.exprUnify bound a e S); intros; eauto.
+        revert H4. case_eq (U.exprUnify types_eq bound a e S); intros; eauto.
         generalize H4. eapply U.exprUnify_Extends in H4.
         intro. eapply U.exprUnify_WellTyped in H6; eauto.
         eapply unifyArgs_Extends_WellTyped in H5; eauto; intuition.
@@ -215,7 +215,7 @@ Module Make (U : Unifier)
                   eapply is_well_typed_correct in H;
                     rewrite H' in H ; destruct H; congruence
           end ].
-          revert H3. case_eq (Prove Prover summ (Equal t (U.exprInstantiate S a) (U.exprInstantiate S e))); intros.
+          revert H3. case_eq (Prove Prover types_eq summ (Equal t (U.exprInstantiate S a) (U.exprInstantiate S e))); intros.
           { eapply Prove_correct in H3; eauto.
             erewrite U.exprInstantiate_WellTyped in H2 by eauto.
             erewrite U.exprInstantiate_WellTyped in H1 by eauto.
@@ -236,7 +236,7 @@ Module Make (U : Unifier)
             rewrite U.exprInstantiate_Extends in H2 by eauto.
             rewrite U.exprInstantiate_Extends in H1 by eauto.
             rewrite H2 in H8. rewrite H1 in H7. inversion H7; inversion H8; subst; auto. }
-          { clear H3. revert H9. case_eq (U.exprUnify bound a e S); intros; try congruence.
+          { clear H3. revert H9. case_eq (U.exprUnify types_eq bound a e S); intros; try congruence.
             eapply IHl with (f := f t0) in H9; eauto using U.exprUnify_WellTyped.
             intuition.
             rewrite H10. f_equal. f_equal.
@@ -1154,5 +1154,7 @@ Module Make (U : Unifier)
   End env.
 
   Module U := U.
+
+  Check sepCancel_correct.
 
 End Make.

@@ -2,6 +2,7 @@ Require Import List.
 Require Import Expr Env.
 Require Import Prover.
 Require Import Reflection.
+Require Import DepList.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -16,18 +17,19 @@ Section AssumptionProver.
 
   Definition assumption_summary : Type := list (expr types).
 
-  Definition assumptionSummarize (hyps : list (expr types)) : assumption_summary := hyps.
+  Definition assumptionSummarize (types_eq : hlist Pkg types) (hyps : list (expr types)) : assumption_summary := hyps.
 
-  Fixpoint assumptionProve (hyps : assumption_summary)
+  Fixpoint assumptionProve (types_eq : hlist Pkg types) (hyps : assumption_summary)
     (goal : expr types) : bool :=
     match hyps with
       | nil => false
-      | exp :: b => if expr_seq_dec exp goal
+      | exp :: b =>
+        if expr_seq_dec types_eq exp goal
         then true
-        else assumptionProve b goal
+        else assumptionProve types_eq b goal
     end.
 
-  Definition assumptionLearn (sum : assumption_summary) (hyps : list (expr types)) : assumption_summary :=
+  Definition assumptionLearn (types_eq : hlist Pkg types) (sum : assumption_summary) (hyps : list (expr types)) : assumption_summary :=
     sum ++ hyps.
 
   Definition assumptionValid (uvars vars : env types) (sum : assumption_summary) : Prop :=
@@ -39,17 +41,15 @@ Section AssumptionProver.
     unfold assumptionValid. eauto using AllProvable_weaken.
   Qed.
 
-  Lemma assumptionSummarizeCorrect : forall uvars vars hyps,
+  Lemma assumptionSummarizeCorrect : forall types_eq uvars vars hyps,
     AllProvable fs uvars vars hyps ->
-    assumptionValid uvars vars (assumptionSummarize hyps).
-  Proof.
-    auto.
-  Qed.
+    assumptionValid uvars vars (assumptionSummarize types_eq hyps).
+  Proof. auto. Qed.
 
-  Lemma assumptionLearnCorrect : forall uvars vars sum,
+  Lemma assumptionLearnCorrect : forall types_eq uvars vars sum,
     assumptionValid uvars vars sum -> forall hyps, 
     AllProvable fs uvars vars hyps ->
-    assumptionValid uvars vars (assumptionLearn sum hyps).
+    assumptionValid uvars vars (assumptionLearn types_eq sum hyps).
   Proof.
     unfold assumptionLearn, assumptionValid. intuition.
     apply AllProvable_app; auto.
@@ -73,7 +73,7 @@ Section AssumptionProver.
 End AssumptionProver.
 
 Definition AssumptionProver : ProverPackage :=
-{| ProverTypes := nil_Repr EmptySet_type
+{| ProverTypes := nil_Repr (Empty_set : Type)
  ; ProverFuncs := fun ts => nil_Repr (Default_signature ts)
  ; Prover_correct := fun ts fs => assumptionProver_correct fs
 |}.
