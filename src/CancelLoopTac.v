@@ -29,6 +29,14 @@ Section parametric.
   | Quant : forall (alls : list tvar) (pures : exprs ts) (exs : list tvar) (sub : ExprUnify.UNIFIER.Subst ts),
     cancelResult -> cancelResult.
 
+  Definition quant (alls : list tvar) (pures : exprs ts) (exs : list tvar)
+    (sub : ExprUnify.UNIFIER.Subst ts) (rest : cancelResult) : cancelResult :=
+    match rest with
+      | Quant nil pures' exs' sub' rest' =>
+        Quant alls (pures ++ pures') (exs ++ exs') sub rest'
+      | _ => Quant alls pures exs sub rest
+    end.
+
   Variable fs : functions ts.
   Variable ps : SE.predicates ts.
 
