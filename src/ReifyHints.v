@@ -110,22 +110,6 @@ Module Make (ST : SepTheory.SepTheory) (SE : SepExpr.SepExpr ST)
             k funcs preds (P :: nil))
     end.
 
-(*
-  Parameter f : nat -> nat -> ST.hprop.
-  Theorem foo : ST.himp (ST.ex (fun x => (ST.ex (f x)))) ST.emp.
-  Proof. Admitted.
-
-  Goal True.
-    let isConst x := false in
-    let T := type of foo in
-    let T := constr:(fun x : ReifyExpr.VarType unit => T) in
-    let Ts := collectTypes_hint isConst T Reify.Tnil ltac:(fun Ts => Ts) in
-    let types := ReifyExpr.extend_all_types Ts (@nil type) in
-    reify_hints ltac:(fun x => x) (tvType 0) (tvType 1) ltac:(fun x => false) foo
-      types (@nil (Expr.signature types)) (@nil (SE.predicate types)) ltac:(fun f p r => pose r).
-*)
-
-
   (* Build proofs of combined lemma statements *)
   Ltac prove Ps :=
     match Ps with

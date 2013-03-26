@@ -172,6 +172,10 @@ Module Type SepHeap (ST : SepTheory) (SE : SepExpr ST).
         SE.WellTyped_sexpr tf tp tU tG s = 
         WellTyped_sheap tf tp tU (rev (fst (hash s)) ++ tG) (snd (hash s)).
 
+      Axiom WellTyped_sheap_weaken : forall tf tp tU tG tU' tG' h,
+        WellTyped_sheap tf tp tU tG h = true ->
+        WellTyped_sheap tf tp (tU ++ tU') (tG ++ tG') h = true.
+
       (** Hash Equations **)
       Axiom hash_Func : forall p args,
         hash (SE.Func p args) = (nil, {| impures := MM.mmap_add p args (MM.empty _)

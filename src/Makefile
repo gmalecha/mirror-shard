@@ -13,8 +13,10 @@ MODULES    := Ordering \
 	Provers \
 	SepExpr ReifySepExpr SepHeap SepUnify SepCancel \
 	Unfolder UnfolderTac ReifyHints SepLemma \
-	CancelTac CancelLoopTac \
+	CancelTacBedrock \
 	TypedPackage
+
+#CancelLoopTac \
 
 TESTS := UnfolderTests
 VS         := $(GENERIC:%=%.v) $(MODULES:%=%.v)
