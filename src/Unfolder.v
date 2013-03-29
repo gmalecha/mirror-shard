@@ -1659,12 +1659,12 @@ Module Make (ST : SepTheory.SepTheory)
     Definition refineForward (hs : hintSide types) (bound : nat) (facts : Facts prover)
       (us : unfoldingState types) : (unfoldingState types) * bool :=
       let '(res,n) := forward hs prover bound facts us in
-      (res, EqNat.beq_nat n bound).
+      (res, negb (EqNat.beq_nat n bound)).
 
     Definition refineBackward (hs : hintSide types) (bound : nat) (facts : Facts prover)
       (us : unfoldingState types) : (unfoldingState types) * bool :=
       let '(res,n) := backward hs prover bound facts us in
-      (res, EqNat.beq_nat n bound).
+      (res, negb (EqNat.beq_nat n bound)).
     
     Variable funcs : functions types.
     Variable preds : SE.predicates types.
