@@ -58,7 +58,47 @@ Section abstracted.
         end
       | UVar x => lookupAs meta_env t x
     end.
+
+  Fixpoint nAllProvable_impl (k : Prop) (es : list (expr types)) : Prop :=
+    match es with
+      | nil => k
+      | e :: es =>
+        match nexprD e tvProp with
+          | None => False
+          | Some v => v 
+        end -> nAllProvable_impl k es
+    end.
+
+  Fixpoint nAllProvable_and (k : Prop) (es : list (expr types)) : Prop :=
+    match es with
+      | nil => k
+      | e :: es =>
+        match nexprD e tvProp with
+          | None => False
+          | Some v => v
+        end /\ nAllProvable_and k es
+    end.
+
 End abstracted.
 
 Theorem nexprD_exprD : nexprD not = exprD.
 Proof. reflexivity. Qed.
+
+Theorem nAllProvable_impl_AllProvable_impl : forall a b c d e f, 
+  @nAllProvable_impl not a b c d e f <-> @AllProvable_impl a b c d e f.
+Proof. 
+  induction f; simpl.
+  reflexivity.
+  rewrite <- IHf. unfold Provable in *.
+  rewrite nexprD_exprD. reflexivity. 
+Qed.
+
+Theorem nAllProvable_and_AllProvable_and : forall a b c d e f, 
+  @nAllProvable_and not a b c d e f <-> @AllProvable_and a b c d e f.
+Proof. 
+  induction f; simpl.
+  reflexivity.
+  rewrite <- IHf. unfold Provable in *.
+  rewrite nexprD_exprD. reflexivity. 
+Qed.
+  

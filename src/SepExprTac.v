@@ -44,7 +44,7 @@ Module Make (ST : SepTheory.SepTheory) (SE : SepExpr ST).
       end.
   End abstracted.
   
-  Theorem sexprD_nsexprD : nsexprD not ST.emp ST.star ST.ex ST.inj = SE.sexprD.
+  Theorem nsexprD_sexprD : nsexprD not ST.emp ST.star ST.ex ST.inj = SE.sexprD.
   Proof. reflexivity. Qed.
 End Make.
     
