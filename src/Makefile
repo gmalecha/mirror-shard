@@ -14,7 +14,8 @@ MODULES    := Ordering \
 	SepExpr ReifySepExpr SepHeap SepUnify SepCancel \
 	Unfolder UnfolderTac ReifyHints SepLemma \
 	CancelTacBedrock \
-	TypedPackage
+	TypedPackage \
+	ExprTac SepExprTac
 
 #CancelLoopTac \
 

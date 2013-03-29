@@ -79,8 +79,9 @@ Module Type SepExpr (ST : SepTheory.SepTheory).
     Section funcs_preds.
       Variable funcs : functions types.
       Variable preds : predicates.
+      Variable meta_env : env types.
       
-      Fixpoint sexprD (meta_env var_env : env types) (s : sexpr) : ST.hprop :=
+      Fixpoint sexprD (var_env : env types) (s : sexpr) : ST.hprop :=
         match s with 
           | Emp => ST.emp
           | Inj p =>
@@ -89,9 +90,9 @@ Module Type SepExpr (ST : SepTheory.SepTheory).
               | Some p => ST.inj p
             end
           | Star l r =>
-            ST.star (sexprD meta_env var_env l) (sexprD meta_env var_env r)
+            ST.star (sexprD var_env l) (sexprD var_env r)
           | Exists t b =>
-            ST.ex (fun x : tvarD types t => sexprD meta_env (@existT _ _ t x :: var_env) b)
+            ST.ex (fun x : tvarD types t => sexprD (@existT _ _ t x :: var_env) b)
           | Func f b =>
             match nth_error preds f with
               | None => ST.inj (BadPred f)
@@ -104,13 +105,13 @@ Module Type SepExpr (ST : SepTheory.SepTheory).
           | Const p => p
         end.
 
-      Definition himp (meta_env var_env : env types)
+      Definition himp (var_env : env types)
         (gl gr : sexpr) : Prop :=
-        ST.himp (sexprD meta_env var_env gl) (sexprD meta_env var_env gr).
+        ST.himp (sexprD var_env gl) (sexprD var_env gr).
 
-      Definition heq (meta_env var_env : env types)
+      Definition heq (var_env : env types)
         (gl gr : sexpr) : Prop :=
-        ST.heq (sexprD meta_env var_env gl) (sexprD meta_env var_env gr).
+        ST.heq (sexprD var_env gl) (sexprD var_env gr).
 
     End funcs_preds.
 
@@ -615,8 +616,9 @@ Module Make (ST : SepTheory.SepTheory) <: SepExpr ST.
 
     Variable funcs : functions types.
     Variable sfuncs : predicates.
+    Variable meta_env : env types.
 
-    Fixpoint sexprD (meta_env var_env : env types) (s : sexpr) : ST.hprop :=
+    Fixpoint sexprD (var_env : env types) (s : sexpr) : ST.hprop :=
       match s with 
         | Emp => ST.emp
         | Inj p =>
@@ -625,9 +627,9 @@ Module Make (ST : SepTheory.SepTheory) <: SepExpr ST.
             | Some p => ST.inj p
           end
         | Star l r =>
-          ST.star (sexprD meta_env var_env l) (sexprD meta_env var_env r)
+          ST.star (sexprD var_env l) (sexprD var_env r)
         | Exists t b =>
-          ST.ex (fun x : tvarD types t => sexprD meta_env (@existT _ _ t x :: var_env) b)
+          ST.ex (fun x : tvarD types t => sexprD (@existT _ _ t x :: var_env) b)
         | Func f b =>
           match nth_error sfuncs f with
             | None => ST.inj (BadPred f)
@@ -640,13 +642,13 @@ Module Make (ST : SepTheory.SepTheory) <: SepExpr ST.
         | Const p => p
       end.
 
-    Definition himp (meta_env var_env : env types)
+    Definition himp (var_env : env types)
       (gl gr : sexpr) : Prop :=
-      ST.himp (sexprD meta_env var_env gl) (sexprD meta_env var_env gr).
+      ST.himp (sexprD var_env gl) (sexprD var_env gr).
 
-    Definition heq (meta_env var_env : env types)
+    Definition heq (var_env : env types)
       (gl gr : sexpr) : Prop :=
-      ST.heq (sexprD meta_env var_env gl) (sexprD meta_env var_env gr).
+      ST.heq (sexprD var_env gl) (sexprD var_env gr).
 
     Fixpoint existsEach (ls : list tvar) {struct ls} : sexpr -> sexpr :=
       match ls with
