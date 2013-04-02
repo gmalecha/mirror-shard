@@ -1,6 +1,6 @@
 Require Import Arith Bool EqdepClass List.
 Require Import Expr ExprUnify Folds.
-Require Import SepExpr SepHeap SepLemma.
+Require Import SepExpr SepHeap Lemma SepLemma.
 Require Import Prover.
 Require Import Env.
 Require Import Reflection Tactics ListFacts.
@@ -361,14 +361,14 @@ Module Make (ST : SepTheory.SepTheory)
        **)
       Definition applicable U_or_G (firstUvar firstVar : nat) (lem : LEM.sepLemma types) (args key : exprs types) 
         : option (U.Subst types) :=
-        let numForalls := length (Foralls lem) in
+        let numForalls := length (Lemma.Foralls lem) in
         (** NOTE: it is important that [key] is first because of the way the unification algorithm works **)
         match fold_left_2_opt (U.exprUnify unify_bound) (map (openForUnification firstUvar) key) args (U.Subst_empty _) with
           | None => None
           | Some subst =>
-            if EqNat.beq_nat (U.Subst_size subst) numForalls && checkAllInstantiated firstUvar (Foralls lem) subst
+            if EqNat.beq_nat (U.Subst_size subst) numForalls && checkAllInstantiated firstUvar (Lemma.Foralls lem) subst
             then (* Now we must make sure all of the lemma's pure obligations are provable. *)
-                 if allb (Prove prover facts) (map (liftInstantiate U_or_G firstUvar firstVar 0 subst) (Hyps lem))
+                 if allb (Prove prover facts) (map (liftInstantiate U_or_G firstUvar firstVar 0 subst) (Lemma.Hyps lem))
                  then Some subst
                  else None
             else None
@@ -386,7 +386,7 @@ Module Make (ST : SepTheory.SepTheory)
               match FM.find f imps with
                 | None => None
                 | Some argss =>
-                  let numForalls := length (Foralls h) in
+                  let numForalls := length (Lemma.Foralls h) in
                   findWithRest (fun args argss =>
                     (* We must tweak the arguments by substituting unification variables for 
                      * [forall]-quantified variables from the lemma statement. *)

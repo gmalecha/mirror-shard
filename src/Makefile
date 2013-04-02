@@ -12,7 +12,7 @@ MODULES    := Ordering \
 	$(PROVERS:%=provers/%Prover) \
 	Provers \
 	SepExpr ReifySepExpr SepHeap SepUnify SepCancel \
-	Unfolder UnfolderTac ReifyHints SepLemma \
+	Unfolder UnfolderTac ReifyHints Lemma SepLemma \
 	CancelTacBedrock \
 	TypedPackage \
 	ExprTac SepExprTac
