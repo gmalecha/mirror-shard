@@ -103,11 +103,8 @@ Module Make (ST : SepTheory.SepTheory) (SE : SepExpr.SepExpr ST)
         let T := type of Ps in
         let T := eval simpl in T in
         let T := unfoldTac T in
-        idtac T ;
-        let v := ST.himp in
-          idtac v ;
-          reify_hint pcType stateType isConst (fun _ : ReifyExpr.VarType unit => T) types funcs preds (@nil tvar) ltac:(fun funcs preds P =>
-            k funcs preds (P :: nil))
+        reify_hint pcType stateType isConst (fun _ : ReifyExpr.VarType unit => T) types funcs preds (@nil tvar) ltac:(fun funcs preds P =>
+          k funcs preds (P :: nil))
     end.
 
   (* Build proofs of combined lemma statements *)
