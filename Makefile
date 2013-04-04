@@ -1,6 +1,6 @@
 MODULE:=MirrorShard
 
-.PHONY: all clean dist native ltac version
+.PHONY: all clean dist
 
 all:
 	# BEWARE: This will probably take a long time (and may require up to 4GB of memory)!
@@ -12,15 +12,6 @@ clean:
 	$(MAKE) -C src/reification clean
 	$(MAKE) -C src clean
 	$(MAKE) -C examples clean
-
-native:
-	$(MAKE) -C src native
-
-ltac:
-	$(MAKE) -C src ltac
-
-version:
-	$(MAKE) -C src version
 
 dist:
 	git archive --format=tgz mirror-shard.tgz
