@@ -766,7 +766,7 @@ Module SynUnifier (E : OrderedType.OrderedType with Definition t := uvar with De
                   | right _ => None
                 end
             | Var v , Var v' => 
-              if Peano_dec.eq_nat_dec v v' 
+              if EqNat.beq_nat v v' 
                 then Some sub
                 else None
             | Func f1 args1 , Func f2 args2 =>
@@ -1106,8 +1106,8 @@ Module SynUnifier (E : OrderedType.OrderedType with Definition t := uvar with De
           intros. consider (tvar_seqb t1 t); intros; subst; auto. }
         { eapply unify_uvar; eauto. } }
       { destruct r; simpl in *; intros; try congruence.
-        { consider (Peano_dec.eq_nat_dec x v); try congruence; subst; intros.
-          inversion H; clear H; subst. intuition. }
+        { consider (EqNat.beq_nat x v); try congruence; subst; intros.
+          inversion H0; clear H0; subst. intuition. }
         { eapply unify_uvar; eauto. } }
       { do 4 intro.
         assert ((exists u, r = UVar u) \/
