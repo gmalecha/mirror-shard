@@ -72,8 +72,7 @@ Remove Hints FM.Raw.Proofs.L.PX.eqk_refl FM.Raw.Proofs.L.PX.eqk_sym
 Module MM := Multimap.Make FM.
 Module MF := NatMap.MoreFMapFacts FM.
 
-Module Type SepHeap.
-  Declare Module SE : SepExpr.
+Module Type SepHeap (ST : SepTheory) (SE : SepExpr ST).
 
   Section env.
     Variable types : list type.
@@ -81,7 +80,7 @@ Module Type SepHeap.
     Record SHeap : Type :=
     { impures : MM.mmap (exprs types)
     ; pures   : list (expr types)
-    ; other   : list SE.ST.hprop
+    ; other   : list ST.hprop
     }.
 
     Parameter WellTyped_sheap : forall (tf : tfunctions) (tp : SE.tpredicates) (tU tG : tenv) (h : SHeap), bool.
@@ -173,6 +172,10 @@ Module Type SepHeap.
         SE.WellTyped_sexpr tf tp tU tG s = 
         WellTyped_sheap tf tp tU (rev (fst (hash s)) ++ tG) (snd (hash s)).
 
+      Axiom WellTyped_sheap_weaken : forall tf tp tU tG tU' tG' h,
+        WellTyped_sheap tf tp tU tG h = true ->
+        WellTyped_sheap tf tp (tU ++ tU') (tG ++ tG') h = true.
+
       (** Hash Equations **)
       Axiom hash_Func : forall p args,
         hash (SE.Func p args) = (nil, {| impures := MM.mmap_add p args (MM.empty _)
@@ -230,13 +233,13 @@ Module Type SepHeap.
           is_well_typed (typeof_funcs funcs) (typeof_env U) (typeof_env G) e t = true ->
           exprD funcs U G e t = exprD funcs U' G' (F e) t) ->
         WellTyped_sheap (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env U) (typeof_env G) s = true ->
-        SE.ST.heq (SE.sexprD funcs preds U G (sheapD s))
+        ST.heq (SE.sexprD funcs preds U G (sheapD s))
                      (SE.sexprD funcs preds U' G' (sheapD (applySHeap F s))).
 
       Axiom applySHeap_spec : forall U G U' G' s F,
         (forall e t, 
           exprD funcs U G e t = exprD funcs U' G' (F e) t) ->
-        SE.ST.heq (SE.sexprD funcs preds U G (sheapD s))
+        ST.heq (SE.sexprD funcs preds U G (sheapD s))
                      (SE.sexprD funcs preds U' G' (sheapD (applySHeap F s))).
 
       Axiom applySHeap_typed_eq : forall tf tp U G U' G' s F,
@@ -255,11 +258,9 @@ Module Type SepHeap.
   End env.
 End SepHeap.
 
-Module Make (SE : SepExpr) <: SepHeap with Module SE := SE.
-  Module Import SE := SE.
-  Module ST := SE.ST.
-
-  Module Import SE_FACTS := SepExpr.SepExprFacts SE.
+Module Make (ST : SepTheory) (SE : SepExpr ST) <: SepHeap ST SE.
+  Module Import SE_FACTS := SepExpr.SepExprFacts ST SE.
+  Import SE.
 
   Section env.
     Variable types : list type.
@@ -267,7 +268,7 @@ Module Make (SE : SepExpr) <: SepHeap with Module SE := SE.
     Variable stateType : tvar.
 
     Variable funcs : functions types.
-    Variable preds : predicates types.
+    Variable preds : SE.predicates types.
 
     (** A more efficient representation for sexprs. **)
     Record SHeap : Type :=
@@ -288,14 +289,14 @@ Module Make (SE : SepExpr) <: SepHeap with Module SE := SE.
 
     Theorem ST_himp_himp : forall (U G : env types) L R,
       SE.himp funcs preds U G L R ->
-      ST.himp (sexprD funcs preds U G L) (sexprD funcs preds U G R).
+      ST.himp (SE.sexprD funcs preds U G L) (SE.sexprD funcs preds U G R).
     Proof.
       clear. auto.
     Qed.
 
     Theorem ST_heq_heq : forall (U G : env types) L R,
-      heq funcs preds U G L R ->
-      ST.heq (sexprD funcs preds U G L) (sexprD funcs preds U G R).
+      SE.heq funcs preds U G L R ->
+      ST.heq (SE.sexprD funcs preds U G L) (SE.sexprD funcs preds U G R).
     Proof.
       clear. auto.
     Qed.
@@ -316,30 +317,30 @@ Module Make (SE : SepExpr) <: SepHeap with Module SE := SE.
        ; other := other l ++ other r
        |}.
 
-    Fixpoint hash (s : sexpr types) : ( variables * SHeap ) :=
+    Fixpoint hash (s : SE.sexpr types) : ( variables * SHeap ) :=
       match s with
-        | Emp => (nil, SHeap_empty)
-        | Inj p => (nil,
+        | SE.Emp => (nil, SHeap_empty)
+        | SE.Inj p => (nil,
           {| impures := MM.empty _
            ; pures := p :: nil
            ; other := nil
            |})
-        | Star l r =>
+        | SE.Star l r =>
           let (vl, hl) := hash l in
           let (vr, hr) := hash r in
           let nr := length vr in
           (vl ++ vr,
             star_SHeap (liftSHeap 0 0 0 nr hl) (liftSHeap 0 0 nr (length vl) hr))
-        | Exists t b =>
+        | SE.Exists t b =>
           let (v, b) := hash b in
           (t :: v, b)
-        | Func f a =>
+        | SE.Func f a =>
           (nil,
            {| impures := MM.mmap_add f a (MM.empty _)
             ; pures := nil
             ; other := nil
            |})
-        | Const c => 
+        | SE.Const c => 
           (@nil tvar,
            {| impures := MM.empty _
             ; pures := @nil (expr types)
@@ -347,11 +348,11 @@ Module Make (SE : SepExpr) <: SepHeap with Module SE := SE.
             |})
       end.
 
-    Definition starred (T : Type) (F : T -> sexpr types) (ls : list T) (base : sexpr _)
-      : sexpr _ :=
+    Definition starred (T : Type) (F : T -> SE.sexpr types) (ls : list T) (base : SE.sexpr _)
+      : SE.sexpr _ :=
       fold_right (fun x a => match a with 
-                               | Emp => F x
-                               | _ => Star (F x) a
+                               | SE.Emp => F x
+                               | _ => SE.Star (F x) a
                              end) base ls.     
 
     Definition sheapD (h : SHeap) : sexpr types :=
@@ -1305,11 +1306,11 @@ Module Make (SE : SepExpr) <: SepHeap with Module SE := SE.
     Theorem applySHeap_spec : forall U G U' G' s F,
       (forall e t, 
         exprD funcs U G e t = exprD funcs U' G' (F e) t) ->
-      SE.ST.heq (sexprD funcs preds U G (sheapD s))
+      ST.heq (sexprD funcs preds U G (sheapD s))
                    (sexprD funcs preds U' G' (sheapD (applySHeap F s))).
     Proof.
       clear. intros. 
-      do 2 rewrite sheapD_def. simpl. repeat eapply SE.ST.heq_star_frame.
+      do 2 rewrite sheapD_def. simpl. repeat eapply ST.heq_star_frame.
       { eapply MM.PROPS.map_induction with (m := impures s); intros.
         repeat rewrite impuresD_Empty by eauto using MF.map_Empty. reflexivity.
         rewrite impuresD_Add by eauto using MF.map_Add, MF.map_not_In.
@@ -1337,11 +1338,11 @@ Module Make (SE : SepExpr) <: SepHeap with Module SE := SE.
         is_well_typed (typeof_funcs funcs) (typeof_env U) (typeof_env G) e t = true ->
         exprD funcs U G e t = exprD funcs U' G' (F e) t) ->
       WellTyped_sheap (typeof_funcs funcs) (typeof_preds preds) (typeof_env U) (typeof_env G) s = true ->
-      SE.ST.heq (sexprD funcs preds U G (sheapD s))
+      ST.heq (sexprD funcs preds U G (sheapD s))
                    (sexprD funcs preds U' G' (sheapD (applySHeap F s))).
     Proof.
       clear. intros. rewrite WellTyped_sheap_eq in H0. apply andb_true_iff in H0. destruct H0. 
-      do 2 rewrite sheapD_def. simpl. repeat eapply SE.ST.heq_star_frame.
+      do 2 rewrite sheapD_def. simpl. repeat eapply ST.heq_star_frame.
       { revert H0. clear H1. rewrite WellTyped_impures_spec_eq. eapply MM.PROPS.map_induction with (m := impures s); intros.
         repeat rewrite impuresD_Empty by eauto using MF.map_Empty. reflexivity.
         rewrite impuresD_Add by eauto using MF.map_Add, MF.map_not_In.
@@ -1476,9 +1477,9 @@ Module Make (SE : SepExpr) <: SepHeap with Module SE := SE.
 
 End Make.
 
-Module SepHeapFacts (SH : SepHeap).
-  Import SH.SE.
-  Module SEP_FACTS := SepExprFacts SH.SE.
+Module SepHeapFacts (ST : SepTheory) (SE : SepExpr ST) (SH : SepHeap ST SE).
+  Import SE.
+  Module SEP_FACTS := SepExprFacts ST SE.
   Import SEP_FACTS.
 
   Section with_env.
@@ -1633,7 +1634,7 @@ Module SepHeapFacts (SH : SepHeap).
       end); 
     SEP_FACTS.heq_canceler.
 
-  Lemma applySHeap_singleton : forall types funcs (preds : SH.SE.predicates types)  meta_env vars_env F f l,
+  Lemma applySHeap_singleton : forall types funcs (preds : SE.predicates types)  meta_env vars_env F f l,
     heq funcs preds meta_env vars_env
     (SH.sheapD (SH.applySHeap F
       {| SH.impures := MM.mmap_add f l (MM.empty (list (expr types)))
@@ -1655,20 +1656,20 @@ Module SepHeapFacts (SH : SepHeap).
   Section typed.
     Variable types : list type.
     Variable funcs : functions types.
-    Variable preds : SH.SE.predicates types.
+    Variable preds : SE.predicates types.
 
     Lemma himp_remove_pure_p : forall U G p P Q,
       (Provable funcs U G p ->
-        SH.SE.himp funcs preds U G P Q) ->
-      SH.SE.himp funcs preds U G (SH.SE.Star (@SH.SE.Inj _ p) P) Q.
+        SE.himp funcs preds U G P Q) ->
+      SE.himp funcs preds U G (SE.Star (@SE.Inj _ p) P) Q.
     Proof. clear.
-      intros. unfold SH.SE.himp. simpl. unfold Provable in *. 
-      destruct (exprD funcs U G p tvProp); eapply SH.SE.ST.himp_star_pure_c; intuition.
+      intros. unfold SE.himp. simpl. unfold Provable in *. 
+      destruct (exprD funcs U G p tvProp); eapply ST.himp_star_pure_c; intuition.
     Qed.
     Lemma himp_remove_pures_p : forall U G ps P Q,
       (AllProvable funcs U G ps ->
-        SH.SE.himp funcs preds U G P Q) ->
-      SH.SE.himp funcs preds U G (SH.starred (@SH.SE.Inj _) ps P) Q.
+        SE.himp funcs preds U G P Q) ->
+      SE.himp funcs preds U G (SH.starred (@SE.Inj _) ps P) Q.
     Proof. clear.
       induction ps; intros.
       { rewrite starred_nil. apply H. exact I. }
@@ -1677,16 +1678,16 @@ Module SepHeapFacts (SH : SepHeap).
     Qed.
     Lemma himp_remove_pure_c : forall U G p P Q,
       Provable funcs U G p ->
-      SH.SE.himp funcs preds U G P Q ->
-      SH.SE.himp funcs preds U G P (SH.SE.Star (@SH.SE.Inj _ p) Q).
+      SE.himp funcs preds U G P Q ->
+      SE.himp funcs preds U G P (SE.Star (@SE.Inj _ p) Q).
     Proof. clear.
-      intros. unfold SH.SE.himp. simpl. unfold Provable in *. 
-      destruct (exprD funcs U G p tvProp); eapply SH.SE.ST.himp_star_pure_cc; intuition.
+      intros. unfold SE.himp. simpl. unfold Provable in *. 
+      destruct (exprD funcs U G p tvProp); eapply ST.himp_star_pure_cc; intuition.
     Qed.
     Lemma himp_remove_pures_c : forall U G ps P Q,
       AllProvable funcs U G ps ->
-      SH.SE.himp funcs preds U G P Q ->
-      SH.SE.himp funcs preds U G P (SH.starred (@SH.SE.Inj _) ps Q).
+      SE.himp funcs preds U G P Q ->
+      SE.himp funcs preds U G P (SH.starred (@SE.Inj _) ps Q).
     Proof. clear.
       induction ps; intros.
       { rewrite starred_nil. apply H0. }

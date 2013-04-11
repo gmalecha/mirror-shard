@@ -6,8 +6,10 @@ Require Import List.
 Set Implicit Arguments.
 Set Strict Implicit.
 
-Module Make (U : Unifier) (SH : SepHeap).
-  Module SH_FACTS := SepHeapFacts SH.
+Module Make (U : Unifier) 
+            (ST : SepTheory.SepTheory) (SE : SepExpr.SepExpr ST)
+            (SH : SepHeap ST SE).
+  Module SH_FACTS := SepHeapFacts ST SE SH.
   Import SH_FACTS.
 
   Section typed.
@@ -24,11 +26,11 @@ Module Make (U : Unifier) (SH : SepHeap).
        |}.
 
     Variable funcs : functions types.
-    Variable preds : SH.SE.predicates types.
+    Variable preds : SE.predicates types.
     
     Variables U G : env types.
 
-    Lemma impuresInstantiate_mmap_add : forall n e acc, SH.SE.heq funcs preds U G
+    Lemma impuresInstantiate_mmap_add : forall n e acc, SE.heq funcs preds U G
         (SH.impuresD (impuresInstantiate (MM.mmap_add n e acc)))
         (SH.impuresD 
           (MM.mmap_add n (map (@U.exprInstantiate _ s) e) 
@@ -67,9 +69,9 @@ Module Make (U : Unifier) (SH : SepHeap).
     Lemma sheapInstantiate_add : forall n e m m',
       ~FM.In n m ->
       MM.PROPS.Add n e m m' ->
-      SH.SE.heq funcs preds U G
+      SE.heq funcs preds U G
         (SH.impuresD (impuresInstantiate m'))
-        (SH.starred (fun v => SH.SE.Func n (map (U.exprInstantiate s) v)) e
+        (SH.starred (fun v => SE.Func n (map (U.exprInstantiate s) v)) e
           (SH.impuresD (impuresInstantiate m))).
     Proof.
       clear. intros.
@@ -78,7 +80,7 @@ Module Make (U : Unifier) (SH : SepHeap).
         symmetry; rewrite SH.starred_base. heq_canceler.
         repeat rewrite SH.starred_def.
         match goal with
-          | [ |- context [ @SH.SE.Emp ?X ] ] => generalize (@SH.SE.Emp X)
+          | [ |- context [ @SE.Emp ?X ] ] => generalize (@SE.Emp X)
         end.
         clear. induction e; simpl; intros; try reflexivity.
         rewrite IHe. heq_canceler.
@@ -103,23 +105,23 @@ Module Make (U : Unifier) (SH : SepHeap).
     Lemma starred_forget_exprInstantiate : forall x P,
       U.Subst_equations funcs U G s ->
       forall e,
-      SH.SE.heq funcs preds U G 
-        (SH.starred (fun v : list (expr types) => SH.SE.Func x (map (U.exprInstantiate s) v)) e P)
-        (SH.starred (SH.SE.Func x) e P).
+      SE.heq funcs preds U G 
+        (SH.starred (fun v : list (expr types) => SE.Func x (map (U.exprInstantiate s) v)) e P)
+        (SH.starred (SE.Func x) e P).
     Proof.
       clear. induction e; intros; repeat rewrite SH.starred_def; simpl; repeat rewrite <- SH.starred_def; SEP_FACTS.heq_canceler.
-        rewrite IHe. SEP_FACTS.heq_canceler. unfold SH.SE.heq. simpl.
+        rewrite IHe. SEP_FACTS.heq_canceler. unfold SE.heq. simpl.
         match goal with
                  | [ |- context [ match ?X with _ => _ end ] ] => 
                    case_eq X; intros; try reflexivity
                end.
-        erewrite applyD_forget_exprInstantiate with (D := SH.SE.SDomain p) (F := SH.SE.SDenotation p); eauto.
+        erewrite applyD_forget_exprInstantiate with (D := SE.SDomain p) (F := SE.SDenotation p); eauto.
         reflexivity.
     Qed.
 
     Lemma impuresD_forget_impuresInstantiate : forall h,
       U.Subst_equations funcs U G s ->
-      SH.SE.heq funcs preds U G 
+      SE.heq funcs preds U G 
         (SH.impuresD (impuresInstantiate h))
         (SH.impuresD h).
     Proof.
@@ -132,9 +134,9 @@ Module Make (U : Unifier) (SH : SepHeap).
 
     Lemma Func_forget_exprInstantiate : forall n e,
       U.Subst_equations funcs U G s ->
-      SH.SE.heq funcs preds U G (SH.SE.Func n (map (U.exprInstantiate s) e)) (SH.SE.Func n e).
+      SE.heq funcs preds U G (SE.Func n (map (U.exprInstantiate s) e)) (SE.Func n e).
     Proof. clear.
-      unfold SH.SE.heq. simpl. intros.
+      unfold SE.heq. simpl. intros.
       destruct (nth_error preds n); try reflexivity.
       rewrite applyD_forget_exprInstantiate; auto. reflexivity.
     Qed.

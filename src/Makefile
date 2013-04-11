@@ -10,10 +10,14 @@ MODULES    := Ordering \
 	Expr ReifyExpr ExprUnify \
 	Prover \
 	$(PROVERS:%=provers/%Prover) \
+	Provers \
 	SepExpr ReifySepExpr SepHeap SepUnify SepCancel \
-	Unfolder UnfolderTac ReifyHints SepLemma \
-	CancelTac CancelLoopTac \
-	TypedPackage
+	Unfolder UnfolderTac ReifyHints Lemma SepLemma \
+	CancelTacBedrock \
+	TypedPackage \
+	ExprTac SepExprTac
+
+#CancelLoopTac \
 
 TESTS := UnfolderTests
 VS         := $(GENERIC:%=%.v) $(MODULES:%=%.v)

@@ -6,7 +6,7 @@ Require Import List.
 Set Implicit Arguments.
 Set Strict Implicit.
 
-Module ReifySepExpr (Import SEP : SepExpr).  
+Module ReifySepExpr (ST : SepTheory.SepTheory) (Import SEP : SepExpr ST).  
 
   (** Reflection **)
   Import Reify.
@@ -127,7 +127,7 @@ Module ReifySepExpr (Import SEP : SepExpr).
   Ltac reify_sfunction pcT stT types f :=
     match f with
       | fun _ => _ =>
-        constr:(@PSig types (@nil tvar) f)
+        constr:(@SEP.PSig types (@nil tvar) f)
       | _ =>
         let T := type of f in
           let rec refl dom T :=
@@ -139,7 +139,7 @@ Module ReifySepExpr (Import SEP : SepExpr).
                     refl dom B 
               | _ =>
                 let dom := eval simpl rev in (rev dom) in
-                  constr:(@PSig types dom f)
+                  constr:(@SEP.PSig types dom f)
             end
             in refl (@nil tvar) T
     end.
@@ -162,7 +162,7 @@ Module ReifySepExpr (Import SEP : SepExpr).
            ** it instantiates unification variables that should not be instantiated
            **)
           match F with 
-            | @PSig _ _ ?F =>
+            | @SEP.PSig _ _ ?F =>
               match F with
                 | f => k sfuncs acc 
                 | _ => 
@@ -171,7 +171,7 @@ Module ReifySepExpr (Import SEP : SepExpr).
               end
             | _ => 
               match eval hnf in F with
-                | @PSig _ _ ?F =>
+                | @SEP.PSig _ _ ?F =>
                   match F with
                     | f => k sfuncs acc 
                     | _ => 
@@ -242,7 +242,7 @@ Module ReifySepExpr (Import SEP : SepExpr).
 
         | @ST.inj ?P =>
           reify_expr isConst P types funcs uvars vars ltac:(fun uvars funcs P =>
-            let r := constr:(@Inj types P) in
+            let r := constr:(@SEP.Inj types P) in
             k uvars funcs sfuncs r)
         | @ST.inj ?PX =>
           let r := constr:(@Const types PX) in
@@ -250,7 +250,7 @@ Module ReifySepExpr (Import SEP : SepExpr).
         | @ST.star ?L ?R =>
           reflect L funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs L => 
             reflect R funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs R => 
-              let r := constr:(@Star types L R) in
+              let r := constr:(@SEP.Star types L R) in
               k uvars funcs sfuncs r))
         | @ST.ex ?T (fun x => @?B x) =>
           let v := constr:(fun x : ReifyExpr.VarType (T * unit) => B (@openUp _ T (@fst _ _) x)) in

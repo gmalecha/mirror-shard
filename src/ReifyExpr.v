@@ -279,21 +279,28 @@ Ltac reflectTypes_toList types ts :=
  ** form, 
  **   _ -> ... -> _
  **)
-Ltac reify_function types f :=
+Ltac reify_function types args f :=
   let T := type of f in
-  let rec refl dom T :=
-    match T with
-        (* no dependent types *)
-      | ?A -> ?B =>
-        let A := reflectType types A in
-        let dom := constr:(A :: dom) in
-        refl dom B 
-      | ?R =>
-        let R := reflectType types R in
+  let rec refl dom T args :=
+    match args with 
+      | tt => 
+        let R := reflectType types T in
         let dom := eval simpl rev in (rev dom) in
         constr:(@Sig types dom R f)
+      | (_,?args') =>
+        match T with
+          (* no dependent types *)
+          | ?A -> ?B =>
+            let A := reflectType types A in
+            let dom := constr:(A :: dom) in
+            refl dom B args'
+          | ?R =>
+            (** application under type name **)
+            let R := eval hnf in R in
+            refl dom R args
+        end
     end
-  in refl (@nil tvar) T.
+  in refl (@nil tvar) T args.
 
 (** lookup a function in a list of reflected functions.
  ** if the function does not exist in the list, the list is extended.
@@ -301,11 +308,11 @@ Ltac reify_function types f :=
  **   and the index of f in the list.
  **   (all elements passed into funcs' are preserved in order)
  **)
-Ltac getFunction types f funcs' k :=
+Ltac getFunction types f funcs' args k :=
   let rec lookup funcs acc :=
     match funcs with
       | nil =>
-        let F := reify_function types f in
+        let F := reify_function types args f in
         let funcs := eval simpl app in (funcs' ++ (F :: nil)) in
         k funcs acc
       | ?F :: _ =>
@@ -322,6 +329,7 @@ Ltac getFunction types f funcs' k :=
   in
   lookup funcs' 0.
 
+(*
 Ltac getAllFunctions types funcs' fs :=
   match fs with
     | tt => funcs'
@@ -331,6 +339,7 @@ Ltac getAllFunctions types funcs' fs :=
       let funcs := getAllFunctions types funcs' fl in
       getAllFunctions types funcs fr
   end.
+*)
 
 Ltac getVar' idx :=
   match idx with
@@ -439,7 +448,7 @@ Ltac reify_expr isConst e types funcs uvars vars k :=
           end
         in
         let cc f Ts args :=
-          getFunction types f funcs ltac:(fun funcs F =>
+          getFunction types f funcs args ltac:(fun funcs F =>
             bt_args uvars funcs args ltac:(fun uvars funcs args => 
               let r := constr:(@Func types F args) in 
               k uvars funcs r))
@@ -461,7 +470,7 @@ Ltac reify_expr isConst e types funcs uvars vars k :=
        | context[fun x : ?T => _] =>
          match T with
            | VarType _ => fail 1
-           | _ => getFunction types e funcs ltac:(fun funcs F =>
+           | _ => getFunction types e funcs tt ltac:(fun funcs F =>
              let r := constr:(@Func types F nil) in
                k uvars funcs r)
          end
