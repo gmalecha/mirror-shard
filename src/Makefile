@@ -21,9 +21,9 @@ TVS        := $(TESTS:%=%.v)
 
 ARGS :=-R . MirrorShard
 
-.PHONY: coq clean package native ltac version
+.PHONY: coq clean package
 
-coq: Makefile.coq ILTac.v
+coq: Makefile.coq
 	$(MAKE) -f Makefile.coq
 
 install: coq
@@ -40,35 +40,7 @@ test: coq Makefile.test.coq
 
 clean:: Makefile.coq
 	$(MAKE) -f Makefile.coq clean
-	rm -f Makefile.coq .depend ILTac.v ILTac.vo ILTac.v.d ILTac.glob
-
-native:
-	@ echo "## "
-	@ echo "## Switching to OCaml reification."
-	@ echo "## "
-	@ rm -f ILTac.v ILTac.vo ILTac.v.d ILTac.glob
-	@ ln -s ILTacML.v ILTac.v
-	@ make -C reification
-
-ltac:
-	@ echo "## "
-	@ echo "## Switching to ltac reification."
-	@ echo "## "
-	@ rm -f ILTac.v ILTac.vo ILTac.v.d ILTac.glob
-	@ ln -s ILTacLtac.v ILTac.v
-
-ILTac.v:
-	@ echo "## "
-	@ echo "## Warning: No ILTac.v, defaulting to Ltac reification."
-	@ echo "## NOTE: If you would like to use the faster, ML reification"
-	@ echo "##       run 'make native'"
-	@ echo "## "
-	@ $(MAKE) native
-
-version:
-	@ echo "## "
-	@ echo "## You are running" $(patsubst ILTac%.v,%,$(shell readlink ILTac.v)) "reification"
-	@ echo "## "
+	rm -f Makefile.coq .depend
 
 package:
 	hg archive -t tgz /tmp/bedrock.tgz
