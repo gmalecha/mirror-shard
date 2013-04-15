@@ -1,5 +1,6 @@
 Require Import List.
-Require Import Decidables.
+Require Import Omega.
+Require Compare_dec.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -52,7 +53,7 @@ Section UpdateAt.
                      end
     end.
 
-  Require Import Omega.
+
   Lemma nth_error_updateAt : forall n l,
     nth_error (updateAt l n) n = value new.
     induction n; destruct l; simpl; (reflexivity || apply IHn).

@@ -1,7 +1,6 @@
 Require Import List.
 Require Import Expr Env.
 Require Import Prover.
-Require Import Reflection.
 
 Set Implicit Arguments.
 Set Strict Implicit.

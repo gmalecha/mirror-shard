@@ -34,7 +34,7 @@ Predicate Refinement (Unfolder)
   direction. Pure premises of the formula are discharged using the
   reflective theorem provers.
 
-Cancellation
+Cancelation
 
   Implements a separation logic implication simplifier based on
   repeated cancellation. The cancellation algorithm will choose
@@ -49,14 +49,21 @@ current versions of the repository.
 Building
 --------
 
-This release requires Coq 8.4pl1 (final released version).
+This release requires Coq 8.4pl1 (final released version) and coq-ext-lib.
 
-To build, run
+1) In a separate directory, download and install coq-ext-lib from:
+   https://github.com/coq-ext-lib/coq-ext-lib
+
+2) To build, run
 
    make -jN
 
-from the command line (substituting 'N' for the number of parallel
-jobs to run).
+   from the command line (substituting 'N' for the number of parallel
+   jobs to run).
+
+3) To install, run
+
+   make install
 
 Using
 -----

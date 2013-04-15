@@ -1,9 +1,9 @@
-Require Import List.
-Require Import SepTheory.
-Require Import RelationClasses EqdepClass.
+Require Import List Bool Setoid RelationClasses.
+Require Import ExtLib.Tactics.EqDep.
+Require Import ExtLib.Tactics.Consider.
 Require Import Expr.
-Require Import Setoid.
-Require Import Folds Bool Tactics.
+Require Import SepTheory.
+Require Import Folds Tactics.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -132,7 +132,6 @@ Module Type SepExpr (ST : SepTheory.SepTheory).
 
 End SepExpr.
 
-Require Import Reflection.
 
 Module SepExprFacts (ST : SepTheory) (SE : SepExpr ST).
   Module SEP_FACTS := SepTheory_Rewrites ST.

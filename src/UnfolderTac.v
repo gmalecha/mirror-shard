@@ -1,7 +1,8 @@
 Require Import List Bool.
+Require Import ExtLib.Tactics.Consider.
 Require Import Expr SepExpr.
 Require Import Prover.
-Require Import Tactics Reflection.
+Require Import Tactics.
 Require Unfolder.
 Require SepHeap.
 

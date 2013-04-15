@@ -1,5 +1,5 @@
 Require Import List Bool.
-Require Import Reflection.
+Require Import ExtLib.Tactics.Consider.
 
 Set Implicit Arguments.
 Set Strict Implicit.

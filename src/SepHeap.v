@@ -1,76 +1,20 @@
-Require Import List.
-Require Import SepTheory.
-Require Import RelationClasses EqdepClass.
-Require Import Expr SepExpr.
-(*Require Import DepList.*)
-Require Import Setoid.
-Require Import Tactics.
-Require Import Bool Folds.
-Require Import Reflection.
+Require Import List Bool RelationClasses Setoid.
+Require Import ExtLib.Tactics.Consider.
+Require Import Expr.
+Require Import SepTheory SepExpr.
+Require Import Folds Tactics.
+Require NatMap.
 
 Set Implicit Arguments.
 Set Strict Implicit.
 
-Require NatMap Multimap.
+Require Multimap.
+
 
 Module FM := NatMap.IntMap.
 
-Remove Hints FM.Raw.Proofs.L.PX.eqk_refl FM.Raw.Proofs.L.PX.eqk_sym
-  FM.Raw.Proofs.L.PX.eqk_trans
-  FM.Raw.Proofs.PX.eqk_refl FM.Raw.Proofs.PX.eqk_sym FM.Raw.Proofs.PX.eqk_trans
-  FM.Raw.Proofs.L.PX.eqke_refl FM.Raw.Proofs.L.PX.eqke_sym FM.Raw.Proofs.L.PX.eqke_trans
-  FM.Raw.Proofs.PX.eqke_refl FM.Raw.Proofs.PX.eqke_sym FM.Raw.Proofs.PX.eqke_trans
-  FM.Raw.Proofs.L.PX.MO.lt_eq FM.Raw.Proofs.L.PX.MO.eq_lt FM.Raw.Proofs.L.MX.lt_eq
-  FM.Raw.Proofs.L.MX.eq_lt FM.Raw.Proofs.PX.MO.lt_eq FM.Raw.Proofs.PX.MO.eq_lt
-  FM.Raw.Proofs.MX.lt_eq FM.Raw.Proofs.MX.eq_lt
-  FM.Raw.Proofs.L.PX.eqk_ltk FM.Raw.Proofs.L.PX.ltk_eqk FM.Raw.Proofs.L.PX.ltk_trans
-  FM.Raw.Proofs.PX.eqk_ltk FM.Raw.Proofs.PX.ltk_eqk FM.Raw.Proofs.PX.ltk_trans
-  FM.Raw.Proofs.L.PX.MO.lt_antirefl
-  FM.Raw.Proofs.L.MX.lt_antirefl FM.Raw.Proofs.PX.MO.lt_antirefl FM.Raw.Proofs.MX.lt_antirefl
-  FM.Raw.Proofs.L.PX.eqk_not_ltk FM.Raw.Proofs.L.PX.ltk_not_eqke
-  FM.Raw.Proofs.L.PX.ltk_not_eqk FM.Raw.Proofs.L.PX.MO.lt_not_gt
-  FM.Raw.Proofs.L.PX.MO.eq_not_gt FM.Raw.Proofs.L.PX.MO.eq_neq
-  FM.Raw.Proofs.L.PX.MO.neq_eq FM.Raw.Proofs.L.PX.MO.eq_le
-  FM.Raw.Proofs.L.PX.MO.le_eq FM.Raw.Proofs.L.PX.MO.eq_not_lt
-  FM.Raw.Proofs.L.PX.MO.gt_not_eq FM.Raw.Proofs.L.MX.lt_not_gt
-  FM.Raw.Proofs.L.MX.eq_not_gt FM.Raw.Proofs.L.MX.eq_neq
-  FM.Raw.Proofs.L.MX.neq_eq FM.Raw.Proofs.L.MX.eq_le
-  FM.Raw.Proofs.L.MX.le_eq FM.Raw.Proofs.L.MX.eq_not_lt
-  FM.Raw.Proofs.L.MX.gt_not_eq FM.Raw.Proofs.PX.eqk_not_ltk
-  FM.Raw.Proofs.PX.ltk_not_eqke FM.Raw.Proofs.PX.ltk_not_eqk
-  FM.Raw.Proofs.PX.MO.lt_not_gt FM.Raw.Proofs.PX.MO.eq_not_gt
-  FM.Raw.Proofs.PX.MO.eq_neq FM.Raw.Proofs.PX.MO.neq_eq
-  FM.Raw.Proofs.PX.MO.eq_le FM.Raw.Proofs.PX.MO.le_eq
-  FM.Raw.Proofs.PX.MO.eq_not_lt FM.Raw.Proofs.PX.MO.gt_not_eq
-  FM.Raw.Proofs.MX.lt_not_gt FM.Raw.Proofs.MX.eq_not_gt
-  FM.Raw.Proofs.MX.eq_neq FM.Raw.Proofs.MX.neq_eq
-  FM.Raw.Proofs.MX.eq_le FM.Raw.Proofs.MX.le_eq
-  FM.Raw.Proofs.MX.eq_not_lt FM.Raw.Proofs.MX.gt_not_eq
-  FM.Raw.Proofs.L.PX.Sort_Inf_NotIn FM.Raw.Proofs.PX.Sort_Inf_NotIn
-  FM.Raw.Proofs.L.PX.Inf_eq FM.Raw.Proofs.L.PX.MO.Inf_lt
-  FM.Raw.Proofs.L.MX.Inf_lt FM.Raw.Proofs.PX.Inf_eq
-  FM.Raw.Proofs.PX.MO.Inf_lt FM.Raw.Proofs.MX.Inf_lt
-  FM.Raw.Proofs.L.PX.Inf_lt FM.Raw.Proofs.L.PX.MO.Inf_lt
-  FM.Raw.Proofs.L.MX.Inf_lt FM.Raw.Proofs.PX.Inf_lt
-  FM.Raw.Proofs.PX.MO.Inf_lt FM.Raw.Proofs.MX.Inf_lt
-  FM.Raw.InRight FM.Raw.InLeft FM.Raw.InRoot
-  FM.Raw.Proofs.L.PX.InA_eqke_eqk FM.Raw.Proofs.L.PX.MO.In_eq
-  FM.Raw.Proofs.L.PX.MO.ListIn_In FM.Raw.Proofs.L.MX.In_eq
-  FM.Raw.Proofs.L.MX.ListIn_In FM.Raw.Proofs.PX.InA_eqke_eqk
-  FM.Raw.Proofs.PX.MO.In_eq FM.Raw.Proofs.PX.MO.ListIn_In
-  FM.Raw.Proofs.MX.In_eq FM.Raw.Proofs.MX.ListIn_In
-  FM.Raw.Proofs.L.PX.In_inv_3 FM.Raw.Proofs.PX.In_inv_3
-  FM.Raw.Proofs.L.PX.In_inv_2 FM.Raw.Proofs.PX.In_inv_2
-  FM.Raw.MapsRight FM.Raw.MapsLeft
-  FM.Raw.MapsRoot FM.Raw.Proofs.L.PX.MO.Sort_NoDup
-  FM.Raw.Proofs.L.MX.Sort_NoDup FM.Raw.Proofs.PX.MO.Sort_NoDup
-  FM.Raw.Proofs.MX.Sort_NoDup
-  FM.Raw.BSLeaf FM.Raw.BSNode FM.Raw.Leaf FM.Raw.Node
-  FM.E.lt_trans FM.E.lt_not_eq FM.E.eq_refl
-  FM.E.eq_sym FM.E.eq_trans.
-
-Module MM := Multimap.Make FM.
-Module MF := NatMap.MoreFMapFacts FM.
+Module MM := Multimap.Make NatMap.Ordered_nat FM.
+Module MF := MoreFMapFacts.MoreFMapFacts NatMap.Ordered_nat FM.
 
 Module Type SepHeap (ST : SepTheory) (SE : SepExpr ST).
 
@@ -437,10 +381,10 @@ Module Make (ST : SepTheory) (SE : SepExpr ST) <: SepHeap ST SE.
     Proof.
       clear. intros. destruct h. unfold WellTyped_sheap, WellTyped_impures, sheapD; simpl.
       eapply MF.PROPS.fold_rec with (m := impures0); intros; simpl.
-      { rewrite NatMap.IntMapProperties.fold_Empty; eauto with typeclass_instances.
+      { rewrite MF.PROPS.fold_Empty; eauto with typeclass_instances.
         rewrite starred_pures_well_typed. rewrite starred_const_well_typed. simpl.
         symmetry; apply andb_true_r. }
-      { rewrite NatMap.IntMapProperties.fold_Add with (eqA := fun x y => WellTyped_sexpr tf tp tU tG x = WellTyped_sexpr tf tp tU tG y). 5: eauto. 5: eauto.
+      { rewrite MF.PROPS.fold_Add with (eqA := fun x y => WellTyped_sexpr tf tp tU tG x = WellTyped_sexpr tf tp tU tG y). 5: eauto. 5: eauto.
         destruct e. simpl. rewrite andb_true_r. eauto.
         rewrite starred_funcs_well_typed. rewrite <- H2.
         rewrite andb_comm. rewrite andb_assoc. rewrite andb_assoc. rewrite andb_comm.
@@ -519,14 +463,14 @@ Module Make (ST : SepTheory) (SE : SepExpr ST) <: SepHeap ST SE.
         rewrite IHy0; eauto. heq_canceler.
       Qed.
 
-      Lemma transpose_neqkey_starred : NatMap.IntMapProperties.transpose_neqkey (SE.heq funcs preds U G)
+      Lemma transpose_neqkey_starred : MF.PROPS.transpose_neqkey (SE.heq funcs preds U G)
         (fun k0 : nat => starred (Func k0)).
       Proof.
         red. intros. rewrite starred_base. symmetry.
         rewrite starred_base. repeat rewrite starred_base with (base := a).
         heq_canceler.
       Qed.
-      Lemma transpose_neqkey_Star (X : Type) F : NatMap.IntMapProperties.transpose_neqkey (heq funcs preds U G)
+      Lemma transpose_neqkey_Star (X : Type) F : MF.PROPS.transpose_neqkey (heq funcs preds U G)
         (fun (k0 : nat) (ls : X) (a1 : sexpr types) => Star (F k0 ls) a1).
       Proof.
         red. intros. heq_canceler.
@@ -653,8 +597,8 @@ Module Make (ST : SepTheory) (SE : SepExpr ST) <: SepHeap ST SE.
         (Star (FM.fold (fun k ls a => Star (F k ls) a) m Emp) b).
       Proof.
         do 2 intro.
-        intro. apply NatMap.IntMapProperties.fold_rec with (m := m).
-          intros. rewrite NatMap.IntMapProperties.fold_Empty; eauto with typeclass_instances.
+        intro. apply MF.PROPS.fold_rec with (m := m).
+          intros. rewrite MF.PROPS.fold_Empty; eauto with typeclass_instances.
           autorewrite with hprop. reflexivity.
 
           intros. erewrite MM.PROPS.fold_Add; eauto with typeclass_instances hprop.
@@ -716,15 +660,15 @@ Module Make (ST : SepTheory) (SE : SepExpr ST) <: SepHeap ST SE.
               Star (starred (Func k) ls Emp) acc) impures1 B)).
       Proof.
         unfold MM.mmap_join.
-        intro. apply NatMap.IntMapProperties.map_induction with (m := impures0).
+        intro. apply MF.PROPS.map_induction with (m := impures0).
         * intros.
-          repeat rewrite NatMap.IntMapProperties.fold_Empty with (m := m); eauto with typeclass_instances.
+          repeat rewrite MF.PROPS.fold_Empty with (m := m); eauto with typeclass_instances.
           reflexivity.
 
         * intros.
-          generalize (@NatMap.IntMapProperties.fold_Add (list (exprs types)) _ (@FM.Equal (list (exprs types)))).
+          generalize (@MF.PROPS.fold_Add (list (exprs types)) _ (@FM.Equal (list (exprs types)))).
           intro. 
-          rewrite NatMap.IntMapProperties.fold_Equal; try solve [ clear; eauto with typeclass_instances ].
+          rewrite MF.PROPS.fold_Equal; try solve [ clear; eauto with typeclass_instances ].
           4: eapply H2; eauto with typeclass_instances.
           clear H2. simpl in *.
           unfold exprs, MM.mmap_extend; simpl in *.
@@ -733,23 +677,23 @@ Module Make (ST : SepTheory) (SE : SepExpr ST) <: SepHeap ST SE.
           end.
           case_eq (FM.find x t); intros.
           { subst.
-            rewrite NatMap.IntMapProperties.fold_Equal; eauto with typeclass_instances.
+            rewrite MF.PROPS.fold_Equal; eauto with typeclass_instances.
             4: eapply MF.add_remove_Equal.
             symmetry.
-            rewrite NatMap.IntMapProperties.fold_Add.
+            rewrite MF.PROPS.fold_Add.
             6: eassumption.
             5: eauto.
             2: eauto with typeclass_instances.
             rewrite fold_starred.
-            rewrite NatMap.IntMapProperties.fold_Add with (m2 := impures1).
+            rewrite MF.PROPS.fold_Add with (m2 := impures1).
             2: eauto with typeclass_instances.
             instantiate (3 := x). instantiate (2 := l). 
             instantiate (1 := FM.remove x impures1). 
-            rewrite NatMap.IntMapProperties.fold_add.
+            rewrite MF.PROPS.fold_add.
             rewrite starred_app. heq_canceler.
           
             generalize (@MM.mmap_join_remove_acc _ x m impures1 H0). unfold MM.mmap_join. intro.
-            symmetry. rewrite NatMap.IntMapProperties.fold_Equal.
+            symmetry. rewrite MF.PROPS.fold_Equal.
             5: eapply H3. clear H3.
             rewrite H. rewrite fold_starred with (b := FM.fold _ _ _). heq_canceler. eauto with typeclass_instances.
             
@@ -770,8 +714,8 @@ Module Make (ST : SepTheory) (SE : SepExpr ST) <: SepHeap ST SE.
               apply MM.PROPS.F.not_find_in_iff in H0. unfold exprs in H0. rewrite H0 in H2.
               
               revert H2; clear; intros.
-              unfold NatMap.IntMapProperties.Add; intros.
-                repeat (rewrite NatMap.IntMapFacts.add_o || rewrite NatMap.IntMapFacts.remove_o).
+              unfold MF.PROPS.Add; intros.
+                repeat (rewrite MF.FACTS.add_o || rewrite MF.FACTS.remove_o).
                 destruct (NatMap.Ordered_nat.eq_dec x y); subst; auto.
             }
 
@@ -781,9 +725,9 @@ Module Make (ST : SepTheory) (SE : SepExpr ST) <: SepHeap ST SE.
             solve [ clear; eauto with typeclass_instances hprop ].
         }          
         { subst.
-          rewrite NatMap.IntMapProperties.fold_add; eauto with typeclass_instances.
+          rewrite MF.PROPS.fold_add; eauto with typeclass_instances.
           rewrite H. symmetry. rewrite fold_starred. 
-          rewrite NatMap.IntMapProperties.fold_Add; eauto with typeclass_instances.
+          rewrite MF.PROPS.fold_Add; eauto with typeclass_instances.
           symmetry. rewrite fold_starred with (b := FM.fold _ _ _). heq_canceler.
           
           repeat (red; intros; subst). rewrite H3. heq_canceler.
@@ -791,7 +735,7 @@ Module Make (ST : SepTheory) (SE : SepExpr ST) <: SepHeap ST SE.
           repeat (red; intros; subst). rewrite H3; heq_canceler.
           red; intros; heq_canceler.
           intro.
-          apply NatMap.IntMapProperties.F.in_find_iff in H3. auto.
+          apply MF.PROPS.F.in_find_iff in H3. auto.
         }
         eauto with typeclass_instances.
         solve [ clear; eauto with typeclass_instances hprop ].
@@ -946,7 +890,7 @@ Module Make (ST : SepTheory) (SE : SepExpr ST) <: SepHeap ST SE.
         generalize (@Emp types).
         unfold MM.mmap_map. intros. rewrite MF.fold_map_fusion; eauto with typeclass_instances.
         { revert s.
-          apply NatMap.IntMapProperties.map_induction with (m := impures0); intros.
+          apply MF.PROPS.map_induction with (m := impures0); intros.
           repeat (rewrite MM.PROPS.fold_Empty; eauto with typeclass_instances). reflexivity.
 
           symmetry. rewrite MM.PROPS.fold_Add. 6: eauto. 5: eauto. 2: eauto with typeclass_instances.
@@ -1348,7 +1292,7 @@ Module Make (ST : SepTheory) (SE : SepExpr ST) <: SepHeap ST SE.
         rewrite impuresD_Add by eauto using MF.map_Add, MF.map_not_In.
         symmetry. unfold MM.mmap_map in *. rewrite impuresD_Add. 2: eapply MF.map_Add; eauto. 
         2: eapply MF.map_not_In; eauto.
-        simpl. symmetry. rewrite NatMap.IntMapProperties.fold_Add in H3. 5: eauto. 5: eauto.
+        simpl. symmetry. rewrite MF.PROPS.fold_Add in H3. 5: eauto. 5: eauto.
         apply andb_true_iff in H3. destruct H3. apply ST.heq_star_frame.
         cut (ST.heq (sexprD funcs preds U G SE.Emp) (sexprD funcs preds U' G' SE.Emp)); [ | reflexivity ].
         generalize (@SE.Emp types). revert H. clear - H4.

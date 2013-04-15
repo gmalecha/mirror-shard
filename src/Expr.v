@@ -1,8 +1,8 @@
-Require Import List DepList.
-Require Import EqdepClass.
-(* Require Import Word. *)
-Require Import Bool Folds.
-Require Import Reflection Tactics. 
+Require Import List Bool.
+Require Import Folds Tactics. 
+Require Import ExtLib.Tactics.Consider.
+Require Import ExtLib.Core.EquivDec.
+Require Import ExtLib.Tactics.EqDep.
 
 Set Implicit Arguments.
 

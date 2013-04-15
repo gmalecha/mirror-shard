@@ -1,6 +1,6 @@
 Require Import Heaps.
 Require Import Setoid.
-Require Import DepList.
+Require Import ExtLib.Data.HList.
 Require Import List.
 
 Module Type DiscreteMemory.
@@ -156,7 +156,7 @@ Module DiscreteHeap (B : Memory)
     unfold split, smem_emp, smem_eqv, disjoint, join, smem.
     generalize dependent BD.all_addr.
     induction l; simpl in *; intros.
-    { intuition; subst; auto; rewrite hlist_nil_only with (h := c); eauto with typeclass_instances. }
+    { intuition; subst; auto; rewrite hlist_nil_eta with (h := c); eauto with typeclass_instances. }
     { intuition subst; rewrite hlist_eta with (h := c); eauto with typeclass_instances; f_equal;
       eapply IHl; intuition. }
   Qed.
@@ -265,15 +265,15 @@ Module DiscreteHeap (B : Memory)
         | [ H : models' (_ :: _) ?M _ |- _ ] =>
           match M with
             | HCons _ _ => fail 1
-            | _ => rewrite (hlist_eta _ M) in H
+            | _ => rewrite (hlist_eta M) in H
           end
         | [ |- models' (_ :: _) ?M _ ] =>
           match M with
             | HCons _ _ => fail 1
-            | _ => rewrite (hlist_eta _ M)
+            | _ => rewrite (hlist_eta M)
           end
         | [ H : smem' nil |- _ ] => 
-          rewrite (hlist_nil_only _ H) in *
+          rewrite (hlist_eta H) in *
         | [ H : exists x, _ |- _ ] => destruct H
         | [ H : _ /\ _ |- _ ] => destruct H
         | [ |- _ ] => congruence

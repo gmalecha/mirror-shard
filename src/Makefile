@@ -1,5 +1,5 @@
-GENERIC := Reflection GenRec Tactics ListFacts Folds Multimap \
-	   Decidables DepList EqdepClass NatMap
+GENERIC := Tactics ListFacts Folds Multimap \
+	   MoreFMapFacts NatMap
 PROVERS := Assumption Reflexivity
 #  Transitivity
 MODULES    := Ordering \
@@ -7,11 +7,13 @@ MODULES    := Ordering \
 	Reify Quantifier \
 	Heaps SepTheory \
 	Env TypedPackage \
-	Expr ReifyExpr ExprUnify \
+	Expr ReifyExpr \
+	Instantiation ExprUnify ExprUnifySyn \
 	Prover \
 	$(PROVERS:%=provers/%Prover) \
 	Provers \
-	SepExpr ReifySepExpr SepHeap SepUnify SepCancel \
+	SepExpr ReifySepExpr SepHeap SepUnify \
+	SepCancel OrderedCanceler \
 	Unfolder UnfolderTac ReifyHints Lemma SepLemma \
 	CancelTacBedrock \
 	TypedPackage \

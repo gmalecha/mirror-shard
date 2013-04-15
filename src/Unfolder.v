@@ -1,70 +1,13 @@
-Require Import Arith Bool EqdepClass List.
+Require Import Arith Bool List.
+Require Import ExtLib.Tactics.Consider.
 Require Import Expr ExprUnify Folds.
 Require Import SepExpr SepHeap Lemma SepLemma.
 Require Import Prover.
 Require Import Env.
-Require Import Reflection Tactics ListFacts.
+Require Import Tactics ListFacts.
 
 Set Implicit Arguments.
 Set Strict Implicit.
-
-Require NatMap.
-
-Module FM := NatMap.IntMap.
-
-Remove Hints FM.Raw.Proofs.L.PX.eqk_refl FM.Raw.Proofs.L.PX.eqk_sym
-  FM.Raw.Proofs.L.PX.eqk_trans
-  FM.Raw.Proofs.PX.eqk_refl FM.Raw.Proofs.PX.eqk_sym FM.Raw.Proofs.PX.eqk_trans
-  FM.Raw.Proofs.L.PX.eqke_refl FM.Raw.Proofs.L.PX.eqke_sym FM.Raw.Proofs.L.PX.eqke_trans
-  FM.Raw.Proofs.PX.eqke_refl FM.Raw.Proofs.PX.eqke_sym FM.Raw.Proofs.PX.eqke_trans
-  FM.Raw.Proofs.L.PX.MO.lt_eq FM.Raw.Proofs.L.PX.MO.eq_lt FM.Raw.Proofs.L.MX.lt_eq
-  FM.Raw.Proofs.L.MX.eq_lt FM.Raw.Proofs.PX.MO.lt_eq FM.Raw.Proofs.PX.MO.eq_lt
-  FM.Raw.Proofs.MX.lt_eq FM.Raw.Proofs.MX.eq_lt
-  FM.Raw.Proofs.L.PX.eqk_ltk FM.Raw.Proofs.L.PX.ltk_eqk FM.Raw.Proofs.L.PX.ltk_trans
-  FM.Raw.Proofs.PX.eqk_ltk FM.Raw.Proofs.PX.ltk_eqk FM.Raw.Proofs.PX.ltk_trans
-  FM.Raw.Proofs.L.PX.MO.lt_antirefl
-  FM.Raw.Proofs.L.MX.lt_antirefl FM.Raw.Proofs.PX.MO.lt_antirefl FM.Raw.Proofs.MX.lt_antirefl
-  FM.Raw.Proofs.L.PX.eqk_not_ltk FM.Raw.Proofs.L.PX.ltk_not_eqke
-  FM.Raw.Proofs.L.PX.ltk_not_eqk FM.Raw.Proofs.L.PX.MO.lt_not_gt
-  FM.Raw.Proofs.L.PX.MO.eq_not_gt FM.Raw.Proofs.L.PX.MO.eq_neq
-  FM.Raw.Proofs.L.PX.MO.neq_eq FM.Raw.Proofs.L.PX.MO.eq_le
-  FM.Raw.Proofs.L.PX.MO.le_eq FM.Raw.Proofs.L.PX.MO.eq_not_lt
-  FM.Raw.Proofs.L.PX.MO.gt_not_eq FM.Raw.Proofs.L.MX.lt_not_gt
-  FM.Raw.Proofs.L.MX.eq_not_gt FM.Raw.Proofs.L.MX.eq_neq
-  FM.Raw.Proofs.L.MX.neq_eq FM.Raw.Proofs.L.MX.eq_le
-  FM.Raw.Proofs.L.MX.le_eq FM.Raw.Proofs.L.MX.eq_not_lt
-  FM.Raw.Proofs.L.MX.gt_not_eq FM.Raw.Proofs.PX.eqk_not_ltk
-  FM.Raw.Proofs.PX.ltk_not_eqke FM.Raw.Proofs.PX.ltk_not_eqk
-  FM.Raw.Proofs.PX.MO.lt_not_gt FM.Raw.Proofs.PX.MO.eq_not_gt
-  FM.Raw.Proofs.PX.MO.eq_neq FM.Raw.Proofs.PX.MO.neq_eq
-  FM.Raw.Proofs.PX.MO.eq_le FM.Raw.Proofs.PX.MO.le_eq
-  FM.Raw.Proofs.PX.MO.eq_not_lt FM.Raw.Proofs.PX.MO.gt_not_eq
-  FM.Raw.Proofs.MX.lt_not_gt FM.Raw.Proofs.MX.eq_not_gt
-  FM.Raw.Proofs.MX.eq_neq FM.Raw.Proofs.MX.neq_eq
-  FM.Raw.Proofs.MX.eq_le FM.Raw.Proofs.MX.le_eq
-  FM.Raw.Proofs.MX.eq_not_lt FM.Raw.Proofs.MX.gt_not_eq
-  FM.Raw.Proofs.L.PX.Sort_Inf_NotIn FM.Raw.Proofs.PX.Sort_Inf_NotIn
-  FM.Raw.Proofs.L.PX.Inf_eq FM.Raw.Proofs.L.PX.MO.Inf_lt
-  FM.Raw.Proofs.L.MX.Inf_lt FM.Raw.Proofs.PX.Inf_eq
-  FM.Raw.Proofs.PX.MO.Inf_lt FM.Raw.Proofs.MX.Inf_lt
-  FM.Raw.Proofs.L.PX.Inf_lt FM.Raw.Proofs.L.PX.MO.Inf_lt
-  FM.Raw.Proofs.L.MX.Inf_lt FM.Raw.Proofs.PX.Inf_lt
-  FM.Raw.Proofs.PX.MO.Inf_lt FM.Raw.Proofs.MX.Inf_lt
-  FM.Raw.InRight FM.Raw.InLeft FM.Raw.InRoot
-  FM.Raw.Proofs.L.PX.InA_eqke_eqk FM.Raw.Proofs.L.PX.MO.In_eq
-  FM.Raw.Proofs.L.PX.MO.ListIn_In FM.Raw.Proofs.L.MX.In_eq
-  FM.Raw.Proofs.L.MX.ListIn_In FM.Raw.Proofs.PX.InA_eqke_eqk
-  FM.Raw.Proofs.PX.MO.In_eq FM.Raw.Proofs.PX.MO.ListIn_In
-  FM.Raw.Proofs.MX.In_eq FM.Raw.Proofs.MX.ListIn_In
-  FM.Raw.Proofs.L.PX.In_inv_3 FM.Raw.Proofs.PX.In_inv_3
-  FM.Raw.Proofs.L.PX.In_inv_2 FM.Raw.Proofs.PX.In_inv_2
-  FM.Raw.MapsRight FM.Raw.MapsLeft
-  FM.Raw.MapsRoot FM.Raw.Proofs.L.PX.MO.Sort_NoDup
-  FM.Raw.Proofs.L.MX.Sort_NoDup FM.Raw.Proofs.PX.MO.Sort_NoDup
-  FM.Raw.Proofs.MX.Sort_NoDup
-  FM.Raw.BSLeaf FM.Raw.BSNode FM.Raw.Leaf FM.Raw.Node
-  FM.E.lt_trans FM.E.lt_not_eq FM.E.eq_refl
-  FM.E.eq_sym FM.E.eq_trans.
 
 Module Type Unfolder (ST : SepTheory.SepTheory)
                      (SE : SepExpr ST)
@@ -95,13 +38,6 @@ Module Type Unfolder (ST : SepTheory.SepTheory)
     Variable preds : SE.predicates types.
 
     Definition hintSideD := Forall (@LEM.sepLemmaD types funcs preds nil nil).
-
-
-(*
-    Variable hints : hintSide.
-    Hypothesis hsOk : Forall (@lemmaD types _ WellTyped_sepConcl sepConclD funcs nil nil) hints.
-    Hypothesis PC : ProverT_correct prover funcs.
-*)
 
     Axiom refineForward_Length : forall hints bound facts P Q b,
       refineForward hints bound facts P = (Q,b) ->
@@ -161,9 +97,12 @@ End Unfolder.
 
 Module Make (ST : SepTheory.SepTheory)
             (SE : SepExpr ST)
-            (Import SH : SepHeap ST SE) (U : Unifier) 
+            (Import SH : SepHeap ST SE) (Uf : SyntacticUnifier) 
             (LEM : SepLemma.SepLemmaType ST SE)
             <: Unfolder ST SE SH LEM.
+  Module SUBST := Instantiation.SimpleInstantiation FMapAVL.Make.
+  Module U := Uf SUBST.
+
   Module Import HEAP_FACTS := SepHeapFacts ST SE SH.
   Module ST_EXT := SepTheory.SepTheory_Ext ST.
 
@@ -199,7 +138,7 @@ Module Make (ST : SepTheory.SepTheory)
       Variable U : nat.
       Variable G : nat.
       Variable G' : nat.
-      Variable sub : U.Subst types.
+      Variable sub : SUBST.Subst types.
       
       Fixpoint liftInstantiate (e : expr types) : expr types :=
         match e with
@@ -207,11 +146,11 @@ Module Make (ST : SepTheory.SepTheory)
           | Var v => 
             if NPeano.ltb v G' then (if U_or_G then UVar (v + U) else Var (v + G))
             else let idx := U + v - G' in 
-                 match U.Subst_lookup idx sub with
+                 match SUBST.Subst_lookup idx sub with
                    | None => UVar idx (** contradiction **)
                    | Some e => e
                  end
-          | UVar v => match U.Subst_lookup v sub with (** contradiction **)
+          | UVar v => match SUBST.Subst_lookup v sub with (** contradiction **)
                         | None => UVar v
                         | Some e => e
                       end
@@ -329,11 +268,11 @@ Module Make (ST : SepTheory.SepTheory)
       Variable hs : hintSide.
       (* Use these hints to unfold impure predicates. *)
 
-      Fixpoint Subst_to_env U G (s : U.Subst types) (ts : variables) (cur : uvar) : option (env types) :=
+      Fixpoint Subst_to_env U G (s : SUBST.Subst types) (ts : variables) (cur : uvar) : option (env types) :=
         match ts with
           | nil => Some nil 
           | t :: ts =>
-            match U.Subst_lookup cur s with
+            match SUBST.Subst_lookup cur s with
               | None => None 
               | Some e => 
                 match Subst_to_env U G s ts (S cur) with
@@ -347,10 +286,10 @@ Module Make (ST : SepTheory.SepTheory)
             end
         end.
 
-      Fixpoint checkAllInstantiated (from : nat) (ts : variables) (sub : U.Subst types) : bool :=
+      Fixpoint checkAllInstantiated (from : nat) (ts : variables) (sub : SUBST.Subst types) : bool :=
         match ts with
           | nil => true
-          | _ :: ts => if U.Subst_lookup from sub then checkAllInstantiated (S from) ts sub else false
+          | _ :: ts => if SUBST.Subst_lookup from sub then checkAllInstantiated (S from) ts sub else false
         end.
       
       (** Determine if a lemma is applicable.
@@ -360,13 +299,13 @@ Module Make (ST : SepTheory.SepTheory)
        ** - [key] is the patterns (closed by [Foralls lem]) that need to unify with [args])
        **)
       Definition applicable U_or_G (firstUvar firstVar : nat) (lem : LEM.sepLemma types) (args key : exprs types) 
-        : option (U.Subst types) :=
+        : option (SUBST.Subst types) :=
         let numForalls := length (Lemma.Foralls lem) in
         (** NOTE: it is important that [key] is first because of the way the unification algorithm works **)
-        match fold_left_2_opt (U.exprUnify unify_bound) (map (openForUnification firstUvar) key) args (U.Subst_empty _) with
+        match fold_left_2_opt (U.exprUnify unify_bound) (map (openForUnification firstUvar) key) args (SUBST.Subst_empty _) with
           | None => None
           | Some subst =>
-            if EqNat.beq_nat (U.Subst_size subst) numForalls && checkAllInstantiated firstUvar (Lemma.Foralls lem) subst
+            if EqNat.beq_nat (SUBST.Subst_size subst) numForalls && checkAllInstantiated firstUvar (Lemma.Foralls lem) subst
             then (* Now we must make sure all of the lemma's pure obligations are provable. *)
                  if allb (Prove prover facts) (map (liftInstantiate U_or_G firstUvar firstVar 0 subst) (Lemma.Hyps lem))
                  then Some subst
@@ -502,10 +441,12 @@ Module Make (ST : SepTheory.SepTheory)
         f_equal. eauto.
       Qed.
 
+      Require Import ExtLib.Tactics.EqDep.
+
       Lemma Subst_to_env_nth_error_lookup : forall F U G sub x v CUR,
         Subst_to_env U G sub (typeof_env F) CUR = Some F ->
         nth_error F x = Some v ->
-        exists e, U.Subst_lookup (CUR + x) sub = Some e /\
+        exists e, SUBST.Subst_lookup (CUR + x) sub = Some e /\
           exprD funcs U G e (projT1 v) = Some (projT2 v).
       Proof.
         induction F; simpl; intros; think.
@@ -581,6 +522,8 @@ Module Make (ST : SepTheory.SepTheory)
 
       Definition quant T (b : bool) (B E : list T) : list T := if b then B ++ E else B.
 
+      Require Import ExtLib.Core.EquivDec.
+
       Theorem liftInstantiate_spec : forall U_or_G U G G' F e t sub ts,
           is_well_typed (typeof_funcs funcs) nil (typeof_env G' ++ typeof_env F) e t = true ->
           Subst_to_env U G sub ts (length U) = Some F ->
@@ -625,17 +568,17 @@ Module Make (ST : SepTheory.SepTheory)
         checkAllInstantiated from ts sub && checkAllInstantiated (length ts + from) ts' sub.
       Proof.
         clear. induction ts; simpl; intros; think; eauto; simpl.
-        consider (U.Subst_lookup from sub); intros; auto.
+        consider (SUBST.Subst_lookup from sub); intros; auto.
         f_equal. rewrite Plus.plus_comm. simpl. rewrite Plus.plus_comm. reflexivity.
       Qed.
 
       Lemma checkAllInstantiated_dropU : forall tU tG sub ts ts',
         checkAllInstantiated (length tU) ts sub = true ->
-        U.Subst_WellTyped (typeof_funcs funcs) (tU ++ ts ++ ts') tG sub ->
+        SUBST.Subst_WellTyped (typeof_funcs funcs) (tU ++ ts ++ ts') tG sub ->
         forall e t n,
           n >= length tU ->
           is_well_typed (typeof_funcs funcs) (tU ++ ts) tG e t = true ->
-          U.Subst_lookup n sub = Some e ->
+          SUBST.Subst_lookup n sub = Some e ->
           is_well_typed (typeof_funcs funcs) tU tG e t = true.
       Proof.
         clear. induction ts using rev_ind; simpl; intros; think; eauto.
@@ -643,13 +586,13 @@ Module Make (ST : SepTheory.SepTheory)
         rewrite checkAllInstantiated_app in H. simpl in *; think. 
         eapply IHts; eauto. rewrite app_ass in H0. simpl in *; eauto.
         eapply is_well_typed_not_mentionsU_last. rewrite app_ass. eassumption.
-        eapply U.exprInstantiate_Removes. rewrite app_length. rewrite Plus.plus_comm; eauto.
-        instantiate (1 := e). eapply U.exprInstantiate_instantiated. eauto.
+        eapply SUBST.exprInstantiate_Removes. rewrite app_length. rewrite Plus.plus_comm; eauto.
+        instantiate (1 := e). eapply SUBST.exprInstantiate_instantiated. eauto.
       Qed.
 
       Lemma checkAllInstantiated_domain : forall sub F cU,
         checkAllInstantiated cU F sub = true ->
-        forall u, cU <= u -> u < cU + length F -> U.Subst_lookup u sub <> None.
+        forall u, cU <= u -> u < cU + length F -> SUBST.Subst_lookup u sub <> None.
       Proof.
         clear. induction F; simpl in *; intros; think. exfalso. omega.
         consider (EqNat.beq_nat cU u); intros. subst. 
@@ -659,7 +602,7 @@ Module Make (ST : SepTheory.SepTheory)
 
       Theorem liftInstantiate_typed : forall U_or_G U G G' e t sub F,
         is_well_typed (typeof_funcs funcs) nil (G' ++ F) e t = true ->
-        U.Subst_WellTyped (typeof_funcs funcs) (U ++ F) G sub ->
+        SUBST.Subst_WellTyped (typeof_funcs funcs) (U ++ F) G sub ->
         checkAllInstantiated (length U) F sub = true ->
         is_well_typed (typeof_funcs funcs) (quant U_or_G U G') (quant (negb U_or_G) G G')
           (liftInstantiate U_or_G (length U) (length G) (length G') sub e) t = true.
@@ -683,8 +626,8 @@ Module Make (ST : SepTheory.SepTheory)
         { destruct U_or_G; simpl; rewrite nth_error_app_R by omega.
           cutrewrite (x + length U - length U = x); [ | omega ]. rewrite H. rewrite tvar_seqb_refl; auto.
           cutrewrite (x + length G - length G = x); [ | omega ]. rewrite H. rewrite tvar_seqb_refl; auto. }
-        { consider (U.Subst_lookup (length U + x - length G') sub); intros.
-          generalize H4. eapply U.WellTyped_lookup in H4; eauto. destruct H4. intuition. 
+        { consider (SUBST.Subst_lookup (length U + x - length G') sub); intros.
+          generalize H4. eapply SUBST.WellTyped_lookup in H4; eauto. destruct H4. intuition. 
           assert (is_well_typed (typeof_funcs funcs) U G e x0 = true).
           { eapply checkAllInstantiated_dropU. eauto. instantiate (1 := nil). rewrite app_nil_r. auto.
             2: eauto. 2: eauto. omega. }
@@ -704,15 +647,15 @@ Module Make (ST : SepTheory.SepTheory)
 
 
       Lemma openForUnification_liftInstantiate : forall quant sub U G e,
-        U.exprInstantiate sub (openForUnification U e) = liftInstantiate quant U G 0 sub e.
+        SUBST.exprInstantiate sub (openForUnification U e) = liftInstantiate quant U G 0 sub e.
       Proof.
         induction e; simpl; intros; think;
-          repeat (rewrite U.exprInstantiate_Const || 
-                  rewrite U.exprInstantiate_Equal || 
-                  rewrite U.exprInstantiate_Func || 
-                  rewrite U.exprInstantiate_Not ||
-                  rewrite U.exprInstantiate_Var ||
-                  rewrite U.exprInstantiate_UVar);
+          repeat (rewrite SUBST.exprInstantiate_Const || 
+                  rewrite SUBST.exprInstantiate_Equal || 
+                  rewrite SUBST.exprInstantiate_Func || 
+                  rewrite SUBST.exprInstantiate_Not ||
+                  rewrite SUBST.exprInstantiate_Var ||
+                  rewrite SUBST.exprInstantiate_UVar);
           think; auto.
         { rewrite <- minus_n_O. reflexivity. }
         { clear - H. f_equal. induction H; simpl; intros; think; auto. }
@@ -751,14 +694,14 @@ Module Make (ST : SepTheory.SepTheory)
         WellTyped_funcs (typeof_funcs funcs) funcs ->
         forall sub ts ts',
           checkAllInstantiated (length tU) (ts ++ ts') sub = true ->
-          U.Subst_WellTyped (typeof_funcs funcs) (tU ++ ts ++ ts') tG sub ->
+          SUBST.Subst_WellTyped (typeof_funcs funcs) (tU ++ ts ++ ts') tG sub ->
           exists env, Subst_to_env U G sub ts (length tU) = Some env.
       Proof.
         clear; induction ts using rev_ind; simpl; intros; think; eauto.
         { rewrite app_ass in *. simpl in *. generalize H2. eapply IHts in H2. 2: eauto.
           destruct H2. rewrite Subst_to_env_app. rewrite H2. simpl.
           intro XX. generalize XX. rewrite checkAllInstantiated_app in XX. simpl in XX. think.
-          generalize H5. eapply U.WellTyped_lookup in H5; eauto. destruct H5. intuition.
+          generalize H5. eapply SUBST.WellTyped_lookup in H5; eauto. destruct H5. intuition.
           eapply checkAllInstantiated_dropU in XX. 5: eapply H7. 4: eauto.
           3: omega. Focus 2. instantiate (1 := nil). repeat rewrite app_ass. simpl. rewrite app_nil_r. auto.
           repeat rewrite nth_error_app_R in H8 by omega. repeat rewrite typeof_env_length in H8.
@@ -771,21 +714,21 @@ Module Make (ST : SepTheory.SepTheory)
 
       (** TODO: lift this outside **)
       Lemma fold_left_2_opt_unify : forall tU tG ts args args' sub sub',
-        U.Subst_WellTyped (types := types) (typeof_funcs funcs) tU tG sub -> 
+        SUBST.Subst_WellTyped (types := types) (typeof_funcs funcs) tU tG sub -> 
         all2 (is_well_typed (typeof_funcs funcs) tU tG) args ts = true ->
         all2 (is_well_typed (typeof_funcs funcs) tU tG) args' ts = true ->
         fold_left_2_opt (U.exprUnify unify_bound) args args' sub = Some sub' ->
-        U.Subst_WellTyped (typeof_funcs funcs) tU tG sub' /\
-        U.Subst_Extends sub' sub /\
-        map (U.exprInstantiate sub') args = map (U.exprInstantiate sub') args'.
+        SUBST.Subst_WellTyped (typeof_funcs funcs) tU tG sub' /\
+        SUBST.Subst_Extends sub' sub /\
+        map (SUBST.exprInstantiate sub') args = map (SUBST.exprInstantiate sub') args'.
       Proof.
         clear. induction ts; destruct args; destruct args'; intros; simpl in *; think; 
         try (congruence || solve [ intuition (eauto; reflexivity) ]). 
-        do 2 generalize H2. apply U.exprUnify_sound in H2. intro. eapply U.exprUnify_Extends in H6.
+        do 2 generalize H2. apply U.exprUnify_sound_syn in H2. intro. eapply U.exprUnify_Extends in H6.
         intro. eapply U.exprUnify_WellTyped in H7; eauto. eapply IHts in H3; eauto. destruct H3.
         intuition. etransitivity; eauto. rewrite H10. f_equal.
-        assert (U.exprInstantiate sub' (U.exprInstantiate s e) = U.exprInstantiate sub' (U.exprInstantiate s e0)).
-        rewrite H2. reflexivity. repeat rewrite U.exprInstantiate_Extends in H8 by eauto. auto.
+        assert (SUBST.exprInstantiate sub' (SUBST.exprInstantiate s e) = SUBST.exprInstantiate sub' (SUBST.exprInstantiate s e0)).
+        rewrite H2. reflexivity. repeat rewrite SUBST.exprInstantiate_Extends in H8 by eauto. auto.
       Qed.
 
       Lemma exprD_weaken_quant : forall U U' G G' ug ug' a t v,
@@ -825,17 +768,19 @@ Module Make (ST : SepTheory.SepTheory)
         eapply is_well_typed_correct; eauto using typeof_env_WellTyped_env, typeof_funcs_WellTyped_funcs.
       Qed.
 
+      Opaque SUBST.exprInstantiate.
+
       Lemma exprInstantiate_noop : forall sub (e : expr types),
-        (forall u, mentionsU u e = true -> U.Subst_lookup u sub = None) ->
-        U.exprInstantiate sub e = e.
+        (forall u, mentionsU u e = true -> SUBST.Subst_lookup u sub = None) ->
+        SUBST.exprInstantiate sub e = e.
       Proof.
-        clear; induction e; simpl in *; intros; 
-          repeat (rewrite U.exprInstantiate_Const || 
-            rewrite U.exprInstantiate_Equal || 
-              rewrite U.exprInstantiate_Func || 
-                rewrite U.exprInstantiate_Not ||
-                  rewrite U.exprInstantiate_Var ||
-                    rewrite U.exprInstantiate_UVar); think; try congruence; auto.
+        clear; induction e; simpl in *; intros;
+          repeat (rewrite SUBST.exprInstantiate_Const || 
+            rewrite SUBST.exprInstantiate_Equal || 
+              rewrite SUBST.exprInstantiate_Func || 
+                rewrite SUBST.exprInstantiate_Not ||
+                  rewrite SUBST.exprInstantiate_Var ||
+                    rewrite SUBST.exprInstantiate_UVar); think; try congruence; auto.
         { rewrite H; auto. consider (beq_nat x x); auto. }
         { f_equal. revert H0. induction H; simpl; intros; think; auto.
           erewrite IHForall; try erewrite H; eauto; intros; eapply H1; think; auto using orb_true_r. }
@@ -861,10 +806,10 @@ Module Make (ST : SepTheory.SepTheory)
 
       Lemma checkAllInstantiated_perm : forall sub F cU,
         checkAllInstantiated cU F sub = true ->
-        exists p, Permutation.Permutation (fromTo cU (length F) ++ p) (U.Subst_domain sub).
+        exists p, Permutation.Permutation (fromTo cU (length F) ++ p) (SUBST.Subst_domain sub).
       Proof.
         clear. induction F; simpl in *; eauto; intros.
-        consider (U.Subst_lookup cU sub); auto; intros. cut (In cU (U.Subst_domain sub)); intros.
+        consider (SUBST.Subst_lookup cU sub); auto; intros. cut (In cU (SUBST.Subst_domain sub)); intros.
         eapply IHF in H0. destruct H0.
         cut (In cU x); intros. cut (exists p, Permutation.Permutation x (cU :: p)); intros.
         destruct H3. exists x0.
@@ -877,18 +822,18 @@ Module Make (ST : SepTheory.SepTheory)
         symmetry in H0; eapply Permutation.Permutation_in in H1. 2: eauto. eapply in_app_iff in H1. destruct H1; auto.
         exfalso; auto. eapply fromTo_none_less. 2: eauto. omega.
 
-        apply U.Subst_domain_iff. eauto.
+        apply SUBST.Subst_domain_iff. eauto.
       Qed.
 
 
       Lemma independent_well_typed : forall sub F cU,
-        beq_nat (U.Subst_size sub) (length F) = true ->
+        beq_nat (SUBST.Subst_size sub) (length F) = true ->
         checkAllInstantiated cU F sub = true ->
-        forall u, u < cU -> U.Subst_lookup u sub = None.
+        forall u, u < cU -> SUBST.Subst_lookup u sub = None.
       Proof.
         clear. intros. symmetry in H. apply beq_nat_eq in H. 
-        rewrite U.Subst_size_cardinal in H. cut (~In u (U.Subst_domain sub)).
-        intros. consider (U.Subst_lookup u sub); auto. intros. exfalso. apply H2. eapply U.Subst_domain_iff. eauto.
+        rewrite SUBST.Subst_size_cardinal in H. cut (~In u (SUBST.Subst_domain sub)).
+        intros. consider (SUBST.Subst_lookup u sub); auto. intros. exfalso. apply H2. eapply SUBST.Subst_domain_iff. eauto.
         
         apply checkAllInstantiated_perm in H0. destruct H0.
         intro. eapply Permutation.Permutation_in in H2. 2: symmetry; eauto. apply in_app_or in H2. destruct H2. 
@@ -957,7 +902,7 @@ Module Make (ST : SepTheory.SepTheory)
                    consider X; try congruence; intros
                  | [ H : Some _ = Some _ |- _ ] => inversion H; clear H; subst
                end.
-        eapply fold_left_2_opt_unify in H3. 2: apply U.Subst_empty_WellTyped.
+        eapply fold_left_2_opt_unify in H3. 2: apply SUBST.Subst_empty_WellTyped.
         Focus 3. eapply all2_impl. eassumption. intros. eapply is_well_typed_weaken with (u' := Foralls lem) (g' := nil).
         eassumption.
         Focus 2. rewrite all2_map_1. eapply all2_impl. eassumption. intros. 
@@ -1056,7 +1001,7 @@ Module Make (ST : SepTheory.SepTheory)
                    consider X; try congruence; intros
                  | [ H : Some _ = Some _ |- _ ] => inversion H; clear H; subst
                end.
-        eapply fold_left_2_opt_unify in H2. 2: apply U.Subst_empty_WellTyped.
+        eapply fold_left_2_opt_unify in H2. 2: apply SUBST.Subst_empty_WellTyped.
         Focus 3. eapply all2_impl. eassumption. intros. eapply is_well_typed_weaken with (u' := Foralls lem) (g' := nil).
         eassumption.
         Focus 2. rewrite all2_map_1. eapply all2_impl. eassumption. intros. 

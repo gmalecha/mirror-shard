@@ -75,7 +75,7 @@ End multi_mem.
 
 Module MultiSepMemFacts (SM : SeparationMemory).
   
-  Require Import Reflection.
+  Require Import ExtLib.Tactics.Consider.
 
   Lemma smem_multi_write_footprint : forall (N : nat) b b' addrs vals,
     @multi_write_addrs SM.smem SM.M.addr SM.M.value SM.smem_set N addrs vals b = Some b' ->

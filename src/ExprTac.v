@@ -1,5 +1,6 @@
 Require Import List.
 Require Import Expr.
+Require Import Coq.Classes.EquivDec.
 
 Section abstracted.
   Variable not : Prop -> Prop.
@@ -101,4 +102,3 @@ Proof.
   rewrite <- IHf. unfold Provable in *.
   rewrite nexprD_exprD. reflexivity. 
 Qed.
-  

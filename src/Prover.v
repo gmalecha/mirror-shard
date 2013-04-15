@@ -1,6 +1,7 @@
 Require Import List Arith Bool.
+Require Import ExtLib.Core.EquivDec.
+Require Import ExtLib.Tactics.Consider.
 Require Import Expr Env.
-Require Import Reflection.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -51,7 +52,7 @@ Record ProverPackage : Type :=
 
 (** Generic lemmas/tactis to prove things about provers **)
 
-Hint Rewrite EquivDec_refl_left SemiDec_EquivDec_refl_left : provers.
+Hint Rewrite EquivDec_refl_left (*SemiDec_EquivDec_refl_left*) : provers.
 
 (* Everything looks like a nail?  Try this hammer. *)
 Ltac t1 := match goal with
@@ -65,7 +66,7 @@ Ltac t1 := match goal with
              | [ s : signature _ |- _ ] => destruct s
              | [ H : Some _ = Some _ |- _ ] => injection H; clear H
              | [ H : _ = Some _ |- _ ] => rewrite H in *
-             | [ H : _ === _ |- _ ] => rewrite H in *
+(*             | [ H : _ === _ |- _ ] => rewrite H in * *)
 
              | [ |- context[match ?E with
                               | Const _ _ => _

@@ -1,9 +1,11 @@
 (** This is the cancellation algorithm/interface used in Bedrock
  **)
 Require Import List.
+Require Import ExtLib.Tactics.Consider.
+Require Import ExtLib.Core.EquivDec.
 Require Import Expr SepExpr SepHeap SepCancel SepLemma.
 Require Import Prover.
-Require Import Tactics Reflection.
+Require Import Tactics.
 Require UnfolderTac.
 Require ExprUnify.
 
@@ -14,32 +16,35 @@ Module Make (ST : SepTheory.SepTheory)
             (SE : SepExpr ST)
             (SH : SepHeap ST SE)
             (SL : SepLemma.SepLemmaType ST SE)
-            (UNIFY : ExprUnify.Unifier)
+            (SUBST : Instantiation.Instantiation)
+            (UNIFY : ExprUnify.SyntacticUnifier SUBST)
             (UNF : Unfolder.Unfolder ST SE SH SL).
 
-  Module CANCEL := SepCancel.Make UNIFY ST SE SH.
+  Require OrderedCanceler.
+  
+  Module ORDER := OrderedCanceler.DefaultOrdering ST SE SH.
+  Module CANCEL := OrderedCanceler.Make SUBST UNIFY ST SE SH ORDER.
 
   Module ST_EXT := SepTheory.SepTheory_Ext ST.
   Module SEP_FACTS := SepExpr.SepExprFacts ST SE.
   Module SH_FACTS := SepHeap.SepHeapFacts ST SE SH.
   Module UTAC := UnfolderTac.UnfolderTac ST SE SH SL UNF.
 
-
   Section existsSubst.
     Variable types : list type.
     Variable funcs : functions types.
     Variable meta_base : env types.
     Variable var_env : env types.
-    Variable sub : UNIFY.Subst types.
+    Variable sub : SUBST.Subst types.
     
-    Definition ExistsSubstNone (_ : tvar) (_ : expr types) := 
+    Definition ExistsSubstNone (_ : tvar) (_ : expr types) : Prop := 
       False.
 
     Fixpoint substInEnv (from : nat) (vals : env types) (ret : env types -> Prop) : Prop :=
       match vals with 
         | nil => ret nil
         | val :: vals =>
-          match UNIFY.Subst_lookup from sub with
+          match SUBST.Subst_lookup from sub with
             | None => substInEnv (S from) vals (fun e => ret (val :: e))
             | Some v => 
               match exprD funcs meta_base var_env v (projT1 val) with
@@ -99,12 +104,12 @@ Module Make (ST : SepTheory.SepTheory)
 
   Lemma substInEnv_sem : forall types funcs meta_env var_env sub vals from ret,
     @substInEnv types funcs meta_env var_env sub from vals ret <-> 
-    (UNIFY.Subst_equations_to funcs meta_env var_env sub from vals /\ ret vals).
+    (SUBST.Subst_equations_to funcs meta_env var_env sub from vals /\ ret vals).
   Proof.
     induction vals; simpl; intros.
     { intuition. }
     { destruct a; simpl in *.
-      consider (UNIFY.Subst_lookup from sub); simpl; intros.
+      consider (SUBST.Subst_lookup from sub); simpl; intros.
       consider (exprD funcs meta_env var_env e x); simpl; intros.
       { rewrite IHvals. intuition; subst; auto. } 
       { intuition. }
@@ -114,7 +119,7 @@ Module Make (ST : SepTheory.SepTheory)
   Lemma existsSubst_sem : forall ts (funcs : functions ts) vals sub vars_env from ret,
     existsSubst funcs vars_env sub from vals ret <->
     existsEach (map (@projT1 _ _) vals) (fun meta_env =>
-      consistent vals meta_env /\ UNIFY.Subst_equations_to funcs meta_env vars_env sub from meta_env /\ ret meta_env).
+      consistent vals meta_env /\ SUBST.Subst_equations_to funcs meta_env vars_env sub from meta_env /\ ret meta_env).
   Proof.
     intros. unfold existsSubst.
     rewrite existsMaybe_sem. rewrite existsEach_sem. rewrite existsEach_sem.
@@ -139,7 +144,7 @@ Module Make (ST : SepTheory.SepTheory)
     ; ExExt  : variables
     ; Lhs    : SH.SHeap types
     ; Rhs    : SH.SHeap types
-    ; Subst  : UNIFY.Subst types
+    ; Subst  : SUBST.Subst types
     }.
 
     Require Import Bool.
@@ -171,7 +176,7 @@ Module Make (ST : SepTheory.SepTheory)
               let new_vars  := vars' in
               let new_uvars := skipn (length uvars) uvars' in
               let bound := length uvars' in
-              match CANCEL.sepCancel prover bound tpreds facts lhs rhs (UNIFY.Subst_empty _) with
+              match CANCEL.sepCancel prover bound tpreds facts lhs rhs (SUBST.Subst_empty _) with
                 | Some (l,r,s) =>
                   Some {| AllExt := new_vars
                         ; ExExt  := new_uvars
@@ -202,7 +207,7 @@ Module Make (ST : SepTheory.SepTheory)
                           ; ExExt  := new_uvars
                           ; Lhs    := lhs
                           ; Rhs    := rhs
-                          ; Subst  := UNIFY.Subst_empty _
+                          ; Subst  := SUBST.Subst_empty _
                          |}
               end
           end
@@ -547,9 +552,9 @@ Module Make (ST : SepTheory.SepTheory)
         t_list_length. repeat rewrite firstn_skipn.
         clear H2. 
 
-        assert (UNIFY.Subst_WellTyped (typeof_funcs funcs) (typeof_env x1)
-          (typeof_env (rev G ++ G0)) (UNIFY.Subst_empty types)).
-        { eapply UNIFY.Subst_empty_WellTyped. }
+        assert (SUBST.Subst_WellTyped (typeof_funcs funcs) (typeof_env x1)
+          (typeof_env (rev G ++ G0)) (SUBST.Subst_empty types)).
+        { eapply SUBST.Subst_empty_WellTyped. }
         assert (SH.WellTyped_sheap (typeof_funcs funcs) (SE.typeof_preds preds)
           (typeof_env x1) (typeof_env (rev G ++ G0)) Heap0 = true).
         { rewrite <- H16. f_equal.
@@ -562,15 +567,14 @@ Module Make (ST : SepTheory.SepTheory)
           rewrite H15 in H10 at 1. rewrite <- typeof_env_app in H10. rewrite firstn_skipn in H10.
           rewrite app_nil_r in H10. rewrite <- H10. f_equal.
           rewrite typeof_env_app. rewrite typeof_env_rev. f_equal. apply H11. }
-        consider (CANCEL.sepCancel prover (length (typeof_env meta_env ++ rev v0 ++ x0)) (SE.typeof_preds preds) f Heap Heap0 (UNIFY.Subst_empty _));
+        consider (CANCEL.sepCancel prover (length (typeof_env meta_env ++ rev v0 ++ x0)) (SE.typeof_preds preds) f Heap Heap0 (SUBST.Subst_empty _));
         intros; try congruence.
         { destruct p. destruct p. inversion H20; clear H20. subst s3. subst s1.
           subst Lhs0. clear H19. simpl in *.
           eapply CANCEL.sepCancel_correct with (funcs := funcs) (U := x1) (G := rev G ++ G0) in H13; try eassumption.
           { instantiate (1 := proverOk). eapply Valid_weaken with (ue := skipn (length meta_env) x1) (ge := G0) in H5.
             rewrite <- firstn_skipn with (n := length meta_env) (l := x1). rewrite <- H15. assumption. }
-          { (* eapply CANCEL.sepCancel_PuresPrem in H13; try eassumption. *)
-            match type of H3 with
+          { match type of H3 with
               | ST.himp (SE.sexprD ?F ?P ?U ?G ?L) (SE.sexprD ?F ?P ?U ?G ?R) =>
                 change (SE.himp F P U G L R) in H3
             end. 
@@ -586,7 +590,7 @@ Module Make (ST : SepTheory.SepTheory)
             eapply himp_remove_pures_p; intros.
             eapply himp_remove_pures_c; auto. reflexivity. } 
           { eapply CANCEL.sepCancel_PureFacts in H13. 4: eapply H6. 
-            eapply UNIFY.Subst_equations_to_Subst_equations; intuition.
+            eapply SUBST.Subst_equations_to_Subst_equations; intuition.
             intuition. intuition. } }
         { match goal with
           | [ H : (if ?X then _ else _) = _ |- _ ] =>

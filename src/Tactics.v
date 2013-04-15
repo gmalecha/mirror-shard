@@ -1,4 +1,4 @@
-Require Import Reflection.
+Require Import ExtLib.Tactics.Consider.
 Require Import Bool.
 
 Ltac think' ext solver :=

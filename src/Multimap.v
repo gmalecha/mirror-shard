@@ -1,15 +1,15 @@
 Require Import FMapInterface FMapFacts.
 Require Import List.
-Require Import NatMap.
+Require Import MoreFMapFacts.
 Require Permutation.
 
 Set Implicit Arguments.
 Set Strict Implicit.
 
-Module Make (FM : WS).
-  Module FACTS := FMapFacts.WFacts_fun FM.E FM.
-  Module PROPS := FMapFacts.WProperties_fun FM.E FM.
-  Module MFACTS := NatMap.MoreFMapFacts FM.
+Module Make (E:OrderedType) (FM : Sfun E).
+  Module FACTS := FMapFacts.WFacts_fun E FM.
+  Module PROPS := FMapFacts.WProperties_fun E FM.
+  Module MFACTS := MoreFMapFacts.MoreFMapFacts E FM.
   
   Lemma find_Empty : forall T (m : FM.t T) x,
     FM.Empty m -> FM.find x m = None.
@@ -46,8 +46,8 @@ Module Make (FM : WS).
       repeat (rewrite FACTS.add_o in * ||
         match goal with
           | [ H : FM.MapsTo _ _ _ |- _ ] => apply FACTS.find_mapsto_iff in H
-          | [ H : context [ FM.E.eq_dec ?X ?Y ] |- _ ] => destruct (FM.E.eq_dec X Y)
-          | [ H : FM.E.eq _ _ |- _ ] => rewrite H in *
+          | [ H : context [ E.eq_dec ?X ?Y ] |- _ ] => destruct (E.eq_dec X Y)
+          | [ H : E.eq _ _ |- _ ] => rewrite H in *
           | [ H : ?X = Some _ , H' : ?X = Some _ |- _ ] =>
             rewrite H in H'; inversion H'; clear H'; subst
           | [ H : Some _ = Some _ |- _ ] => inversion H; clear H; subst
@@ -55,7 +55,7 @@ Module Make (FM : WS).
 
 
     Global Add Parametric Morphism : mmap_add with 
-      signature (FM.E.eq ==> @eq _ ==> mmap_Equiv ==> mmap_Equiv)
+      signature (E.eq ==> @eq _ ==> mmap_Equiv ==> mmap_Equiv)
       as mmap_add_mor.
     Proof.
       unfold mmap_Equiv, mmap_add, FM.Equiv. intros. destruct H0.
@@ -95,7 +95,7 @@ Module Make (FM : WS).
                | [ |- _ ] => rewrite FACTS.add_o in *
                | [ H : _ = _ |- _ ] => rewrite H in *
                | [ H : Some _ = Some _ |- _ ] => inversion H; clear H; subst
-               | [ H : FM.E.eq _ _ |- _ ] => rewrite H in *; clear H
+               | [ H : E.eq _ _ |- _ ] => rewrite H in *; clear H
                | [ |- context [ FM.find ?X ?Y ] ] =>
                  match Y with
                    | match _ with | _ => _ end => fail 1
@@ -103,15 +103,15 @@ Module Make (FM : WS).
                  end; intros
              end; try solve [ exfalso; auto ];
       repeat match goal with
-               | [ |- context [ FM.E.eq_dec ?X ?Y ] ] =>
-                 destruct (FM.E.eq_dec X Y)
+               | [ |- context [ E.eq_dec ?X ?Y ] ] =>
+                 destruct (E.eq_dec X Y)
              end; try solve [ exfalso; auto ]; unfold FM.Equiv;
       intuition;
         try solve [ repeat match goal with
                              | [ |- FM.In _ _ ] => apply FACTS.add_in_iff
                              | [ H : FM.In _ _ |- _ ] => 
                                apply FACTS.add_in_iff in H; destruct H
-                             | [ H : FM.E.eq _ _ |- _ ] => rewrite H in *
+                             | [ H : E.eq _ _ |- _ ] => rewrite H in *
                              | [ |- _ \/ _ ] => solve [ left; auto ] || right; auto
                            end ];
         think; try solve [ congruence | exfalso; auto ].
@@ -124,7 +124,7 @@ Module Make (FM : WS).
       end.
 
     Global Add Parametric Morphism : mmap_extend with 
-      signature (FM.E.eq ==> (@Permutation.Permutation _) ==> mmap_Equiv ==> mmap_Equiv)
+      signature (E.eq ==> (@Permutation.Permutation _) ==> mmap_Equiv ==> mmap_Equiv)
       as mmap_extend_mor.
     Proof.
       unfold mmap_Equiv, mmap_extend, FM.Equiv. intros. destruct H1.
@@ -157,7 +157,7 @@ Module Make (FM : WS).
         eapply H2; eapply FACTS.find_mapsto_iff; eauto. }
     Qed.
 
-    Lemma Proper_mmap_extend : Proper (FM.E.eq ==> eq ==> FM.Equal ==> FM.Equal) mmap_extend.
+    Lemma Proper_mmap_extend : Proper (E.eq ==> eq ==> FM.Equal ==> FM.Equal) mmap_extend.
     Proof.
       unfold mmap_extend.
       repeat (red; intros; subst). rewrite H; rewrite H0. destruct (FM.find (elt:=list T) y y1); rewrite H; rewrite H0; auto.
@@ -170,8 +170,8 @@ Module Make (FM : WS).
                 | [ H : Some _ = Some _ |- _ ] => inversion H; clear H; subst
                 | [ H : _ = _ |- _ ] => rewrite H 
                 | [ H : _ = _ |- _ ] => rewrite H in *
-                | [ H : FM.E.eq _ _ |- _ ] => rewrite H 
-                | [ H : FM.E.eq _ _ |- _ ] => rewrite H in *
+                | [ H : E.eq _ _ |- _ ] => rewrite H 
+                | [ H : E.eq _ _ |- _ ] => rewrite H in *
                 | [ H : context [ FM.find _ _ ] |- _ ] => 
                   rewrite FACTS.add_o in H
                 | [ |- context [ FM.find ?k ?a ] ] =>
@@ -184,12 +184,12 @@ Module Make (FM : WS).
                   end
               end);
       repeat match goal with
-               | [ H : ~ FM.E.eq ?X ?X |- _ ] => exfalso; apply H; reflexivity
-               | [ H : FM.E.eq _ _ |- _ ] => rewrite H 
-               | [ H : FM.E.eq _ _ |- _ ] => rewrite H in *
+               | [ H : ~ E.eq ?X ?X |- _ ] => exfalso; apply H; reflexivity
+               | [ H : E.eq _ _ |- _ ] => rewrite H 
+               | [ H : E.eq _ _ |- _ ] => rewrite H in *
                | [ H : Some _ = Some _ |- _ ] => inversion H ; clear H; subst
-               | [ H : context [ FM.E.eq_dec ?A ?B ] |- _ ] =>
-                 destruct (FM.E.eq_dec A B); try congruence
+               | [ H : context [ E.eq_dec ?A ?B ] |- _ ] =>
+                 destruct (E.eq_dec A B); try congruence
              end.
     Qed.
     Existing Instance Proper_mmap_extend.
@@ -221,14 +221,14 @@ Module Make (FM : WS).
       apply PROPS.F.not_find_in_iff in H0. rewrite H0.
 
       specialize (H1 x0). rewrite H1.
-      case_eq (FM.find x b); intros; rewrite FACTS.add_o; destruct (FM.E.eq_dec x x0); 
+      case_eq (FM.find x b); intros; rewrite FACTS.add_o; destruct (E.eq_dec x x0); 
         try rewrite H;
           repeat match goal with
-                   | [ H : FM.E.eq _ _ |- _ ] => rewrite H in *; clear H
-                   | [ H : ~FM.E.eq ?X ?X |- _ ] => exfalso; apply H; reflexivity
+                   | [ H : E.eq _ _ |- _ ] => rewrite H in *; clear H
+                   | [ H : ~E.eq ?X ?X |- _ ] => exfalso; apply H; reflexivity
                    | [ H : _ = _ |- _ ] => rewrite H
-                   | [ |- context [ FM.E.eq_dec ?X ?Y ] ] =>
-                     destruct (FM.E.eq_dec X Y); try congruence
+                   | [ |- context [ E.eq_dec ?X ?Y ] ] =>
+                     destruct (E.eq_dec X Y); try congruence
                    | _ => rewrite FACTS.add_o in *
                  end.
     Qed.
@@ -239,7 +239,7 @@ Module Make (FM : WS).
     Proof.
       unfold FM.Equal. intros.
       repeat (rewrite FACTS.remove_o || rewrite mmap_join_o).
-      destruct (FM.E.eq_dec k y); try reflexivity.
+      destruct (E.eq_dec k y); try reflexivity.
       apply PROPS.F.not_find_in_iff in H.
       rewrite e in *.
       rewrite H. reflexivity. 
@@ -252,6 +252,5 @@ Module Make (FM : WS).
 
   Definition mmap_mapi T U (F : FM.key -> T -> U) : mmap T -> mmap U :=
     FM.mapi (fun k => map (F k)).
-
 
 End Make.
