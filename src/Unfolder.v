@@ -97,11 +97,11 @@ End Unfolder.
 
 Module Make (ST : SepTheory.SepTheory)
             (SE : SepExpr ST)
-            (Import SH : SepHeap ST SE) (Uf : SyntacticUnifier) 
+            (Import SH : SepHeap ST SE) 
+            (SUBST : Instantiation.Instantiation)
+            (U : SyntacticUnifier SUBST) 
             (LEM : SepLemma.SepLemmaType ST SE)
             <: Unfolder ST SE SH LEM.
-  Module SUBST := Instantiation.SimpleInstantiation FMapAVL.Make.
-  Module U := Uf SUBST.
 
   Module Import HEAP_FACTS := SepHeapFacts ST SE SH.
   Module ST_EXT := SepTheory.SepTheory_Ext ST.
@@ -1710,3 +1710,4 @@ Module Make (ST : SepTheory.SepTheory)
   End interface.
 
 End Make.
+

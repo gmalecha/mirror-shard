@@ -179,58 +179,14 @@ End Instantiation.
 
 Require Import FMapInterface.
 
-Module SimpleInstantiation (F : Sfun) <: Instantiation.
+Module SimpleInstantiation (FM : S with Definition E.t := uvar
+                                   with Definition E.eq := @eq uvar) <: Instantiation.
 
-  Module Ordered_uvar <: OrderedType with Definition t := uvar.
-    Definition t := uvar.
-    Definition eq := @eq uvar. 
-    Definition lt := @lt.
-
-    Theorem eq_refl : forall x, eq x x.
-      reflexivity.
-    Qed.
-
-    Theorem eq_sym : forall a b, eq a b -> eq b a.
-      intros; symmetry; auto.
-    Qed.    
-
-    Theorem eq_trans : forall a b c, eq a b -> eq b c -> eq a c.
-      intros; etransitivity; eauto.
-    Qed.
-
-    Require Import Omega.
-    Theorem lt_trans : forall a b c, lt a b -> lt b c -> lt a c.
-      intros. unfold lt in *. omega.
-    Qed.
-    
-    Theorem lt_not_eq : forall a b, lt a b -> ~(eq a b).
-      unfold eq, lt. intros; omega.
-    Qed.
-
-    Definition compare (x y : t) : OrderedType.Compare lt eq x y :=
-      match Compare_dec.nat_compare x y as r return
-        Compare_dec.nat_compare x y = r -> OrderedType.Compare lt eq x y
-        with 
-        | Lt => fun pf => OrderedType.LT (lt:=lt) (nat_compare_Lt_lt _ _ pf)
-        | Eq => fun pf => OrderedType.EQ (lt:=lt) (Compare_dec.nat_compare_eq _ _ pf)
-        | Gt => fun pf => OrderedType.GT (lt:=lt) (nat_compare_Gt_gt _ _ pf)
-      end (refl_equal _).
-
-    Definition eq_dec (x y : nat) : {x = y} + {x <> y} :=
-      match beq_nat x y as r return 
-        beq_nat x y = r -> {x = y} + {x <> y} with
-        | true => fun pf => left (beq_nat_true _ _ pf) 
-        | false => fun pf => right (beq_nat_false _ _ pf)
-      end (refl_equal _).
-
-  End Ordered_uvar.
-
-  Module FM := F Ordered_uvar.
   Require MoreFMapFacts.
 
-  Module FACTS := FMapFacts.WFacts_fun Ordered_uvar FM.
-  Module PROPS := FMapFacts.WProperties_fun Ordered_uvar FM.
-  Module MFACTS := MoreFMapFacts.MoreFMapFacts Ordered_uvar FM.
+  Module FACTS := FMapFacts.WFacts FM.
+  Module PROPS := FMapFacts.WProperties FM.
+  Module MFACTS := MoreFMapFacts.MoreFMapFacts FM.E FM.
 
   Section typed.
     Variable types : list type.
@@ -300,7 +256,8 @@ Module SimpleInstantiation (F : Sfun) <: Instantiation.
         generalize (FACTS.find_mapsto_iff (projT1 s) k x). intros.
         generalize (FACTS.elements_mapsto_iff (projT1 s) k x). intros. intuition.
         change k with (fst (k,x)). eapply in_map. eapply SetoidList.InA_alt in H2. destruct H2.
-        destruct H2. destruct x0. inversion H2. simpl in *; subst. auto. }
+        destruct H2. destruct x0. compute in H2. inversion H2. simpl in *; subst.
+        auto. }
       { intros. apply in_map_iff in H. destruct H. destruct x; intuition; subst. exists e.
         apply FACTS.find_mapsto_iff. apply FACTS.elements_mapsto_iff. 
         eapply SetoidList.InA_alt. exists (k0,e). simpl. intuition auto. reflexivity. }
@@ -661,9 +618,9 @@ Module SimpleInstantiation (F : Sfun) <: Instantiation.
       destruct o; intros; try congruence.
         inversion H; clear H; subst.
         destruct sub. unfold Subst_Extends, Subst_lookup, subst_set, exprInstantiate in *; simpl in *.
-        revert e. case_eq (mentionsU k (subst_exprInstantiate x v)); intros; try congruence.
-        think. apply FACTS.map_mapsto_iff. case_eq (Ordered_uvar.eq_dec k k0); intros.
-          rewrite e in H0. exfalso. eapply FACTS.not_find_in_iff in H0. eapply H0. eexists. eapply H2.
+        consider (mentionsU k (subst_exprInstantiate x v)); intros; try congruence.
+        think. clear e. apply FACTS.map_mapsto_iff. case_eq (FM.E.eq_dec k k0); intros.
+          rewrite e in H0. exfalso. eapply FACTS.not_find_in_iff in H0. eapply H0. eexists. eapply H3.
 
           exists v0. split. 
           2: eapply FACTS.add_mapsto_iff; right; split; eauto.
@@ -710,7 +667,7 @@ Module SimpleInstantiation (F : Sfun) <: Instantiation.
       think. unfold subst_lookup, subst_set in *.
       revert e0. case_eq (mentionsU x (subst_exprInstantiate x0 e)); intros; try congruence.
       think.
-      destruct (Ordered_uvar.eq_dec x x); try solve [ exfalso; eauto ].
+      destruct (FM.E.eq_dec x x); try solve [ exfalso; eauto ].
       clear e0. simpl.
 
       revert H; revert w0.
@@ -719,7 +676,7 @@ Module SimpleInstantiation (F : Sfun) <: Instantiation.
       { consider (FM.find x1 x0); simpl; intros; auto.
         consider (EqNat.beq_nat x x1); try congruence; intros.
         unfold subst_lookup. rewrite FACTS.add_o.
-        destruct (Ordered_uvar.eq_dec x x1); [ exfalso; auto | ].
+        destruct (FM.E.eq_dec x x1); [ exfalso; auto | ].
         rewrite H. auto. }
       { f_equal.
         induction H; simpl; intros; think; auto. }
@@ -810,7 +767,7 @@ Module SimpleInstantiation (F : Sfun) <: Instantiation.
                                 | _ => _
                               end ] |- _ ] => 
             revert H; consider X; intros
-            | [ |- context [ Ordered_uvar.eq_dec ?X ?Y ] ] => destruct (Ordered_uvar.eq_dec X Y); subst
+            | [ |- context [ FM.E.eq_dec ?X ?Y ] ] => destruct (FM.E.eq_dec X Y); subst
             | [ H : Some _ = Some _ |- _ ] => inversion H; clear H; subst
             | [ |- _ ] => rewrite <- exprInstantiate_WellTyped by assumption
             | [ |- context [ FM.find ?X ?Y ] ] =>
@@ -885,7 +842,7 @@ Module SimpleInstantiation (F : Sfun) <: Instantiation.
                end; firstorder. }
         { intro. rewrite FACTS.remove_in_iff in H1. intuition; congruence. }
         { unfold PROPS.Add. intros; rewrite FACTS.add_o; rewrite FACTS.remove_o. 
-          destruct (Ordered_uvar.eq_dec x y); auto.
+          destruct (FM.E.eq_dec x y); auto; unfold FM.E.eq in *.
           Transparent Subst_lookup.
           unfold Subst_lookup, subst_lookup in *. subst; auto. }
     Qed.
@@ -992,7 +949,7 @@ Module SimpleInstantiation (F : Sfun) <: Instantiation.
       induction x; simpl; intros; auto.
       { unfold subst_lookup.
         consider (FM.find (elt:=expr types) x (projT1 sub)); try congruence; intros.
-        rewrite MFACTS.PROPS.F.add_o. destruct (Ordered_uvar.eq_dec k x); subst.
+        rewrite MFACTS.PROPS.F.add_o. destruct (FM.E.eq_dec k x); unfold FM.E.eq in *; subst.
         generalize (exprInstantiate_Extends H); unfold exprInstantiate.
         intro. rewrite H3.
         apply MFACTS.PROPS.F.find_mapsto_iff in H1. rewrite H1.
@@ -1070,7 +1027,7 @@ Module SimpleInstantiation (F : Sfun) <: Instantiation.
       (PROPS.diff m (FM.add k v m')).
     Proof.
       intros. red. intros.
-      rewrite FACTS.remove_o. destruct (Ordered_uvar.eq_dec k y). subst.
+      rewrite FACTS.remove_o. destruct (FM.E.eq_dec k y); unfold FM.E.eq in *; subst.
       { consider (FM.find (elt:=T) y (PROPS.diff m (FM.add y v m'))); intros; auto.
         exfalso. apply FACTS.find_mapsto_iff in H.
         eapply PROPS.diff_mapsto_iff in H. intuition. apply H1.
@@ -1160,7 +1117,7 @@ Module SimpleInstantiation (F : Sfun) <: Instantiation.
         { exfalso. clear Heqt. apply FACTS.find_mapsto_iff in H1. eapply H0 in H1.
           apply FACTS.find_mapsto_iff in H1. congruence. } }
       { generalize (H1 x); intro. 
-        rewrite FACTS.add_o in H3. destruct (Ordered_uvar.eq_dec x x); try congruence. clear e0.
+        rewrite FACTS.add_o in H3. destruct (FM.E.eq_dec x x); try congruence. clear e0.
         apply FACTS.find_mapsto_iff in H3. rewrite Heqt in *.
         eapply PROPS.diff_mapsto_iff in H3. destruct H3.
         eapply extends_add_from with (k := x) (v := e) in H2. 
@@ -1174,7 +1131,7 @@ Module SimpleInstantiation (F : Sfun) <: Instantiation.
         rewrite H6. rewrite <- diff_map_2. rewrite <- diff_add. rewrite <- Heqt.
         red. intro. specialize (H1 y). rewrite FACTS.remove_o.
         rewrite H1. rewrite FACTS.add_o. 
-        destruct (Ordered_uvar.eq_dec x y); subst; auto. apply FACTS.not_find_in_iff; auto.
+        destruct (FM.E.eq_dec x y); unfold FM.E.eq in *; subst; auto. apply FACTS.not_find_in_iff; auto.
         
         unfold Subst_lookup, subst_lookup; apply FACTS.find_mapsto_iff. assumption.
         unfold Subst_lookup, subst_lookup; apply FACTS.not_find_in_iff; assumption. }
@@ -1204,7 +1161,7 @@ Module SimpleInstantiation (F : Sfun) <: Instantiation.
                    | H : match ?X with _ => _ end |- _ => consider X; intros; try contradiction
                    | H : _ /\ _ |- _ => destruct H
                  end; subst.
-          rewrite H1 in H4. rewrite FACTS.add_o in H4. destruct (Ordered_uvar.eq_dec x0 k); subst.
+          rewrite H1 in H4. rewrite FACTS.add_o in H4. destruct (FM.E.eq_dec x0 k); unfold FM.E.eq in *; subst.
           { rewrite H5. simpl. inversion H4. subst; rewrite H6. reflexivity. }
           { eapply H; eauto. }
           { repeat (red; intros; subst);
@@ -1218,11 +1175,11 @@ Module SimpleInstantiation (F : Sfun) <: Instantiation.
           { specialize (H H2). 
             rewrite PROPS.fold_Add; eauto with typeclass_instances.
             generalize (H3 x0 e); intros. rewrite H1 in H4. rewrite FACTS.add_o in H4.
-            destruct (Ordered_uvar.eq_dec x0 x0); try congruence. specialize (H4 refl_equal).
+            destruct (FM.E.eq_dec x0 x0); try congruence. specialize (H4 refl_equal).
             destruct (nth_error U x0); try contradiction.
             destruct s; simpl in *. destruct (exprD funcs U G e x1); auto; subst. split; auto.
             eapply H. intros. eapply H3. rewrite H1.
-            rewrite FACTS.add_o. destruct (Ordered_uvar.eq_dec x0 k); auto. subst. exfalso. apply H0.
+            rewrite FACTS.add_o. destruct (FM.E.eq_dec x0 k); unfold FM.E.eq in *; auto. subst. exfalso. apply H0.
             exists e1. apply FACTS.find_mapsto_iff; auto.
             { repeat (red; intros; subst);
               repeat match goal with 
@@ -1277,7 +1234,7 @@ Module SimpleInstantiation (F : Sfun) <: Instantiation.
       destruct (nth_error U k0); auto. intro.
       rewrite Subst_equations_exprInstantiate in H2. auto. auto.
       { unfold Subst_lookup, subst_lookup in *. rewrite H4. rewrite FACTS.map_o. rewrite FACTS.add_o.
-        destruct (Ordered_uvar.eq_dec k k0); subst; simpl. congruence.
+        destruct (FM.E.eq_dec k k0); unfold FM.E.eq in *; subst; simpl. congruence.
         rewrite H5. simpl. unfold exprInstantiate. rewrite H4. f_equal.
         unfold exprInstantiate in *. erewrite adf; eauto using (projT2 a).
         2: apply (projT2 a).

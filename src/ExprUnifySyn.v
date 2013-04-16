@@ -99,62 +99,62 @@ Module SynUnifier (S : Instantiation) <: SyntacticUnifier S.
                                end v'
                   | right _ => None
                 end
-            | Var v , Var v' => 
-              if EqNat.beq_nat v v' 
-                then Some sub
-                else None
-            | Func f1 args1 , Func f2 args2 =>
-              if EqNat.beq_nat f1 f2 then
-                (fix unifyArgs (args1 args2 : list (expr types)) (s : S.Subst types) 
-                  : option (S.Subst types) :=
-                  match args1 , args2 with
-                    | nil , nil => Some s
-                    | nil , _ :: _ => None
-                    | _ :: _ , nil => None
-                    | arg1 :: args1 , arg2 :: args2 =>
-                      match unify arg1 arg2 s with
-                        | None => None
-                        | Some s => unifyArgs args1 args2 s
-                      end
-                  end) args1 args2 sub
-              else None
-            | Equal t1 e1 f1 , Equal t2 e2 f2 =>
-              if equiv_dec t1 t2 then
-                match unify e1 e2 sub with
-                  | None => None
-                  | Some sub => unify f1 f2 sub
-                end
-              else
-                None
-            | Not e1 , Not e2 =>
-              unify e1 e2 sub
-            | UVar l , UVar r => 
-              if EqNat.beq_nat l r then Some sub
-              else 
-                match S.Subst_lookup l sub with
-                  | None => S.Subst_set l (UVar r) sub
-                  | Some l' =>
-                    match S.Subst_lookup r sub with
-                      | None => S.Subst_set r l' sub
-                      | Some r' =>
-                        exprUnify bound l' r' sub
+              | Var v , Var v' => 
+                if EqNat.beq_nat v v' 
+                  then Some sub
+                  else None
+              | Func f1 args1 , Func f2 args2 =>
+                if EqNat.beq_nat f1 f2 then
+                  (fix unifyArgs (args1 args2 : list (expr types)) (s : S.Subst types) 
+                    : option (S.Subst types) :=
+                    match args1 , args2 with
+                      | nil , nil => Some s
+                      | nil , _ :: _ => None
+                      | _ :: _ , nil => None
+                      | arg1 :: args1 , arg2 :: args2 =>
+                        match unify arg1 arg2 s with
+                          | None => None
+                          | Some s => unifyArgs args1 args2 s
+                        end
+                    end) args1 args2 sub
+                  else None
+              | Equal t1 e1 f1 , Equal t2 e2 f2 =>
+                if equiv_dec t1 t2 then
+                  match unify e1 e2 sub with
+                    | None => None
+                    | Some sub => unify f1 f2 sub
+                  end
+                  else
+                    None
+              | Not e1 , Not e2 =>
+                unify e1 e2 sub
+              | UVar l , UVar r => 
+                if EqNat.beq_nat l r then Some sub
+                  else 
+                    match S.Subst_lookup l sub with
+                      | None => S.Subst_set l (UVar r) sub
+                      | Some l' =>
+                        match S.Subst_lookup r sub with
+                          | None => S.Subst_set r l' sub
+                          | Some r' =>
+                            exprUnify bound l' r' sub
+                        end
                     end
+              | UVar u , r =>
+                match S.Subst_lookup u sub with
+                  | None =>
+                    S.Subst_set u r sub
+                  | Some l' =>
+                    exprUnify bound l' r sub
                 end
-            | UVar u , r =>
-              match S.Subst_lookup u sub with
-                | None =>
-                  S.Subst_set u r sub
-                | Some l' =>
-                  exprUnify bound l' r sub
-              end
-            | l , UVar u =>
-              match S.Subst_lookup u sub with
-                | None => 
-                  S.Subst_set u l sub
-                | Some r' =>
-                  exprUnify bound l r' sub
-              end
-            | _ , _ => None
+              | l , UVar u =>
+                match S.Subst_lookup u sub with
+                  | None => 
+                    S.Subst_set u l sub
+                  | Some r' =>
+                    exprUnify bound l r' sub
+                end
+              | _ , _ => None
             end
       end.
 
