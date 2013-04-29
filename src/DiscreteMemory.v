@@ -23,8 +23,8 @@ Module DiscreteHeap (B : Memory)
 
   Fixpoint smem_emp' (ls : list addr) : smem' ls :=
     match ls with
-      | nil => HNil
-      | a :: b => HCons None (smem_emp' b)
+      | nil => Hnil
+      | a :: b => Hcons None (smem_emp' b)
     end.
   Fixpoint disjoint' dom : smem' dom -> smem' dom -> Prop :=
     match dom with
@@ -35,9 +35,9 @@ Module DiscreteHeap (B : Memory)
     end.
   Fixpoint join' dom : smem' dom -> smem' dom -> smem' dom :=
     match dom with
-      | nil => fun _ _ => HNil
+      | nil => fun _ _ => Hnil
       | a :: b => fun m1 m2 => 
-        HCons 
+        Hcons 
         match hlist_hd m1 with
           | None => hlist_hd m2
           | Some x => Some x
@@ -72,19 +72,19 @@ Module DiscreteHeap (B : Memory)
         if addr_dec a p then
           match hlist_hd m with
             | None => None
-            | Some _ => Some (HCons (Some v) (hlist_tl m))
+            | Some _ => Some (Hcons (Some v) (hlist_tl m))
           end
         else
           match smem_set' b p v (hlist_tl m) with
             | None => None
-            | Some tl => Some (HCons (hlist_hd m) tl)
+            | Some tl => Some (Hcons (hlist_hd m) tl)
           end
     end.
 
   Fixpoint models' dom (sm : smem' dom) (m : B.mem) : Prop :=
     match sm with
-      | HNil => True
-      | HCons p _ a b =>
+      | Hnil => True
+      | Hcons p _ a b =>
         match a with
           | None => True
           | Some x => 
@@ -181,7 +181,7 @@ Module DiscreteHeap (B : Memory)
     unfold split, join, disjoint, smem.
     generalize dependent BD.all_addr.
     induction l; simpl in *; intros; auto.
-    { intuition subst. exists HNil; intuition. }
+    { intuition subst. exists Hnil; intuition. }
     { repeat match goal with
                | [ H : _ /\ _ |- _ ] => destruct H
                | [ H : _ = _ |- _ ] => rewrite H
@@ -264,12 +264,12 @@ Module DiscreteHeap (B : Memory)
           generalize dependent H; case_eq X; intros
         | [ H : models' (_ :: _) ?M _ |- _ ] =>
           match M with
-            | HCons _ _ => fail 1
+            | Hcons _ _ => fail 1
             | _ => rewrite (hlist_eta M) in H
           end
         | [ |- models' (_ :: _) ?M _ ] =>
           match M with
-            | HCons _ _ => fail 1
+            | Hcons _ _ => fail 1
             | _ => rewrite (hlist_eta M)
           end
         | [ H : smem' nil |- _ ] => 
@@ -399,8 +399,8 @@ Module DiscreteHeap (B : Memory)
 
     Fixpoint memoryIn' (ls : list addr) : smem' ls :=
       match ls with 
-        | nil => HNil
-        | l :: ls => HCons (mem_get m l) (memoryIn' ls)
+        | nil => Hnil
+        | l :: ls => Hcons (mem_get m l) (memoryIn' ls)
       end. 
 
     Definition memoryIn : smem := memoryIn' BD.all_addr.
