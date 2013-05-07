@@ -4,6 +4,8 @@ Require Import EquivDec.
 Require Import List Bool.
 Require Folds.
 Require Import ExtLib.Tactics.Consider.
+Require ExtLib.Data.Nat.
+Require ExtLib.Data.Pair.
 Require ExtLib.Recur.GenRec.
 Require Import Instantiation.
 Require Import ExprUnify.
@@ -62,16 +64,16 @@ Module Make (S : Instantiation) <: SyntacticUnifier S.
     End fold_in.
 
     Definition exprUnify_recursor bound_l 
-      (recur : forall a_b, GenRec.R_pair GenRec.R_nat_S (@R_expr types) a_b bound_l -> expr types -> S.Subst types -> option (S.Subst types))
+      (recur : forall a_b, Pair.R_pair Nat.R_nat_S (@R_expr types) a_b bound_l -> expr types -> S.Subst types -> option (S.Subst types))
       (r : expr types) (sub : S.Subst types) : option (S.Subst types).
     refine (
       match bound_l as bound_l
-        return (forall a_b, GenRec.R_pair GenRec.R_nat_S (@R_expr types) a_b bound_l -> expr types -> (S.Subst types) -> option (S.Subst types))
+        return (forall a_b, Pair.R_pair Nat.R_nat_S (@R_expr types) a_b bound_l -> expr types -> (S.Subst types) -> option (S.Subst types))
         -> option (S.Subst types)
         with
         | (bound,l) =>
           match l as l , r as r 
-            return (forall a_b, GenRec.R_pair GenRec.R_nat_S (@R_expr types) a_b (bound, l) -> expr types -> (S.Subst types) -> option (S.Subst types))
+            return (forall a_b, Pair.R_pair Nat.R_nat_S (@R_expr types) a_b (bound, l) -> expr types -> (S.Subst types) -> option (S.Subst types))
             -> option (S.Subst types)
             with
             | Const t v , Const t' v' => fun _ =>
@@ -112,7 +114,7 @@ Module Make (S : Instantiation) <: SyntacticUnifier S.
                       | None => fun _ => S.Subst_set r l' sub
                       | Some r' =>
                         match bound as bound return 
-                          (forall a_b, GenRec.R_pair GenRec.R_nat_S (@R_expr types) a_b (bound,UVar l) -> expr types -> (S.Subst types) -> option (S.Subst types))
+                          (forall a_b, Pair.R_pair Nat.R_nat_S (@R_expr types) a_b (bound,UVar l) -> expr types -> (S.Subst types) -> option (S.Subst types))
                           -> option (S.Subst types) with
                           | 0 => fun _ => None
                           | S bound => fun recur => recur (bound, l') _ r' sub
@@ -125,7 +127,7 @@ Module Make (S : Instantiation) <: SyntacticUnifier S.
                   S.Subst_set u r sub
                 | Some l' =>
                   match bound as bound return 
-                    (forall a_b, GenRec.R_pair GenRec.R_nat_S (@R_expr types) a_b (bound,UVar u) -> expr types -> (S.Subst types) -> option (S.Subst types))
+                    (forall a_b, Pair.R_pair Nat.R_nat_S (@R_expr types) a_b (bound,UVar u) -> expr types -> (S.Subst types) -> option (S.Subst types))
                     -> option (S.Subst types) with
                     | 0 => fun _ => None
                     | S bound => fun recur => recur (bound, l') _ r sub
@@ -137,7 +139,7 @@ Module Make (S : Instantiation) <: SyntacticUnifier S.
                   S.Subst_set u l sub
                 | Some r' =>
                   match bound as bound return 
-                    (forall a_b, GenRec.R_pair GenRec.R_nat_S (@R_expr types) a_b (bound,l) -> expr types -> (S.Subst types) -> option (S.Subst types))
+                    (forall a_b, Pair.R_pair Nat.R_nat_S (@R_expr types) a_b (bound,l) -> expr types -> (S.Subst types) -> option (S.Subst types))
                     -> option (S.Subst types) with
                     | 0 => fun _ => None
                     | S bound => fun recur => recur (bound, l) _ r' sub
@@ -146,7 +148,7 @@ Module Make (S : Instantiation) <: SyntacticUnifier S.
             | _ , _ => fun _ => None
           end 
       end recur
-    ); try solve [ apply GenRec.L ; constructor | apply GenRec.R ; constructor; assumption ].
+    ); try solve [ apply Pair.L ; constructor | apply Pair.R ; constructor; assumption ].
     Defined.
 
     (** index by a bound, since the termination argument is not trivial
@@ -154,7 +156,7 @@ Module Make (S : Instantiation) <: SyntacticUnifier S.
      ** uvars.
      **)
     Definition exprUnify (bound : nat) (l : expr types) : expr types -> S.Subst types -> option (S.Subst types) :=
-      (@Fix _ _ (GenRec.guard 4 (GenRec.wf_R_pair GenRec.wf_R_S (@wf_R_expr types)))
+      (@Fix _ _ (GenRec.guard 4 (Pair.wf_R_pair Nat.wf_R_S (@wf_R_expr types)))
         (fun _ => expr types -> S.Subst types -> option (S.Subst types)) exprUnify_recursor) (bound,l).
 
     (** Proofs **)
@@ -199,14 +201,14 @@ Module Make (S : Instantiation) <: SyntacticUnifier S.
 
     Lemma exprUnify_recursor_inv : forall (bound : nat)
       e1 e2 (sub : S.Subst types) (A B : Acc _ (bound,e1))
-      (w : well_founded (GenRec.R_pair GenRec.R_nat_S (R_expr (ts:=types)))),
+      (w : well_founded (Pair.R_pair Nat.R_nat_S (R_expr (ts:=types)))),
       Fix_F (fun _ : nat * expr types => expr types -> S.Subst types -> option (S.Subst types))
       exprUnify_recursor A e2 sub =
       Fix_F (fun _ : nat * expr types => expr types -> S.Subst types -> option (S.Subst types))
       exprUnify_recursor B e2 sub.
     Proof.
       intros.
-      eapply (@Fix_F_inv_equ (nat * expr types) (GenRec.R_pair GenRec.R_nat_S (R_expr (ts:=types)))
+      eapply (@Fix_F_inv_equ (nat * expr types) (Pair.R_pair Nat.R_nat_S (R_expr (ts:=types)))
         w
         (fun _ : nat * expr types => expr types -> S.Subst types -> option (S.Subst types))
         (fun x f g => forall a b, f a b = g a b)
@@ -227,12 +229,12 @@ Module Make (S : Instantiation) <: SyntacticUnifier S.
           dep_in l
           (fun (l1 r0 : expr types) (s : (S.Subst types)) (pf : In l1 l) =>
             f (n, l1)
-            (GenRec.R GenRec.R_nat_S (R_expr (ts:=types)) n l1 (Func f0 l) (R_Func f0 l l1 pf))
+            (Pair.R Nat.R_nat_S (R_expr (ts:=types)) n l1 (Func f0 l) (R_Func f0 l l1 pf))
             r0 s) l' l0 b i =
           dep_in l
           (fun (l1 r0 : expr types) (s : (S.Subst types)) (pf : In l1 l) =>
             g (n, l1)
-            (GenRec.R GenRec.R_nat_S (R_expr (ts:=types)) n l1 (Func f0 l) (R_Func f0 l l1 pf))
+            (Pair.R Nat.R_nat_S (R_expr (ts:=types)) n l1 (Func f0 l) (R_Func f0 l l1 pf))
             r0 s) l' l0 b i).
       induction l'; simpl in *; intros; auto.
       destruct l1; auto. 
@@ -313,7 +315,7 @@ Module Make (S : Instantiation) <: SyntacticUnifier S.
           generalize (GenRec.guard X Y)
       end.
       intros. unfold Fix.
-      rewrite <- (@Fix_F_equ (nat * expr types) (GenRec.R_pair GenRec.R_nat_S (R_expr (ts:=types)))
+      rewrite <- (@Fix_F_equ (nat * expr types) (Pair.R_pair Nat.R_nat_S (R_expr (ts:=types)))
         (fun _ : nat * expr types => expr types -> S.Subst types -> option (S.Subst types))
         (fun x f g => forall a b, f a b = g a b)
         (fun _ => Equiv_equiv)
@@ -334,7 +336,7 @@ Module Make (S : Instantiation) <: SyntacticUnifier S.
       destruct (equiv_dec t t0); auto.
       unfold exprUnify, Fix.
       erewrite exprUnify_recursor_inv; eauto.
-      instantiate (1 := (GenRec.guard 4 (GenRec.wf_R_pair GenRec.wf_R_S (wf_R_expr (ts:=types))) (bound, l1))).
+      instantiate (1 := (GenRec.guard 4 (Pair.wf_R_pair Nat.wf_R_S (wf_R_expr (ts:=types))) (bound, l1))).
       match goal with 
         | [ |- match ?X with 
                  | _ => _ 
@@ -354,15 +356,15 @@ Module Make (S : Instantiation) <: SyntacticUnifier S.
           (fun (l1 r0 : expr types) (s : S.Subst types) (pf : In l1 l) =>
             @Fix_F _ _ (fun _ : nat * expr types => expr types -> S.Subst types -> option (S.Subst types))
             exprUnify_recursor (bound, l1) (@Acc_inv (nat * expr types)
-              (@GenRec.R_pair nat (expr types) GenRec.R_nat_S (@R_expr types))
+              (@Pair.R_pair nat (expr types) Nat.R_nat_S (@R_expr types))
               (bound, @Func types f l) (w (bound, @Func types f l)) 
               (bound, l1)
-              (@GenRec.R nat (expr types) GenRec.R_nat_S (@R_expr types) bound l1
+              (@Pair.R nat (expr types) Nat.R_nat_S (@R_expr types) bound l1
                 (@Func types f l) (@R_Func types f l l1 pf))) r0 s) l' l0 sub i =
           Folds.fold_left_2_opt (exprUnify bound) l' l0 sub).
       induction l'; simpl; intros; destruct l1; auto.
       erewrite exprUnify_recursor_inv; eauto.
-      instantiate (1 := (GenRec.guard 4 (GenRec.wf_R_pair GenRec.wf_R_S (wf_R_expr (ts:=types))) (bound, a))).
+      instantiate (1 := (GenRec.guard 4 (Pair.wf_R_pair Nat.wf_R_S (wf_R_expr (ts:=types))) (bound, a))).
       unfold exprUnify, Fix.
       match goal with
         | [ |- match ?X with
