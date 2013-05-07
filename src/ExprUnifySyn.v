@@ -3,9 +3,7 @@ Require Import Expr.
 Require Import ExprUnify.
 Require Import Instantiation.
 
-Module SynUnifier (S : Instantiation) <: SyntacticUnifier S.
-  Require Import NatMap.
-
+Module Make (S : Instantiation) <: SyntacticUnifier S.
   Section typed.
     Variable types : list type.
 
@@ -387,4 +385,4 @@ Module SynUnifier (S : Instantiation) <: SyntacticUnifier S.
     Qed.
 
   End typed.
-End SynUnifier.
+End Make.

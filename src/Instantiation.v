@@ -50,6 +50,11 @@ Module Type Instantiation.
       Subst_Extends x y ->
       forall t, exprInstantiate x (exprInstantiate y t) = exprInstantiate x t.
 
+    Axiom exprInstantiate_extends : forall sub sub' l r,
+      exprInstantiate sub l = exprInstantiate sub r ->
+      Subst_Extends sub' sub -> 
+      exprInstantiate sub' l = exprInstantiate sub' r.
+
     Axiom exprInstantiate_instantiated : forall k sub e,
       Subst_lookup k sub = Some e ->
       exprInstantiate sub e = e.
