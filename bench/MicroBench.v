@@ -1,8 +1,4 @@
-Require Import Bedrock.
-Require Import AutoSepExt.
-Require Import TacPackIL.
 Require Import List.
-Require Import SepIL.
 Require Import Expr.
 Require Import Evm_compute.
 Require Import CancelTacIL.
@@ -42,12 +38,6 @@ refine (
   (@SEP.PSig types (tvType 1 :: tvType 0 :: tvType 0 :: nil) mptsto :: nil)).
 Defined.
 
-Fixpoint starred {ts} (ls : list (SEP.sexpr ts)) : SEP.sexpr ts :=
-  match ls with
-    | nil => SEP.Emp
-    | l :: ls => SEP.Star l (starred ls)
-  end%Sep.
-
 Fixpoint chainl {ts} (ls : list (Expr.expr ts)) {struct ls} : SEP.sexpr ts :=
   match ls with 
     | nil => SEP.Emp
@@ -58,15 +48,8 @@ Fixpoint chainl {ts} (ls : list (Expr.expr ts)) {struct ls} : SEP.sexpr ts :=
       end
   end%Sep.
 
-Fixpoint chainr {ts} (ls : list (Expr.expr ts)) {struct ls} : SEP.sexpr ts :=
-  match ls with 
-    | nil => SEP.Emp
-    | a :: b =>
-      match b with 
-        | nil => SEP.Emp
-        | c :: d => SEP.Star (chainl b) (SEP.Func 0 (a :: c :: nil))
-      end
-  end%Sep.
+Definition chainr {ts} (ls : list (Expr.expr ts)) {struct ls} : SEP.sexpr ts :=
+  rev (chainl ls).
 
 Fixpoint list_to (now : nat) (n : nat) : list (Expr.expr types) :=
   match n with 
@@ -423,7 +406,7 @@ Ltac evaluate_cbv :=
          (** SepHeap **)
          SH.impures SH.pures SH.other
          SH.liftSHeap UNF.HEAP_FACTS.sheapSubstU
-         SH.starred SH.hash 
+         SH.hash 
          SH.star_SHeap 
          SH.SHeap_empty 
          SH.sheapD

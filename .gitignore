@@ -11,6 +11,10 @@ src/ILTac.v
 *~
 .dir-locals.el
 Makefile.coq
+Makefile.test.coq
 *.ml4.d
 deps.dot
 deps.pdf
+coq-ext-lib
+*.mli.d
+*.ml.d
