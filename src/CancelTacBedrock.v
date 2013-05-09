@@ -149,7 +149,7 @@ Module Make (ST : SepTheory.SepTheory)
 
     Require Import Bool.
 
-    Definition canceller (uvars : list tvar) (hyps : Expr.exprs types)
+    Definition canceller (boundf boundb : nat) (uvars : list tvar) (hyps : Expr.exprs types)
       (lhs rhs : SE.sexpr types) : option CancellerResult :=
       let (ql, lhs) := SH.hash lhs in
       let facts := Summarize prover (map (liftExpr 0 0 0 (length ql)) hyps ++ SH.pures lhs) in
@@ -159,7 +159,7 @@ Module Make (ST : SepTheory.SepTheory)
          ; UNF.Heap  := lhs
         |}
       in
-      match UNF.refineForward prover hintsFwd 10 facts pre with
+      match UNF.refineForward prover hintsFwd boundf facts pre with
         | ({| UNF.Vars := vars' ; UNF.UVars := uvars' ; UNF.Heap := lhs |}, n_forward) =>
           let (qr, rhs) := SH.hash rhs in
           let rhs :=
@@ -171,7 +171,7 @@ Module Make (ST : SepTheory.SepTheory)
              ; UNF.Heap  := rhs
             |}
           in
-          match UNF.refineBackward prover hintsBwd 10 facts post with
+          match UNF.refineBackward prover hintsBwd boundb facts post with
             | ({| UNF.Vars := vars' ; UNF.UVars := uvars' ; UNF.Heap := rhs |}, n_backward) =>
               let new_vars  := vars' in
               let new_uvars := skipn (length uvars) uvars' in
@@ -317,12 +317,12 @@ Module Make (ST : SepTheory.SepTheory)
         destruct a; destruct l; simpl in *; intuition; subst; auto. }
     Qed.
 
-    Lemma ApplyCancelSep_with_eq : 
+    Lemma ApplyCancelSep_with_eq (boundf boundb : nat) : 
       forall (meta_env : env types) (hyps : Expr.exprs types),
       Expr.AllProvable funcs meta_env nil hyps ->
       forall (l r : SE.sexpr types) res,
       forall (WTR : SE.WellTyped_sexpr tfuncs tpreds (typeof_env meta_env) nil r = true),
-      canceller (typeof_env meta_env) hyps l r = Some res ->
+      canceller boundf boundb (typeof_env meta_env) hyps l r = Some res ->
       match res with
         | {| AllExt := new_vars
            ; ExExt  := new_uvars
@@ -393,7 +393,7 @@ Module Make (ST : SepTheory.SepTheory)
       
     (** Open up everything **)
       destruct u. 
-      consider (UNF.refineBackward prover hintsBwd 10 f
+      consider (UNF.refineBackward prover hintsBwd boundb f
         {| UNF.Vars := Vars
           ; UNF.UVars := UVars ++ rev v0
           ; UNF.Heap := SH_FACTS.sheapSubstU 0 (length v0) (length UVars) s0 |}); intros.
