@@ -36,7 +36,7 @@ Proof.
   exact  v.
 Defined.
 
-Module Make (S : Instantiation) <: SyntacticUnifier S.
+Module Make (S : Subst) <: SyntacticUnifier S.
   Section typed.
     Variable types : list type.
 
