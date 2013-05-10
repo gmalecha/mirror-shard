@@ -8,7 +8,8 @@ MODULES    := Ordering \
 	Heaps SepTheory \
 	Env TypedPackage \
 	Expr ReifyExpr \
-	Instantiation ExprUnify \
+	Instantiation SimpleInstantiation SimpleBlockInstantiation \
+	ExprUnify \
 	ExprUnifySyn ExprUnifySynGenRec \
 	Prover \
 	$(PROVERS:%=provers/%Prover) \

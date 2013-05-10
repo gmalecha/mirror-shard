@@ -15,7 +15,7 @@ Require SepUnify.
 Set Implicit Arguments.
 Set Strict Implicit.
 
-Module Type Canceller (SUBST : Instantiation)
+Module Type Canceller (SUBST : Subst)
                       (ST : SepTheory.SepTheory)
                       (SE : SepExpr ST)
                       (SH : SepHeap ST SE).

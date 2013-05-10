@@ -4,7 +4,7 @@ Require Import Instantiation.
 Set Implicit Arguments.
 Set Strict Implicit.
 
-Module Type SemanticUnifier (S : Instantiation).
+Module Type SemanticUnifier (S : Subst).
   Section typed.
     Variable types : list type.
 
@@ -33,7 +33,7 @@ Module Type SemanticUnifier (S : Instantiation).
   End typed.
 End SemanticUnifier.
 
-Module Type SyntacticUnifier (S : Instantiation).
+Module Type SyntacticUnifier (S : Subst).
   Include (SemanticUnifier S).
 
   Section typed.
@@ -47,7 +47,7 @@ Module Type SyntacticUnifier (S : Instantiation).
   End typed.
 End SyntacticUnifier.
 
-Module SyntacticKernel (S : Instantiation).
+Module SyntacticKernel (S : Subst).
   Section typed.
     Variable types : list type.
 

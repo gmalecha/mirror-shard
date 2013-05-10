@@ -98,7 +98,7 @@ End Unfolder.
 Module Make (ST : SepTheory.SepTheory)
             (SE : SepExpr ST)
             (Import SH : SepHeap ST SE) 
-            (SUBST : Instantiation.Instantiation)
+            (SUBST : Instantiation.Subst)
             (U : SyntacticUnifier SUBST) 
             (LEM : SepLemma.SepLemmaType ST SE)
             <: Unfolder ST SE SH LEM.

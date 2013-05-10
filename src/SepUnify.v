@@ -6,7 +6,7 @@ Require Import List.
 Set Implicit Arguments.
 Set Strict Implicit.
 
-Module Make (SUBST : Instantiation.Instantiation)
+Module Make (SUBST : Instantiation.Subst)
             (ST : SepTheory.SepTheory) (SE : SepExpr.SepExpr ST)
             (SH : SepHeap ST SE).
   Module SH_FACTS := SepHeapFacts ST SE SH.

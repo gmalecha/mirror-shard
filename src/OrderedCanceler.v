@@ -246,7 +246,7 @@ Module DefaultOrdering (ST : SepTheory.SepTheory)
   End typed.
 End DefaultOrdering.
 
-Module Make (SUBST : Instantiation)
+Module Make (SUBST : Subst)
             (U : SyntacticUnifier SUBST)
             (ST : SepTheory.SepTheory)
             (Import SE : SepExpr ST)
