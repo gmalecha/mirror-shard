@@ -1,12 +1,13 @@
 (** This is the cancellation algorithm/interface used in Bedrock
  **)
-Require Import List.
+Require Import List Bool.
 Require Import ExtLib.Tactics.Consider.
 Require Import ExtLib.Core.EquivDec.
 Require Import Expr SepExpr SepHeap SepCancel SepLemma.
 Require Import Prover.
 Require Import Tactics.
 Require UnfolderTac.
+Require ProvePures.
 Require ExprUnify.
 
 Set Implicit Arguments.
@@ -60,8 +61,6 @@ Module Make (ST : SepTheory.SepTheory)
     ; Subst  : SUBST.Subst types
     }.
 
-    Require Import Bool.
-
     Definition canceller (boundf boundb : nat) (uvars : list tvar) (hyps : Expr.exprs types)
       (lhs rhs : SE.sexpr types) : option CancellerResult :=
       let (ql, lhs) := SH.hash lhs in
@@ -84,6 +83,7 @@ Module Make (ST : SepTheory.SepTheory)
              ; UNF.Heap  := rhs
             |}
           in
+          let facts := Learn prover facts (SH.pures lhs) in
           match UNF.refineBackward prover hintsBwd boundb facts post with
             | ({| UNF.Vars := vars' ; UNF.UVars := uvars' ; UNF.Heap := rhs |}, n_backward) =>
               let new_vars  := vars' in
@@ -102,7 +102,11 @@ Module Make (ST : SepTheory.SepTheory)
                            ; SH.pures   := SH.pures lhs
                            ; SH.other   := SH.other l
                           |}
-                        ; Rhs    := r
+                        ; Rhs    := 
+                          {| SH.impures := SH.impures r
+                           ; SH.pures   := ProvePures.provePures prover facts (map (SUBST.exprInstantiate s) (SH.pures r))
+                           ; SH.other   := SH.other r
+                           |}
                         ; Subst  := s
                         |}
                 | None =>
@@ -201,6 +205,33 @@ Module Make (ST : SepTheory.SepTheory)
     Hypothesis WT_funcs : WellTyped_funcs tfuncs funcs.
     Hypothesis WT_preds : tpreds = SE.typeof_preds preds.
 
+    Theorem himp_get_pures : forall u v Heap P,
+      (AllProvable funcs u v (SH.pures Heap) ->
+        ST.himp (SE.sexprD funcs preds u v (SH.sheapD Heap)) P) ->
+      ST.himp (SE.sexprD funcs preds u v (SH.sheapD Heap)) P.
+    Proof.
+      clear. destruct Heap. intro. rewrite SH.sheapD_def; simpl.
+      induction pures; simpl; intros; auto.
+      { rewrite SH_FACTS.starred_cons in *.
+        rewrite ST.heq_star_comm.
+        rewrite ST.heq_star_assoc.
+        rewrite ST.heq_star_comm in H.
+        rewrite ST.heq_star_assoc in H.
+        simpl in *.
+        rewrite ST.heq_star_assoc.
+        unfold Provable in *.
+        destruct (exprD funcs u v a tvProp); eapply ST.himp_star_pure_c; intros.
+        { rewrite <- IHpures.
+          rewrite <- ST.heq_star_assoc.
+          rewrite ST.heq_star_comm.
+          reflexivity. intros.
+          rewrite <- H; auto. rewrite ST.heq_star_assoc.
+          apply ST.himp_star_pure_cc; auto.
+          rewrite ST.heq_star_comm.
+          rewrite ST.heq_star_assoc. reflexivity. }
+        { inversion H0. } }
+    Qed.
+
     Theorem tfuncs_is_typeof_funcs : tfuncs = typeof_funcs funcs.
     Proof.
       clear - WT_funcs. revert WT_funcs. revert tfuncs.
@@ -211,6 +242,71 @@ Module Make (ST : SepTheory.SepTheory)
         f_equal; eauto. unfold WellTyped_sig in *.
         unfold typeof_sig.
         destruct a; destruct l; simpl in *; intuition; subst; auto. }
+    Qed.
+
+    Lemma provePures_exprInstantiate' : forall s (l0 l1 : list (sigT (tvarD types))),
+      SUBST.Subst_equations funcs l1 l0 s ->
+      forall (l : list (expr types)),
+        Forall (ValidProp funcs l1 l0) l ->
+        forall f f' : Facts prover,
+          Valid proverOk l1 l0 f ->
+          Valid proverOk l1 l0 f' ->
+          AllProvable funcs l1 l0
+          (ProvePures.provePures prover f (map (SUBST.exprInstantiate s) l)) ->
+          AllProvable funcs l1 l0 (ProvePures.provePures prover f' l).
+    Proof.
+      clear.
+      induction 2; simpl; intros; auto.
+      consider (Prove prover f (SUBST.exprInstantiate s x)); intros.
+      { consider (Prove prover f' x); intros.
+        { assert (Valid proverOk l1 l0 (Learn prover f' (x :: nil))).
+          { eapply Learn_correct; eauto. repeat constructor.
+            eapply Prove_correct. 2: eassumption. eassumption. 
+            assumption. }
+          eapply IHForall. 3: eassumption. 2: assumption.
+          eapply Learn_correct; eauto. repeat constructor.
+          eapply Prove_correct in H6; eauto.
+          apply H6 in H0. clear - H0 H.
+          unfold Provable in *. consider (exprD funcs l1 l0 x tvProp); try contradiction; intros.
+          rewrite SUBST.Subst_equations_exprInstantiate; eauto. rewrite H0. auto. }
+        { constructor.
+          { eapply Prove_correct in H4; eauto.
+            unfold Provable, ValidProp in *. rewrite SUBST.Subst_equations_exprInstantiate in * by eauto. 
+            eapply H4; eauto. }
+          { eapply IHForall. 3: eassumption.
+            { eapply Learn_correct; eauto.
+              repeat constructor. eapply Prove_correct in H4; eauto. eapply H4.
+              unfold ValidProp in *. rewrite SUBST.Subst_equations_exprInstantiate in * by eauto. eapply H0. }
+            { eapply Learn_correct; eauto.
+              repeat constructor. eapply Prove_correct in H4; eauto. 
+              unfold Provable,ValidProp in *. rewrite SUBST.Subst_equations_exprInstantiate in * by eauto. eapply H4.
+              eapply H0. } } } }
+      { consider (Prove prover f' x); intros.
+        { inversion H5; clear H5.
+          eapply IHForall. 3: eassumption.
+          { eapply Learn_correct; eauto.
+            repeat constructor. eapply Prove_correct in H6; eauto. }
+          { eapply Learn_correct; eauto.
+            repeat constructor. eapply Prove_correct in H6; eauto. } }
+        { inversion H5; clear H5.
+          constructor. unfold Provable in *. rewrite SUBST.Subst_equations_exprInstantiate in * by eauto. eassumption.
+          eapply IHForall. 3: eassumption.
+          { eapply Learn_correct; eauto. repeat constructor. eauto. } 
+          { eapply Learn_correct; eauto.
+            repeat constructor. unfold Provable in *. rewrite SUBST.Subst_equations_exprInstantiate in * by eauto. 
+            eassumption. } } } 
+    Qed.
+    Theorem provePures_exprInstantiate : forall s (l0 l1 : list (sigT (tvarD types))),
+      SUBST.Subst_equations funcs l1 l0 s ->
+      forall (l : list (expr types)),
+        Forall (ValidProp funcs l1 l0) l ->
+        forall f : Facts prover,
+          Valid proverOk l1 l0 f ->
+          AllProvable funcs l1 l0
+          (ProvePures.provePures prover f (map (SUBST.exprInstantiate s) l)) ->
+          AllProvable funcs l1 l0 (ProvePures.provePures prover f l).
+    Proof.
+      clear. intros; eapply provePures_exprInstantiate'; eauto.
     Qed.
 
     Lemma ApplyCancelSep_with_eq (boundf boundb : nat) : 
@@ -231,7 +327,7 @@ Module Make (ST : SepTheory.SepTheory)
           Expr.AllProvable_impl funcs meta_env var_env
           (INS.existsSubst funcs subst meta_env var_env (length meta_env) new_uvars 
             (fun meta_ext : Expr.env types =>
-              SUBST.Subst_equations_to funcs meta_env var_env subst 0 meta_env /\
+              SUBST.Subst_equations_to funcs meta_ext var_env subst 0 meta_env /\
               let meta_env := meta_ext in
                 (Expr.AllProvable_and funcs meta_env var_env
                   (ST.himp
@@ -288,11 +384,11 @@ Module Make (ST : SepTheory.SepTheory)
     (** NOTE: I can't shift s0 around until I can witness the existential **)
       
     (** Open up everything **)
-      destruct u. 
-      consider (UNF.refineBackward prover hintsBwd boundb f
+      destruct u.
+      consider (UNF.refineBackward prover hintsBwd boundb (Learn prover f (SH.pures Heap))
         {| UNF.Vars := Vars
-          ; UNF.UVars := UVars ++ rev v0
-          ; UNF.Heap := SH_FACTS.sheapSubstU 0 (length v0) (length UVars) s0 |}); intros.
+         ; UNF.UVars := UVars ++ rev v0
+         ; UNF.Heap := SH_FACTS.sheapSubstU 0 (length v0) (length UVars) s0 |}); intros.
       destruct (UNF.refineBackward_Length H6); simpl in *.
       destruct u.
 
@@ -351,6 +447,11 @@ Module Make (ST : SepTheory.SepTheory)
           simpl in WTR. rewrite app_nil_r in WTR.  
           rewrite Plus.plus_0_r in *. rewrite rev_length in WTR. apply WTR. }
 
+        eapply himp_get_pures; intro PURES.
+        assert (VALID' : Valid proverOk (meta_env ++ firstn (length (rev v0)) x1) 
+          (rev G ++ G0) (Learn prover f (SH.pures Heap))).
+        { eapply Learn_correct; [ eapply Valid_weaken; eassumption 
+                                | rewrite <- app_nil_r with (l := rev G ++ G0); eapply AllProvable_weaken; eauto ]. }
         generalize (@UNF.refineBackward_WellTyped _ _ _ _ _ _ _ _ _ _ bwdOk proverOk H6 H14); simpl.
         eapply UNF.refineBackward_Ok in H6; simpl in *.
         2: eassumption.
@@ -361,7 +462,7 @@ Module Make (ST : SepTheory.SepTheory)
         eapply WellTyped_env_app. eapply typeof_env_WellTyped_env.
         instantiate (1 := G0). symmetry. apply H11. 
         2: eassumption.
-        2: solve [ eapply Valid_weaken; eassumption ].
+        2: eassumption. 
         intro.
 
     (** **)
@@ -449,14 +550,22 @@ Module Make (ST : SepTheory.SepTheory)
           rewrite <- H10. f_equal. rewrite typeof_env_app. rewrite app_nil_r.
           f_equal. rewrite typeof_env_rev. reflexivity. apply H11. }
         rewrite app_ass in H13.
-        consider (CANCEL.sepCancel prover (length (typeof_env meta_env ++ rev v0 ++ x0)) (SE.typeof_preds preds) f Heap Heap0 (SUBST.Subst_empty _));
+        consider (CANCEL.sepCancel prover (length (typeof_env meta_env ++ rev v0 ++ x0)) (SE.typeof_preds preds) 
+          (Learn prover f (SH.pures Heap)) Heap Heap0 (SUBST.Subst_empty _));
         intros; try congruence.
-        { destruct p. destruct p. inversion H20; clear H20. subst s3. subst s1.
+        { destruct p. destruct p. inversion H20; clear H20. subst s1.
           subst Lhs0. clear H19. simpl in *.
           repeat rewrite <- typeof_env_app in *.
+          assert (SUBST.Subst_equations funcs (meta_env ++ x1) (rev G ++ G0) Subst0).
+          { eapply CANCEL.sepCancel_PureFacts in H13. 4: eapply H6. 
+            eapply SUBST.Subst_equations_to_Subst_equations; intuition.
+            rewrite SUBST_FACTS.Subst_equations_to_app. intuition.
+            intuition. intuition. }
+          assert (VALID'' : Valid proverOk (meta_env ++ x1) (rev G ++ G0) (Learn prover f (SH.pures Heap))).
+          { clear - VALID'. 
+            eapply Valid_weaken with (ue := skipn (length (rev v0)) x1) (ge := nil) in VALID'.
+            rewrite app_ass in VALID'. rewrite firstn_skipn in VALID'. rewrite app_nil_r in VALID'; auto. }
           eapply CANCEL.sepCancel_correct with (funcs := funcs) (U := meta_env ++ x1) (G := rev G ++ G0) in H13; try eassumption.
-          { instantiate (1 := proverOk). 
-            eapply Valid_weaken with (ue := x1) (ge := G0) in H5. assumption. }
           { match type of H12 with
               | ST.himp (SE.sexprD ?F ?P ?U ?G ?L) (SE.sexprD ?F ?P ?U ?G ?R) =>
                 change (SE.himp F P U G L R) in H12
@@ -467,17 +576,32 @@ Module Make (ST : SepTheory.SepTheory)
             rewrite SEP_FACTS.heq_star_comm 
               with (P := SH.starred (@SE.Inj _) (SH.pures s2) SE.Emp).
             rewrite SEP_FACTS.heq_star_comm 
-              with (P := SH.starred (@SE.Inj _) (SH.pures Rhs0) SE.Emp).
+              with (P := SH.starred (@SE.Inj _) (SH.pures s3) SE.Emp).
             do 2 rewrite <- SEP_FACTS.heq_star_assoc.
-            apply SEP_FACTS.himp_star_frame. assumption.
+            apply SEP_FACTS.himp_star_frame. 
+            clear - H23 H12; subst; simpl in *. assumption.
             eapply himp_remove_pures_p; intros.
-            eapply himp_remove_pures_c; auto. reflexivity. } 
-          { eapply CANCEL.sepCancel_PureFacts in H13. 4: eapply H6. 
-            eapply SUBST.Subst_equations_to_Subst_equations; intuition.
-            rewrite SUBST_FACTS.Subst_equations_to_app. intuition. clear - H8.            
-            eapply SUBST_FACTS.Subst_equations_to_weaken with (m' := x1) (v' := nil) in H8.
-            rewrite app_nil_r in *. auto.
-            intuition. intuition. } }
+            eapply himp_remove_pures_c; try reflexivity. 
+            subst; simpl in *. 
+            assert (Forall (ValidProp funcs (meta_env ++ x1) (rev G ++ G0)) (SH.pures s3)).
+            { eapply CANCEL.sepCancel_PureFacts in H13; eauto.
+              intuition. rewrite SH.WellTyped_sheap_eq in H15. clear - H15. 
+              apply andb_true_iff in H15. intuition.
+              clear - H0. induction (SH.pures s3); auto.
+              { simpl in *.
+                consider (is_well_typed (typeof_funcs funcs) (typeof_env (meta_env ++ x1))
+                  (typeof_env (rev G ++ G0)) a tvProp); try congruence; intros.
+                constructor. eapply is_well_typed_correct; eauto using typeof_env_WellTyped_env, typeof_funcs_WellTyped_funcs.
+                eauto. } }
+            eapply ProvePures.provePuresOk.
+            3: reflexivity.
+            { instantiate (2 := proverOk). 
+              eapply Valid_weaken with (ue := skipn (length (rev v0)) x1) (ge := nil) in VALID'.
+              rewrite app_ass in VALID'. rewrite firstn_skipn in VALID'. rewrite app_nil_r in VALID'; eassumption. }
+            { assumption. }
+            { clear - H3 H19 VALID'' H11.
+              eapply provePures_exprInstantiate; eauto. } } }
+
         { match goal with
           | [ H : (if ?X then _ else _) = _ |- _ ] =>
             destruct X; try congruence

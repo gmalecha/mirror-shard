@@ -9,8 +9,8 @@ Set Strict Implicit.
 
 Require Import FMapInterface.
 
-Module SimpleInstantiation (FM : S with Definition E.t := uvar
-                                   with Definition E.eq := @eq uvar) <: Subst.
+Module Make (FM : S with Definition E.t := uvar
+                    with Definition E.eq := @eq uvar) <: Subst.
 
   Require MoreFMapFacts.
 
@@ -1172,4 +1172,5 @@ Module SimpleInstantiation (FM : S with Definition E.t := uvar
     End Subst_equations_to.
 
   End typed.
-End SimpleInstantiation.
+
+End Make.

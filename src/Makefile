@@ -11,7 +11,7 @@ MODULES    := Ordering \
 	Instantiation SimpleInstantiation SimpleBlockInstantiation \
 	ExprUnify \
 	ExprUnifySyn ExprUnifySynGenRec \
-	Prover \
+	Prover ProvePures \
 	$(PROVERS:%=provers/%Prover) \
 	Provers \
 	SepExpr ReifySepExpr SepHeap SepUnify \
