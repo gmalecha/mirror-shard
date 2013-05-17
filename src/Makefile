@@ -10,7 +10,7 @@ MODULES    := Ordering \
 	Expr ReifyExpr \
 	Instantiation SimpleInstantiation SimpleBlockInstantiation \
 	ExprUnify \
-	ExprUnifySyn ExprUnifySynGenRec \
+	ExprUnifySynFix ExprUnifySynGenRec \
 	Prover ProvePures \
 	$(PROVERS:%=provers/%Prover) \
 	Provers \
