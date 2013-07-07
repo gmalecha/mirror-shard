@@ -593,7 +593,7 @@ Module Make (S : Subst) <: SyntacticUnifier S.
       simpl;
         repeat match goal with 
                  | [ H : _ = _ |- _ ] => rewrite H
-                 | [ |- _ ] => rewrite EquivDec_refl_left
+                 | [ |- _ ] => rewrite EquivDec.EquivDec_refl_left
                  | [ |- _ ] => rewrite tvar_seqb_refl
                end; reflexivity : exprs.
 
