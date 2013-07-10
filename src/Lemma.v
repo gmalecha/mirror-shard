@@ -13,7 +13,7 @@ Section typed.
   Record lemma := 
   { Foralls : variables
     (* The lemma statement begins with this sequence of [forall] quantifiers over these types. *)
-  ; Hyps : list (expr types)
+  ; Hyps : list expr
     (* Next, we have this sequence of pure hypotheses. *)
   ; Concl : concl
   (* Finally, we have a conclusion. *)
@@ -30,13 +30,13 @@ Section typed.
   Variable funcs : functions types.
 
     (** Helper function to add a sequence of implications in front of a [Prop] *)
-  Definition hypD (H : expr types) (meta_env var_env : env types) : Prop :=
+  Definition hypD (H : expr) (meta_env var_env : env types) : Prop :=
     match exprD funcs meta_env var_env H tvProp with
       | None => False
       | Some P => P
     end.
 
-  Fixpoint implyEach (Hs : list (expr types)) (meta_env var_env : env types) (P : Prop) : Prop :=
+  Fixpoint implyEach (Hs : list expr) (meta_env var_env : env types) (P : Prop) : Prop :=
     match Hs with
       | nil => P
       | H :: Hs' => hypD H meta_env var_env -> implyEach Hs' meta_env var_env P

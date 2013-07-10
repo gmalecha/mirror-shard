@@ -31,7 +31,7 @@ Module Make (SUBST : Subst).
   Section existsSubst.
     Variable types : list type.
     Variable funcs : functions types.
-    Variable sub : SUBST.Subst types.
+    Variable sub : SUBST.Subst.
 
     Fixpoint existsSubst (meta vars : env types) (from : nat) (vals : list tvar) 
       (ret : env types -> Prop) : Prop :=

@@ -8,11 +8,11 @@ Module Make (S : Subst) <: SyntacticUnifier S.
     Variable types : list type.
 
     Section unify.
-      Variable exprUnify : expr types -> expr types -> S.Subst types -> option (S.Subst types).      
+      Variable exprUnify : expr -> expr -> S.Subst -> option S.Subst.      
 
-      Fixpoint unify (l r : expr types) (sub : S.Subst types) : option (S.Subst types) :=
+      Fixpoint unify (l r : expr) (sub : S.Subst) : option S.Subst :=
         match l , r with
-          | Const t v , Const t' v' => 
+(*          | Const t v , Const t' v' => 
             match equiv_dec t t' with
               | left pf => match pf in _ = k return tvarD _ k -> _ with
                              | refl_equal => fun v' =>
@@ -21,15 +21,15 @@ Module Make (S : Subst) <: SyntacticUnifier S.
                                  else None
                            end v'
               | right _ => None
-            end
+            end *)
           | Var v , Var v' => 
             if Peano_dec.eq_nat_dec v v' 
               then Some sub
               else None
           | Func f1 args1 , Func f2 args2 =>
             if EqNat.beq_nat f1 f2 then
-              (fix unifyArgs (args1 args2 : list (expr types)) (s : S.Subst types) 
-                : option (S.Subst types) :=
+              (fix unifyArgs (args1 args2 : list (expr)) (s : S.Subst) 
+                : option S.Subst :=
                 match args1 , args2 with
                   | nil , nil => Some s
                   | nil , _ :: _ => None
@@ -81,13 +81,13 @@ Module Make (S : Subst) <: SyntacticUnifier S.
         end.
     End unify.
 
-    Fixpoint exprUnify (bound : nat) : expr types -> expr types -> (S.Subst types) -> option (S.Subst types) :=
+    Fixpoint exprUnify (bound : nat) : expr -> expr -> S.Subst -> option S.Subst :=
       match bound with 
         | 0 => fun _ _ _ => None
         | S bound =>
-          fix unify (l r : expr types) (sub : S.Subst types) : option (S.Subst types) :=
+          fix unify (l r : expr) (sub : S.Subst) : option S.Subst :=
             match l , r with
-              | Const t v , Const t' v' => 
+(*              | Const t v , Const t' v' => 
                 match equiv_dec t t' with
                   | left pf => match pf in _ = k return tvarD _ k -> _ with
                                  | refl_equal => fun v' =>
@@ -96,15 +96,15 @@ Module Make (S : Subst) <: SyntacticUnifier S.
                                      else None
                                end v'
                   | right _ => None
-                end
+                end *)
               | Var v , Var v' => 
                 if EqNat.beq_nat v v' 
                   then Some sub
                   else None
               | Func f1 args1 , Func f2 args2 =>
                 if EqNat.beq_nat f1 f2 then
-                  (fix unifyArgs (args1 args2 : list (expr types)) (s : S.Subst types) 
-                    : option (S.Subst types) :=
+                  (fix unifyArgs (args1 args2 : list (expr)) (s : S.Subst) 
+                    : option S.Subst :=
                     match args1 , args2 with
                       | nil , nil => Some s
                       | nil , _ :: _ => None
@@ -157,15 +157,15 @@ Module Make (S : Subst) <: SyntacticUnifier S.
       end.
 
     Hint Rewrite S.exprInstantiate_Func S.exprInstantiate_Equal S.exprInstantiate_Not 
-      S.exprInstantiate_UVar S.exprInstantiate_Var S.exprInstantiate_Const : subst_simpl.
+      S.exprInstantiate_UVar S.exprInstantiate_Var : subst_simpl.
 
     Opaque S.Subst_lookup S.Subst_set S.exprInstantiate.
 
     Require Import ExtLib.Tactics.Consider.
 
-    Theorem unify_uvar : forall (u : uvar) (sub sub' : S.Subst types)
-      (o : expr types -> expr types -> S.Subst types -> option (S.Subst types)),
-      (forall (l r : expr types) (sub0 sub'0 : S.Subst types),
+    Theorem unify_uvar : forall (u : uvar) (sub sub' : S.Subst)
+      (o : expr -> expr -> S.Subst -> option S.Subst),
+      (forall (l r : expr) (sub0 sub'0 : S.Subst),
         o l r sub0 = Some sub'0 ->
         S.exprInstantiate sub'0 l = S.exprInstantiate sub'0 r /\
         S.Subst_Extends sub'0 sub0 /\
@@ -173,7 +173,7 @@ Module Make (S : Subst) <: SyntacticUnifier S.
           is_well_typed funcs U G l t = true ->
           is_well_typed funcs U G r t = true ->
           S.Subst_WellTyped funcs U G sub0 -> S.Subst_WellTyped funcs U G sub'0)) ->
-      forall e : expr types,
+      forall e : expr,
         match S.Subst_lookup u sub with
           | Some r' => o e r' sub
           | None => S.Subst_set u e sub
@@ -182,7 +182,7 @@ Module Make (S : Subst) <: SyntacticUnifier S.
         S.Subst_Extends sub' sub /\
         (forall (funcs : tfunctions) (U G : tenv) (t1 : tvar),
           is_well_typed funcs U G e t1 = true ->
-          is_well_typed (types := types) funcs U G (UVar u) t1 = true ->
+          is_well_typed funcs U G (UVar u) t1 = true ->
           S.Subst_WellTyped funcs U G sub -> S.Subst_WellTyped funcs U G sub').
     Proof.
       intros. consider (S.Subst_lookup u sub); intros.
@@ -214,12 +214,12 @@ Module Make (S : Subst) <: SyntacticUnifier S.
     Proof.
       induction n; simpl in *; try congruence.
       induction l; simpl in *.
-      { destruct r; simpl in *; intros; try congruence.
+(*      { destruct r; simpl in *; intros; try congruence.
         { consider (equiv_dec t t1); unfold equiv in *; simpl in *; intros; subst; try congruence.
           consider (get_Eq types t1 t0 t2); try congruence; simpl in *; intros.
           inversion H0; clear H0; subst. split; [ reflexivity | split; [ reflexivity | ] ].
           intros. consider (tvar_seqb t1 t); intros; subst; auto. }
-        { eapply unify_uvar; eauto. } }
+        { eapply unify_uvar; eauto. } } *)
       { destruct r; simpl in *; intros; try congruence.
         { consider (EqNat.beq_nat x v); try congruence; subst; intros.
           inversion H0; clear H0; subst. intuition. }
@@ -360,7 +360,7 @@ Module Make (S : Subst) <: SyntacticUnifier S.
     Theorem exprUnify_sound_sem : forall n l r sub sub',
       exprUnify n l r sub = Some sub' ->
       forall funcs U G t,
-      exprD funcs U G (S.exprInstantiate sub' l) t = 
+      @exprD types funcs U G (S.exprInstantiate sub' l) t = 
       exprD funcs U G (S.exprInstantiate sub' r) t.
     Proof.
       intros. f_equal. specialize (exprUnify_all _ _ _ _ _ H); intuition. 

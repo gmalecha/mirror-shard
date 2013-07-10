@@ -11,7 +11,7 @@ Section prover.
   Variable fs : functions ts.
   Variable prover : ProverT ts.
 
-  Fixpoint provePures (facts : Facts prover) (ls : exprs ts) : exprs ts :=
+  Fixpoint provePures (facts : Facts prover) (ls : exprs) : exprs :=
     match ls with
       | nil => nil
       | l :: ls =>

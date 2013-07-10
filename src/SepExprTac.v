@@ -13,7 +13,7 @@ Module Make (ST : SepTheory.SepTheory) (SE : SepExpr ST).
     Variables (types : list Expr.type) (funcs : Expr.functions types)
       (sfuncs : SE.predicates types) (meta_env : Expr.env types).
 
-    Fixpoint nsexprD (var_env : Expr.env types) (s : SE.sexpr types)
+    Fixpoint nsexprD (var_env : Expr.env types) (s : SE.sexpr)
       {struct s} : ST.hprop :=
       match s with
         | SE.Emp => emp
@@ -32,7 +32,7 @@ Module Make (ST : SepTheory.SepTheory) (SE : SepExpr ST).
           match nth_error sfuncs f with
             | Some f' =>
               match
-                Expr.applyD (nexprD not types funcs meta_env var_env) 
+                Expr.applyD types (nexprD not types funcs meta_env var_env) 
                 (SE.SDomain f') b ST.hprop (SE.SDenotation f')
                 with
                 | Some p => p

@@ -8,38 +8,38 @@ Set Strict Implicit.
 
 Module Type Subst.
   (** An environment that maintains a mapping from variables to their meaning **)
-  Parameter Subst : list type -> Type.
+  Parameter Subst : Type.
 
   Section typed.
     Variable types : list type.
     
     (** Predicates **)
-    Parameter Subst_WellTyped : tfunctions -> tenv -> tenv -> Subst types -> Prop.
+    Parameter Subst_WellTyped : tfunctions -> tenv -> tenv -> Subst -> Prop.
 
     (** Relations **)
-    Parameter Subst_Equal : Subst types -> Subst types -> Prop.
+    Parameter Subst_Equal : Subst -> Subst -> Prop.
     Parameter Equiv_Subst_Equal : RelationClasses.Equivalence Subst_Equal.
 
-    Parameter Subst_Extends : Subst types -> Subst types -> Prop.
+    Parameter Subst_Extends : Subst -> Subst -> Prop.
 
     Parameter Refl_Subst_Extends : RelationClasses.Reflexive Subst_Extends.
     Parameter Antisym_Subst_Extends : @RelationClasses.Antisymmetric _ _ Equiv_Subst_Equal Subst_Extends.
     Parameter Trans_Subst_Extends : RelationClasses.Transitive Subst_Extends.
 
     (** Operations **)
-    Parameter Subst_empty : Subst types.
+    Parameter Subst_empty : Subst.
 
     Axiom Subst_empty_WellTyped : forall funcs U G,
       Subst_WellTyped funcs U G Subst_empty.
 
-    Parameter Subst_lookup : uvar -> Subst types -> option (expr types).
-    Parameter Subst_set : uvar -> expr types -> Subst types -> option (Subst types).
+    Parameter Subst_lookup : uvar -> Subst -> option expr.
+    Parameter Subst_set : uvar -> expr -> Subst -> option Subst.
 
-    Parameter Subst_size : Subst types -> nat.
-    Parameter Subst_domain : Subst types -> list uvar.
+    Parameter Subst_size : Subst -> nat.
+    Parameter Subst_domain : Subst -> list uvar.
    
     (** Substitute meta variables **)
-    Parameter exprInstantiate : Subst types -> expr types -> expr types.
+    Parameter exprInstantiate : Subst -> expr -> expr.
 
     Axiom exprInstantiate_WellTyped : forall funcs U G sub,
       Subst_WellTyped funcs U G sub ->
@@ -90,8 +90,10 @@ Module Type Subst.
     Axiom exprInstantiate_Var : forall a x, 
       exprInstantiate a (Var x) = Var x.
 
+(*
     Axiom exprInstantiate_Const : forall a t v, 
       exprInstantiate a (@Const types t v) = (@Const types t v).
+*)
 
     (** Subst_set & Subst_lookup **)
     Axiom Subst_set_Subst_lookup : forall k v sub sub',
@@ -131,7 +133,7 @@ Module Type Subst.
 
     (** Semantics interpretation of substitutions **)
     Parameter Subst_equations : 
-      forall (funcs : functions types) (U G : env types), Subst types -> Prop.
+      forall (funcs : functions types) (U G : env types), Subst -> Prop.
 
     Axiom Subst_equations_empty : forall funcs U G,
       Subst_equations funcs U G Subst_empty.
@@ -157,7 +159,7 @@ Module Type Subst.
     Section Subst_equations_to.
       Variable funcs : functions types. 
       Variables uenv venv : env types.
-      Variable subst : Subst types.
+      Variable subst : Subst.
 
       Fixpoint Subst_equations_to (from : nat) (ls : Expr.env types) : Prop :=
         match ls with

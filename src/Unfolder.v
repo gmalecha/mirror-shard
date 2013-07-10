@@ -23,10 +23,10 @@ Module Type Unfolder (ST : SepTheory.SepTheory)
     Record unfoldingState :=
     { Vars : variables
     ; UVars : variables
-    ; Heap : SH.SHeap types
+    ; Heap : SH.SHeap
     }.
 
-    Definition hintSide := list (LEM.sepLemma types).
+    Definition hintSide := list LEM.sepLemma.
 
     Parameter refineForward : hintSide -> nat -> Facts prover -> 
       unfoldingState -> unfoldingState * bool.
@@ -116,13 +116,12 @@ Module Make (ST : SepTheory.SepTheory)
     Section openForUnification.
       Variable U : nat. (** **)
 
-      Definition ERROR : expr types.
+      Definition ERROR : expr.
       refine (Var 0).
       Qed.
       
-      Fixpoint openForUnification (e : expr types) : expr types :=
+      Fixpoint openForUnification (e : expr) : expr :=
         match e with
-          | Expr.Const _ _ => e
           | Var v => UVar (U + v)
           | UVar _ => e (** contradiction **)
           | Expr.Func f es => Expr.Func f (List.map openForUnification es)
@@ -133,16 +132,15 @@ Module Make (ST : SepTheory.SepTheory)
     End openForUnification.
 
     Section instantiate.
-      Variable doQuant : nat -> expr types.
+      Variable doQuant : nat -> expr.
       Variable U_or_G : bool.
       Variable U : nat.
       Variable G : nat.
       Variable G' : nat.
-      Variable sub : SUBST.Subst types.
+      Variable sub : SUBST.Subst.
       
-      Fixpoint liftInstantiate (e : expr types) : expr types :=
+      Fixpoint liftInstantiate (e : expr) : expr :=
         match e with
-          | Expr.Const _ _ => e
           | Var v => 
             if NPeano.ltb v G' then (if U_or_G then UVar (v + U) else Var (v + G))
             else let idx := U + v - G' in 
@@ -162,7 +160,7 @@ Module Make (ST : SepTheory.SepTheory)
     End instantiate.
 
     (** Preprocessed databases of hints *)
-    Definition hintSide := list (LEM.sepLemma types).
+    Definition hintSide := list LEM.sepLemma.
     (* A complete set of unfolding hints of a single sidedness (see below) *)
 
     Definition hintSideD := Forall (@LEM.sepLemmaD types funcs preds nil nil).
@@ -255,7 +253,7 @@ Module Make (ST : SepTheory.SepTheory)
     Record unfoldingState :=
     { Vars : variables
     ; UVars : variables
-    ; Heap : SH.SHeap types
+    ; Heap : SH.SHeap
     }.
 
     Section unfoldOne.
@@ -268,7 +266,7 @@ Module Make (ST : SepTheory.SepTheory)
       Variable hs : hintSide.
       (* Use these hints to unfold impure predicates. *)
 
-      Fixpoint Subst_to_env U G (s : SUBST.Subst types) (ts : variables) (cur : uvar) : option (env types) :=
+      Fixpoint Subst_to_env U G (s : SUBST.Subst) (ts : variables) (cur : uvar) : option (env types) :=
         match ts with
           | nil => Some nil 
           | t :: ts =>
@@ -286,7 +284,7 @@ Module Make (ST : SepTheory.SepTheory)
             end
         end.
 
-      Fixpoint checkAllInstantiated (from : nat) (ts : variables) (sub : SUBST.Subst types) : bool :=
+      Fixpoint checkAllInstantiated (from : nat) (ts : variables) (sub : SUBST.Subst) : bool :=
         match ts with
           | nil => true
           | _ :: ts => if SUBST.Subst_lookup from sub then checkAllInstantiated (S from) ts sub else false
@@ -298,11 +296,11 @@ Module Make (ST : SepTheory.SepTheory)
        ** - [args] is the outside
        ** - [key] is the patterns (closed by [Foralls lem]) that need to unify with [args])
        **)
-      Definition applicable U_or_G (firstUvar firstVar : nat) (lem : LEM.sepLemma types) (args key : exprs types) 
-        : option (SUBST.Subst types) :=
+      Definition applicable U_or_G (firstUvar firstVar : nat) (lem : LEM.sepLemma) (args key : exprs) 
+        : option SUBST.Subst :=
         let numForalls := length (Lemma.Foralls lem) in
         (** NOTE: it is important that [key] is first because of the way the unification algorithm works **)
-        match fold_left_2_opt (U.exprUnify unify_bound) (map (openForUnification firstUvar) key) args (SUBST.Subst_empty _) with
+        match fold_left_2_opt (U.exprUnify unify_bound) (map (openForUnification firstUvar) key) args SUBST.Subst_empty with
           | None => None
           | Some subst =>
             if EqNat.beq_nat (SUBST.Subst_size subst) numForalls && checkAllInstantiated firstUvar (Lemma.Foralls lem) subst
@@ -650,8 +648,7 @@ Module Make (ST : SepTheory.SepTheory)
         SUBST.exprInstantiate sub (openForUnification U e) = liftInstantiate quant U G 0 sub e.
       Proof.
         induction e; simpl; intros; think;
-          repeat (rewrite SUBST.exprInstantiate_Const || 
-                  rewrite SUBST.exprInstantiate_Equal || 
+          repeat (rewrite SUBST.exprInstantiate_Equal || 
                   rewrite SUBST.exprInstantiate_Func || 
                   rewrite SUBST.exprInstantiate_Not ||
                   rewrite SUBST.exprInstantiate_Var ||
@@ -714,7 +711,7 @@ Module Make (ST : SepTheory.SepTheory)
 
       (** TODO: lift this outside **)
       Lemma fold_left_2_opt_unify : forall tU tG ts args args' sub sub',
-        SUBST.Subst_WellTyped (types := types) (typeof_funcs funcs) tU tG sub -> 
+        SUBST.Subst_WellTyped (typeof_funcs funcs) tU tG sub -> 
         all2 (is_well_typed (typeof_funcs funcs) tU tG) args ts = true ->
         all2 (is_well_typed (typeof_funcs funcs) tU tG) args' ts = true ->
         fold_left_2_opt (U.exprUnify unify_bound) args args' sub = Some sub' ->
@@ -770,17 +767,16 @@ Module Make (ST : SepTheory.SepTheory)
 
       Opaque SUBST.exprInstantiate.
 
-      Lemma exprInstantiate_noop : forall sub (e : expr types),
+      Lemma exprInstantiate_noop : forall sub (e : expr),
         (forall u, mentionsU u e = true -> SUBST.Subst_lookup u sub = None) ->
         SUBST.exprInstantiate sub e = e.
       Proof.
         clear; induction e; simpl in *; intros;
-          repeat (rewrite SUBST.exprInstantiate_Const || 
-            rewrite SUBST.exprInstantiate_Equal || 
-              rewrite SUBST.exprInstantiate_Func || 
-                rewrite SUBST.exprInstantiate_Not ||
+          repeat (rewrite SUBST.exprInstantiate_Equal || 
+                  rewrite SUBST.exprInstantiate_Func || 
+                  rewrite SUBST.exprInstantiate_Not ||
                   rewrite SUBST.exprInstantiate_Var ||
-                    rewrite SUBST.exprInstantiate_UVar); think; try congruence; auto.
+                  rewrite SUBST.exprInstantiate_UVar); think; try congruence; auto.
         { rewrite H; auto. consider (beq_nat x x); auto. }
         { f_equal. revert H0. induction H; simpl; intros; think; auto.
           erewrite IHForall; try erewrite H; eauto; intros; eapply H1; think; auto using orb_true_r. }
@@ -842,7 +838,7 @@ Module Make (ST : SepTheory.SepTheory)
         destruct x. inversion H2. unfold uvar in *. simpl in *. omega.
       Qed.
 
-      Lemma is_well_typed_mentionsU : forall U G (e : expr types) t,
+      Lemma is_well_typed_mentionsU : forall U G (e : expr) t,
         is_well_typed (typeof_funcs funcs) U G e t = true ->
         forall u, mentionsU u e = true -> u < length U.
       Proof.
@@ -863,7 +859,7 @@ Module Make (ST : SepTheory.SepTheory)
       Qed.
 
       Lemma split_WellTyped_sepConcl : forall a b,
-        LEM.WellTyped_sepConcl (types := types) (typeof_funcs funcs) (SE.typeof_preds preds) a (Concl b) = true ->
+        LEM.WellTyped_sepConcl (typeof_funcs funcs) (SE.typeof_preds preds) a (Concl b) = true ->
         SE.WellTyped_sexpr (typeof_funcs funcs) (SE.typeof_preds preds) nil a (LEM.Lhs b) = true /\
         SE.WellTyped_sexpr (typeof_funcs funcs) (SE.typeof_preds preds) nil a (LEM.Rhs b) = true.
       Proof.
@@ -1074,13 +1070,13 @@ Module Make (ST : SepTheory.SepTheory)
 
       Lemma WellTyped_impures_find_fst_last : forall tU tG imps x0 x1 x2 k,
         WellTyped_impures (typeof_funcs funcs) (SE.typeof_preds preds) tU tG imps = true ->
-        FM.find (elt:=list (exprs types)) k imps = Some (x0 ++ x1 :: x2) ->
+        FM.find (elt:=list (exprs)) k imps = Some (x0 ++ x1 :: x2) ->
         match x0 ++ x2 with
           | nil => True
           | _ :: _ =>
             match nth_error (SE.typeof_preds preds) k with
               | Some ts =>
-                allb (fun argss : list (expr types) =>
+                allb (fun argss : list expr =>
                   all2 (is_well_typed (typeof_funcs funcs) tU tG) argss ts) (x0 ++ x2) = true
               | None => False
             end
@@ -1119,7 +1115,7 @@ Module Make (ST : SepTheory.SepTheory)
         assert (match nth_error (SE.typeof_preds preds) f with
            | Some ts =>
                allb
-                 (fun argss : list (expr types) =>
+                 (fun argss : list expr =>
                   all2
                     (is_well_typed (typeof_funcs funcs) (UVars P) (Vars P))
                     argss ts) (x0 ++ x1 :: x2) = true
@@ -1195,7 +1191,7 @@ Module Make (ST : SepTheory.SepTheory)
 
           rewrite SEP_FACTS.heq_star_comm. 
           assert (SE.WellTyped_sexpr (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env meta_env) (typeof_env vars_env)
-            (SE.Func (types := types) f x1) = true).
+            (SE.Func f x1) = true).
           { rewrite WellTyped_sheap_eq in WT. apply andb_true_iff in WT; intuition.
             rewrite WellTyped_impures_eq in H5. simpl in *. specialize (H5 _ _ H4).
             consider (x0 ++ x1 :: x2). intros. exfalso; destruct x0; simpl in *; congruence. intros.
@@ -1217,7 +1213,15 @@ Module Make (ST : SepTheory.SepTheory)
             rewrite SH.hash_denote with (s := SE.Func f x1). rewrite SH.hash_Func.
             unfold fst, snd, SE.existsEach. subst. 
             rewrite HEAP_FACTS.applySHeap_singleton in *. simpl in *. rewrite app_nil_r in *. destruct H11. rewrite H6. clear H6.
-            rewrite ST.heq_star_comm. rewrite ST_EXT.heq_pushIn. rewrite rw_skipn_app; eauto with list_length.
+            rewrite ST.heq_star_comm. rewrite ST_EXT.heq_pushIn. 
+            Lemma WellTyped_env_length : forall a b, 
+                                           WellTyped_env (types := types) a b ->
+                                           length a = length b.
+            Proof.
+              unfold WellTyped_env, typeof_env. eauto with list_length.
+            Qed.
+            Hint Immediate WellTyped_env_length : list_length.
+            rewrite rw_skipn_app; eauto with list_length.
             rewrite ST_EXT.existsEach_rev. split. 
             { eapply ST.heq_defn. eapply ST_EXT.heq_existsEach; intros.
               rewrite <- star_SHeap_denote. simpl. apply ST.heq_star_frame.
@@ -1247,8 +1251,7 @@ Module Make (ST : SepTheory.SepTheory)
                 rewrite <- app_nil_r with (l := typeof_env meta_env). eapply is_well_typed_weaken. auto. }
               { eapply allb_impl; try eassumption; intros. rewrite <- app_nil_r with (l := UVars0).
                 eapply is_well_typed_weaken. rewrite H0. rewrite H. eapply H13. }
-              { destruct H11. unfold WellTyped_env in *. rewrite H. rewrite H0. rewrite typeof_env_length. apply H11. } }
-            rewrite H0. rewrite typeof_env_length. reflexivity. }
+              { destruct H11. unfold WellTyped_env in *. rewrite H. rewrite H0. rewrite typeof_env_length. apply H11. } } }
           { clear - WT H4. rewrite <- WellTyped_sheap_WellTyped_sexpr. rewrite WellTyped_sheap_eq in *. think. simpl in *. 
             apply andb_true_iff. split; auto. apply WellTyped_impures_eq; intros.
             rewrite MM.FACTS.add_o in H1. destruct (MF.FACTS.eq_dec f k). think.
@@ -1259,7 +1262,7 @@ Module Make (ST : SepTheory.SepTheory)
       Qed.
 
       Lemma ST_himp_heq_R : forall 
-        (U G : env types) (P Q : SE.sexpr types)
+        (U G : env types) (P Q : SE.sexpr)
         (S : ST.hprop),
         SE.heq funcs preds U G P Q ->
         ST.himp S (SE.sexprD funcs preds U G Q) ->
@@ -1289,7 +1292,7 @@ Module Make (ST : SepTheory.SepTheory)
         assert (match nth_error (SE.typeof_preds preds) f with
            | Some ts =>
                allb
-                 (fun argss : list (expr types) =>
+                 (fun argss : list expr =>
                   all2
                     (is_well_typed (typeof_funcs funcs) (UVars P) (Vars P))
                     argss ts) (x0 ++ x1 :: x2) = true
@@ -1365,7 +1368,7 @@ Module Make (ST : SepTheory.SepTheory)
 
           rewrite SEP_FACTS.heq_star_comm. 
           assert (SE.WellTyped_sexpr (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env meta_env) (typeof_env vars_env)
-            (SE.Func (types := types) f x1) = true).
+            (SE.Func f x1) = true).
           { rewrite WellTyped_sheap_eq in WT. apply andb_true_iff in WT; intuition.
             rewrite WellTyped_impures_eq in H5. simpl in *. specialize (H5 _ _ H4).
             consider (x0 ++ x1 :: x2). intros. exfalso; destruct x0; simpl in *; congruence. intros.
@@ -1601,13 +1604,13 @@ Module Make (ST : SepTheory.SepTheory)
     Variable types : list type.
     Variable prover : ProverT types.
 
-    Definition refineForward (hs : hintSide types) (bound : nat) (facts : Facts prover)
-      (us : unfoldingState types) : (unfoldingState types) * bool :=
+    Definition refineForward (hs : hintSide) (bound : nat) (facts : Facts prover)
+      (us : unfoldingState) : (unfoldingState) * bool :=
       let '(res,n) := forward hs prover bound facts us in
       (res, negb (EqNat.beq_nat n bound)).
 
-    Definition refineBackward (hs : hintSide types) (bound : nat) (facts : Facts prover)
-      (us : unfoldingState types) : (unfoldingState types) * bool :=
+    Definition refineBackward (hs : hintSide) (bound : nat) (facts : Facts prover)
+      (us : unfoldingState) : (unfoldingState) * bool :=
       let '(res,n) := backward hs prover bound facts us in
       (res, negb (EqNat.beq_nat n bound)).
     

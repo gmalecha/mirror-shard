@@ -15,20 +15,20 @@ Module Type Ordering (ST : SepTheory.SepTheory)
   Section typed.
     Variable types : list type.
 
-    Parameter order_impures : MM.mmap (exprs types) -> list (exprs types * nat).
+    Parameter order_impures : MM.mmap exprs -> list (exprs * nat).
 
-    Parameter meta_order_args : exprs types -> exprs types -> Datatypes.comparison.
+    Parameter meta_order_args : exprs -> exprs -> Datatypes.comparison.
     
-    Parameter meta_order_funcs : (exprs types * func) -> (exprs types * func) -> Datatypes.comparison.
+    Parameter meta_order_funcs : (exprs * func) -> (exprs * func) -> Datatypes.comparison.
     
-    Axiom order_impures_D : forall funcs preds U G imps,
+    Axiom order_impures_D : forall (funcs : functions types) preds U G imps,
       SE.heq funcs preds U G 
             (SH.impuresD imps)
             (SH.starred (fun v => (SE.Func (snd v) (fst v))) (order_impures imps) SE.Emp).
 
     Axiom order_impures_WellTyped : forall tf tp tU tG imp,
       SH.WellTyped_impures tf tp tU tG imp = true ->
-      allb (fun v : list (expr types) * func => SE.WellTyped_sexpr tf tp tU tG
+      allb (fun v : list expr * func => SE.WellTyped_sexpr tf tp tU tG
         (SE.Func (snd v) (fst v))) (order_impures imp) = true.
   End typed.
 End Ordering.
@@ -57,9 +57,8 @@ Module DefaultOrdering (ST : SepTheory.SepTheory)
      ** than an expression [r]. An expression is more defined if it "uses UVars later".
      ** NOTE: This is a "fuzzy property" but correctness doesn't depend on it.
      **)
-    Fixpoint expr_count_meta (e : expr types) : nat :=
+    Fixpoint expr_count_meta (e : expr) : nat :=
       match e with
-        | Expr.Const _ _
         | Var _ => 0
         | UVar _ => 1
         | Not l => expr_count_meta l
@@ -68,7 +67,7 @@ Module DefaultOrdering (ST : SepTheory.SepTheory)
           fold_left plus (map expr_count_meta args) 0
       end.
 
-    Fixpoint exprs_count_meta (es : exprs types) : nat :=
+    Fixpoint exprs_count_meta (es : exprs) : nat :=
       match es with
         | nil => O
         | e :: es' => expr_count_meta e + exprs_count_meta es'
@@ -76,9 +75,8 @@ Module DefaultOrdering (ST : SepTheory.SepTheory)
 
     (** When expressions have the same number of uvars, we want to favor the larger
      ** expressions first, since they are less likely to match spuriously. *)
-    Fixpoint expr_size (e : expr types) : nat :=
+    Fixpoint expr_size (e : expr) : nat :=
       match e with
-        | Expr.Const _ _
         | Var _
         | UVar _ => 0
         | Not l => S (expr_size l)
@@ -86,14 +84,14 @@ Module DefaultOrdering (ST : SepTheory.SepTheory)
         | Expr.Func _ args => fold_left plus (map expr_size args) 1
       end.
 
-    Definition meta_order_args (l r : exprs types) : Datatypes.comparison :=
+    Definition meta_order_args (l r : exprs) : Datatypes.comparison :=
       match Compare_dec.nat_compare (exprs_count_meta l) (exprs_count_meta r) with
         | Datatypes.Eq =>
           Ordering.list_lex_cmp _ (fun l r => Compare_dec.nat_compare (expr_size l) (expr_size r)) l r
         | v => v
       end.
 
-    Definition meta_order_funcs (l r : exprs types * func) : Datatypes.comparison :=
+    Definition meta_order_funcs (l r : exprs * func) : Datatypes.comparison :=
       match snd l, snd r with
         | 2, 0 => Datatypes.Lt
         | 2, 1 => Datatypes.Lt
@@ -105,16 +103,16 @@ Module DefaultOrdering (ST : SepTheory.SepTheory)
           end
       end.
 
-    Definition order_impures (imps : MM.mmap (exprs types)) : list (exprs types * nat) :=
-      FM.fold (fun k => fold_left (fun (acc : list (exprs types * nat)) (args : exprs types) => 
+    Definition order_impures (imps : MM.mmap exprs) : list (exprs * nat) :=
+      FM.fold (fun k => fold_left (fun (acc : list (exprs * nat)) (args : exprs) => 
         Ordering.insert_in_order _ meta_order_funcs (args, k) acc)) imps nil.
 
-    Lemma impuresD'_flatten : forall funcs preds U G imps,
+    Lemma impuresD'_flatten : forall (funcs : functions types) preds U G imps,
       SE.heq funcs preds U G
         (SH.impuresD imps)
         (SH.starred (fun v => SE.Func (snd v) (fst v)) 
           (FM.fold (fun f argss acc => 
-            map (fun args => (args, f)) argss ++ acc) imps nil) (@SE.Emp types)).
+            map (fun args => (args, f)) argss ++ acc) imps nil) SE.Emp).
     Proof.
       clear. intros. eapply MM.PROPS.fold_rec; intros.
       { rewrite (SH.impuresD_Empty funcs preds U G H).
@@ -130,13 +128,13 @@ Module DefaultOrdering (ST : SepTheory.SepTheory)
     Lemma fold_Permutation : forall imps L R,
       Permutation.Permutation L R ->
       Permutation.Permutation
-      (FM.fold (fun (f : FM.key) (argss : list (exprs types)) (acc : list (exprs types * FM.key)) =>
-        map (fun args : exprs types => (args, f)) argss ++ acc) imps L)
+      (FM.fold (fun (f : FM.key) (argss : list exprs) (acc : list (exprs * FM.key)) =>
+        map (fun args : exprs => (args, f)) argss ++ acc) imps L)
       (FM.fold
         (fun k : FM.key =>
          fold_left
-           (fun (acc : list (exprs types * nat)) (args : exprs types) =>
-            Ordering.insert_in_order (exprs types * nat) meta_order_funcs
+           (fun (acc : list (exprs * nat)) (args : exprs) =>
+            Ordering.insert_in_order (exprs * nat) meta_order_funcs
               (args, k) acc)) imps R).
     Proof.
       clear. intros.
@@ -144,14 +142,14 @@ Module DefaultOrdering (ST : SepTheory.SepTheory)
         revert H1; clear. revert a; revert b; induction e; simpl; intros; auto.
         rewrite <- IHe; eauto.
         
-        destruct (@Ordering.insert_in_order_inserts (exprs types * nat) meta_order_funcs (a,k) b) as [ ? [ ? [ ? ? ] ] ].
+        destruct (@Ordering.insert_in_order_inserts (exprs * nat) meta_order_funcs (a,k) b) as [ ? [ ? [ ? ? ] ] ].
         subst. rewrite H.
         rewrite <- app_ass.
         eapply Permutation.Permutation_cons_app.
         rewrite app_ass. eapply Permutation.Permutation_app; eauto.
     Qed.
 
-    Lemma order_impures_D : forall funcs preds U G imps,
+    Lemma order_impures_D : forall (funcs : functions types) preds U G imps,
       SE.heq funcs preds U G 
         (SH.impuresD imps)
         (SH.starred (fun v => (SE.Func (snd v) (fst v))) (order_impures imps) SE.Emp).
@@ -163,8 +161,8 @@ Module DefaultOrdering (ST : SepTheory.SepTheory)
     Lemma fold_left_insert_perm : forall e a k,
       Permutation.Permutation (map (fun x => (x,k)) e ++ a)
       (fold_left
-        (fun (acc : list (exprs types * nat)) (args : exprs types) =>
-          Ordering.insert_in_order (exprs types * func) meta_order_funcs
+        (fun (acc : list (exprs * nat)) (args : exprs) =>
+          Ordering.insert_in_order (exprs * func) meta_order_funcs
           (args, k) acc) e a).
     Proof.
       clear. induction e; simpl.
@@ -176,14 +174,14 @@ Module DefaultOrdering (ST : SepTheory.SepTheory)
       eapply Permutation.Permutation_middle.
     Qed.
 
-    Lemma fold_left_fold_left_insert_perm : forall l (B : list (exprs types * nat)),
+    Lemma fold_left_fold_left_insert_perm : forall l (B : list (exprs * nat)),
       Permutation.Permutation 
-      (B ++ fold_left (fun (a : list (exprs types * nat)) (p : FM.key * list (list (expr types))) =>
-        fold_left (fun (acc : list (exprs types * nat)) (args : list (expr types)) =>
-          Ordering.insert_in_order (list (expr types) * func) meta_order_funcs (args, fst p) acc) (snd p) a) l nil)
-      (fold_left (fun (a : list (exprs types * nat)) (p : FM.key * list (list (expr types))) =>
-        fold_left (fun (acc : list (exprs types * nat)) (args : list (expr types)) =>
-          Ordering.insert_in_order (list (expr types) * func) meta_order_funcs (args, fst p) acc) (snd p) a) l B).
+      (B ++ fold_left (fun (a : list (exprs * nat)) (p : FM.key * list (list expr)) =>
+        fold_left (fun (acc : list (exprs * nat)) (args : list expr) =>
+          Ordering.insert_in_order (list expr * func) meta_order_funcs (args, fst p) acc) (snd p) a) l nil)
+      (fold_left (fun (a : list (exprs * nat)) (p : FM.key * list (list expr)) =>
+        fold_left (fun (acc : list (exprs * nat)) (args : list expr) =>
+          Ordering.insert_in_order (list expr * func) meta_order_funcs (args, fst p) acc) (snd p) a) l B).
     Proof.
       induction l; simpl; intros. 
       rewrite app_nil_r; reflexivity.
@@ -200,16 +198,16 @@ Module DefaultOrdering (ST : SepTheory.SepTheory)
 
     Lemma order_impures_WellTyped : forall tf tp tU tG imp,
       SH.WellTyped_impures tf tp tU tG imp = true ->
-      allb (fun v : list (expr types) * func => SE.WellTyped_sexpr tf tp tU tG
+      allb (fun v : list expr * func => SE.WellTyped_sexpr tf tp tU tG
         (SE.Func (snd v) (fst v))) (order_impures imp) = true.
     Proof. clear.
       intros. unfold order_impures.
       rewrite SH.WellTyped_impures_spec_eq in H.
       rewrite FM.fold_1 in *. revert H. unfold exprs in *. generalize true at 2 4.
-      induction (FM.elements (elt:=list (list (expr types))) imp); auto; intros.
+      induction (FM.elements (elt:=list (list expr)) imp); auto; intros.
       simpl in *. 
       assert (fold_left
-        (fun (a : bool) (p : FM.key * list (list (expr types))) =>
+        (fun (a : bool) (p : FM.key * list (list expr)) =>
           (a &&
             match snd p with
               | nil => true
@@ -217,7 +215,7 @@ Module DefaultOrdering (ST : SepTheory.SepTheory)
                 match nth_error tp (fst p) with
                   | Some ts =>
                     allb
-                    (fun args : list (expr types) =>
+                    (fun args : list expr =>
                       all2
                       (is_well_typed tf
                         tU tG) args ts) 
@@ -231,7 +229,7 @@ Module DefaultOrdering (ST : SepTheory.SepTheory)
       consider (nth_error tp k); intros; try congruence.
       consider (all2 (is_well_typed tf tU tG) l0 t); intros; try congruence.
       consider (allb
-        (fun args : list (expr types) =>
+        (fun args : list expr =>
           all2
           (is_well_typed tf tU tG) args t) l1); intros; try congruence.
       rewrite <- IHl by assumption.
@@ -269,18 +267,18 @@ Module Make (SUBST : Subst)
     Variable Prover : ProverT types.
     Variable Prover_correct : ProverT_correct Prover funcs.
 
-    Definition unifyArgs (bound : nat) (summ : Facts Prover) (l r : list (expr types)) (ts : list tvar) (sub : SUBST.Subst types)
-      : option (SUBST.Subst types) :=
+    Definition unifyArgs (bound : nat) (summ : Facts Prover) (l r : list expr) (ts : list tvar) (sub : SUBST.Subst)
+      : option SUBST.Subst :=
       Folds.fold_left_3_opt 
-        (fun l r t (acc : SUBST.Subst _) =>
+        (fun l r t (acc : SUBST.Subst) =>
           if Prove Prover summ (Expr.Equal t (SUBST.exprInstantiate acc l) (SUBST.exprInstantiate acc r))
             then Some acc
             else U.exprUnify bound l r acc)
         l r ts sub.
 
-    Fixpoint unify_remove (bound : nat) (summ : Facts Prover) (l : exprs types) (ts : list tvar) (r : list (exprs types))
-      (sub : SUBST.Subst types)
-      : option (list (list (expr types)) * SUBST.Subst types) :=
+    Fixpoint unify_remove (bound : nat) (summ : Facts Prover) (l : exprs) (ts : list tvar) (r : list exprs)
+      (sub : SUBST.Subst)
+      : option (list (list expr) * SUBST.Subst) :=
         match r with 
           | nil => None
           | a :: b => 
@@ -305,8 +303,8 @@ Module Make (SUBST : Subst)
 
       Lemma unifyArgs_Extends_WellTyped : forall bound summ l r ts S S',
         SUBST.Subst_WellTyped tfuncs tU tG S ->
-        all2 (@is_well_typed _ tfuncs tU tG) l ts = true ->
-        all2 (@is_well_typed _ tfuncs tU tG) r ts = true ->
+        all2 (is_well_typed tfuncs tU tG) l ts = true ->
+        all2 (is_well_typed tfuncs tU tG) r ts = true ->
         unifyArgs bound summ l r ts S = Some S' ->
         SUBST.Subst_Extends S' S /\
         SUBST.Subst_WellTyped tfuncs tU tG S'.
@@ -335,10 +333,10 @@ Module Make (SUBST : Subst)
 
       Lemma unifyArgs_bad_cases : forall summ bound S S' ts t e a l r,
         SUBST.Subst_WellTyped tfuncs tU tG S ->
-        all2 (@is_well_typed _ tfuncs tU tG) l ts = true ->
-        all2 (@is_well_typed _ tfuncs tU tG) r ts = true ->
-        @is_well_typed _ tfuncs tU tG a t = true ->
-        @is_well_typed _ tfuncs tU tG e t = true ->
+        all2 (is_well_typed tfuncs tU tG) l ts = true ->
+        all2 (is_well_typed tfuncs tU tG) r ts = true ->
+        is_well_typed tfuncs tU tG a t = true ->
+        is_well_typed tfuncs tU tG e t = true ->
         match
           (if Prove Prover summ
             (Equal t (SUBST.exprInstantiate S a) (SUBST.exprInstantiate S e))
@@ -347,7 +345,7 @@ Module Make (SUBST : Subst)
           with
           | Some acc =>
             fold_left_3_opt
-            (fun (l r : expr types) (t : tvar) (acc0 : SUBST.Subst types) =>
+            (fun (l r : expr) (t : tvar) (acc0 : SUBST.Subst) =>
               if Prove Prover summ
                 (Equal t (SUBST.exprInstantiate acc0 l)
                   (SUBST.exprInstantiate acc0 r))
@@ -370,8 +368,8 @@ Module Make (SUBST : Subst)
       Lemma unifyArgsOk : forall bound summ R l r ts f S S',
         SUBST.Subst_WellTyped tfuncs tU tG S ->
         Valid Prover_correct U G summ ->
-        all2 (@is_well_typed _ tfuncs tU tG) l ts = true ->
-        all2 (@is_well_typed _ tfuncs tU tG) r ts = true ->
+        all2 (is_well_typed tfuncs tU tG) l ts = true ->
+        all2 (is_well_typed tfuncs tU tG) r ts = true ->
         unifyArgs bound summ l r ts S = Some S' ->
         SUBST.Subst_equations funcs U G S' ->
         @applyD types (exprD funcs U G) ts (map (SUBST.exprInstantiate S') l) R f =
@@ -439,7 +437,7 @@ Module Make (SUBST : Subst)
                   H' : exprD _ _ _ ?E _ = None |- _ ] =>
               (eapply is_well_typed_correct in H ; eauto) ; destruct H; congruence
               | [ H : exprD _ _ _ ?E _ = None |- _ ] =>
-                assert (@is_well_typed _ tfuncs tU tG E t = true) by 
+                assert (is_well_typed tfuncs tU tG E t = true) by 
                   (rewrite <- SUBST.exprInstantiate_WellTyped; eauto)
             end. }
           { exfalso.
@@ -449,7 +447,7 @@ Module Make (SUBST : Subst)
                   H' : exprD _ _ _ ?E _ = None |- _ ] =>
               (eapply is_well_typed_correct in H ; eauto) ; destruct H; congruence
               | [ H : exprD _ _ _ ?E _ = None |- _ ] =>
-                assert (@is_well_typed _ tfuncs tU tG E t = true) by 
+                assert (is_well_typed tfuncs tU tG E t = true) by 
                   (rewrite <- SUBST.exprInstantiate_WellTyped; eauto)
             end. }
           { exfalso.
@@ -459,7 +457,7 @@ Module Make (SUBST : Subst)
                   H' : exprD _ _ _ ?E _ = None |- _ ] =>
               (eapply is_well_typed_correct in H ; eauto) ; destruct H; congruence
               | [ H : exprD _ _ _ ?E _ = None |- _ ] =>
-                assert (@is_well_typed _ tfuncs tU tG E t = true) by 
+                assert (is_well_typed tfuncs tU tG E t = true) by 
                   (rewrite <- SUBST.exprInstantiate_WellTyped; eauto)
             end. } }
       Qed.
@@ -468,9 +466,9 @@ Module Make (SUBST : Subst)
         SUBST.Subst_WellTyped tfuncs tU tG S ->
         Valid Prover_correct U G summ ->
         nth_error preds f = Some p ->
-        all2 (@is_well_typed _ tfuncs tU tG) l (SE.SDomain p) = true ->
+        all2 (is_well_typed tfuncs tU tG) l (SE.SDomain p) = true ->
         forall r r' S' P,
-          List.Forall (fun r => all2 (@is_well_typed _ tfuncs tU tG) r (SE.SDomain p) = true) r ->
+          List.Forall (fun r => all2 (is_well_typed tfuncs tU tG) r (SE.SDomain p) = true) r ->
           unify_remove bound summ l (SE.SDomain p) r S = Some (r', S') ->
           SUBST.Subst_equations funcs U G S' ->
           forall Q,
@@ -510,13 +508,13 @@ Module Make (SUBST : Subst)
       Lemma unify_remove_PureFacts : forall bound summ f p l S,
         SUBST.Subst_WellTyped tfuncs tU tG S ->
         nth_error preds f = Some p ->
-        all2 (@is_well_typed _ tfuncs tU tG) l (SDomain p) = true ->
+        all2 (is_well_typed tfuncs tU tG) l (SDomain p) = true ->
         forall r r' S',
-          List.Forall (fun r => all2 (@is_well_typed _ tfuncs tU tG) r (SDomain p) = true) r ->
+          List.Forall (fun r => all2 (is_well_typed tfuncs tU tG) r (SDomain p) = true) r ->
           unify_remove bound summ l (SDomain p) r S = Some (r', S') ->
              SUBST.Subst_Extends S' S
           /\ SUBST.Subst_WellTyped tfuncs tU tG S'
-          /\ List.Forall (fun r => all2 (@is_well_typed _ tfuncs tU tG) r (SDomain p) = true) r'.
+          /\ List.Forall (fun r => all2 (is_well_typed tfuncs tU tG) r (SDomain p) = true) r'.
       Proof.
         induction r; simpl; intros; try congruence.
         consider (unifyArgs bound summ l a (SDomain p) S); intros.
@@ -530,7 +528,7 @@ Module Make (SUBST : Subst)
 
     End with_typing.
 
-    Definition cancel_list : Type := list (exprs types * nat).
+    Definition cancel_list : Type := list (exprs * nat).
     
     (** NOTE : l and r are reversed here **)
     (** cancel_in_order ls acc rem = (l,r,sub) ->
@@ -538,9 +536,9 @@ Module Make (SUBST : Subst)
      ** rem ===> ls * acc
      **)
     Fixpoint cancel_in_order (bound : nat) (summ : Facts Prover) (tpreds : SE.tpredicates)
-      (ls : cancel_list) (acc rem : MM.mmap (exprs types)) (sub : SUBST.Subst types)
+      (ls : cancel_list) (acc rem : MM.mmap exprs) (sub : SUBST.Subst)
       (progress : bool)
-      : option (MM.mmap (exprs types) * MM.mmap (exprs types) * SUBST.Subst types) :=
+      : option (MM.mmap exprs * MM.mmap exprs * SUBST.Subst) :=
       match ls with
         | nil => 
           if progress then Some (acc, rem, sub) else None
@@ -637,7 +635,7 @@ Module Make (SUBST : Subst)
     Qed.
 
     Lemma WellTyped_impures_add : forall tf tp tU tG f l m,
-      SH.WellTyped_impures (types := types) tf tp tU tG m = true ->
+      SH.WellTyped_impures tf tp tU tG m = true ->
       match nth_error tp f with
         | None => false
         | Some p => allb (fun l => all2 (is_well_typed tf tU tG) l p) l
@@ -652,7 +650,7 @@ Module Make (SUBST : Subst)
     Qed.
 
     Lemma WellTyped_impures_mmap_add : forall tf tp tU tG f l m,
-      SH.WellTyped_impures (types := types) tf tp tU tG m = true ->
+      SH.WellTyped_impures tf tp tU tG m = true ->
       match nth_error tp f with
         | None => false
         | Some p => all2 (is_well_typed tf tU tG) l p
@@ -661,7 +659,7 @@ Module Make (SUBST : Subst)
     Proof. clear.
       intros. eapply SH.WellTyped_impures_eq. intros.
       consider (nth_error tp f); try congruence; intros.
-      unfold MM.mmap_add in *. consider (FM.find (elt:=list (list (expr types))) f m); intros.
+      unfold MM.mmap_add in *. consider (FM.find (elt:=list (list expr)) f m); intros.
       rewrite MF.FACTS.add_o in H3. destruct (MF.FACTS.eq_dec f k).
       { inversion H3; clear H3; subst. rewrite H0. simpl. rewrite H2.
         eapply SH.WellTyped_impures_eq in H. 2: eauto. destruct l0; auto. rewrite H0 in *. assumption. }
@@ -704,7 +702,7 @@ Module Make (SUBST : Subst)
                  consider X; intros
                end; simpl in *; subst.
         { assert (List.Forall
-          (fun r : list (expr types) =>
+          (fun r : list expr =>
             all2 (is_well_typed tf tU tG) r (SDomain p) = true) l0).
           { eapply SH.WellTyped_impures_eq in H2; try eassumption.
             destruct l0. constructor. rewrite nth_error_typeof_preds in H2.
@@ -765,7 +763,7 @@ Module Make (SUBST : Subst)
           (SH.impuresD (MM.mmap_add f args m))
           (Star (Func f args) (SH.impuresD m)).
     Proof. clear.
-      intros. unfold MM.mmap_add. consider (FM.find (elt:=list (exprs types)) f m); intros.
+      intros. unfold MM.mmap_add. consider (FM.find (elt:=list exprs) f m); intros.
       { rewrite SH.impuresD_Add with (f := f) (argss := args :: l) (i := FM.remove f m).
         rewrite starred_cons. 
         rewrite SH.impuresD_Add with (f := f) (argss := l) (i := FM.remove f m) (i' := m).
@@ -783,17 +781,17 @@ Module Make (SUBST : Subst)
 
     Lemma cancel_in_order_common : forall 
       (U G : env types)
-      (bound : nat) (summ : Facts Prover) (e : exprs types) 
-      (n : nat) (ls : list (exprs types * nat)),
-      (forall (acc rem : MM.mmap (exprs types)) (sub : SUBST.Subst types)
-        (L R : MM.mmap (exprs types)) (S : SUBST.Subst types) progress,
+      (bound : nat) (summ : Facts Prover) (e : exprs) 
+      (n : nat) (ls : list (exprs * nat)),
+      (forall (acc rem : MM.mmap exprs) (sub : SUBST.Subst)
+        (L R : MM.mmap exprs) (S : SUBST.Subst) progress,
         SUBST.Subst_WellTyped (typeof_funcs funcs) (typeof_env U) (typeof_env G) sub ->
         SUBST.Subst_WellTyped (typeof_funcs funcs) (typeof_env U) (typeof_env G) S ->
         SUBST.Subst_equations funcs U G S ->
         Valid Prover_correct U G summ ->
         cancel_in_order bound summ (SE.typeof_preds preds) ls acc rem sub progress = Some (L, R, S) ->
         allb
-        (fun v : list (expr types) * func =>
+        (fun v : list expr * func =>
           match nth_error (typeof_preds preds) (snd v) with
             | Some ts =>
               all2
@@ -814,11 +812,11 @@ Module Make (SUBST : Subst)
           (Star
             (Star
               (SH.starred
-                (fun v : list (expr types) * func =>
+                (fun v : list expr * func =>
                   Func (snd v) (map (SUBST.exprInstantiate S) (fst v))) ls Emp)
               (SH.impuresD (impuresInstantiate S acc))) Q)) ->
-      forall (acc rem : MM.mmap (exprs types)) (sub : SUBST.Subst types)
-        (L R : MM.mmap (exprs types)) (S : SUBST.Subst types) progress,
+      forall (acc rem : MM.mmap exprs) (sub : SUBST.Subst)
+        (L R : MM.mmap exprs) (S : SUBST.Subst) progress,
         SUBST.Subst_WellTyped (typeof_funcs funcs) (typeof_env U) (typeof_env G) sub ->
         SUBST.Subst_WellTyped (typeof_funcs funcs) (typeof_env U) (typeof_env G) S ->
         SUBST.Subst_equations funcs U G S ->
@@ -836,7 +834,7 @@ Module Make (SUBST : Subst)
             all2 (is_well_typed (typeof_funcs funcs) (typeof_env U) (typeof_env G))
             (map (SUBST.exprInstantiate S) e) (typeof_pred p) = true ->
             allb
-            (fun v : list (expr types) * func =>
+            (fun v : list expr * func =>
               match nth_error (typeof_preds preds) (snd v) with
                 | Some ts =>
                   all2
@@ -850,12 +848,12 @@ Module Make (SUBST : Subst)
             (Star (Star
               (SE.Star (Func n (map (SUBST.exprInstantiate S) e))
                 (SH.starred
-                  (fun v : list (expr types) * func =>
+                  (fun v : list expr * func =>
                     Func (snd v) (map (SUBST.exprInstantiate S) (fst v))) ls Emp))
               (SH.impuresD (impuresInstantiate S acc))) Q).
     Proof.
       intros. 
-      assert (allb (fun v : list (expr types) * func => WellTyped_sexpr (typeof_funcs funcs) (typeof_preds preds) 
+      assert (allb (fun v : list expr * func => WellTyped_sexpr (typeof_funcs funcs) (typeof_preds preds) 
         (typeof_env U) (typeof_env G) (Func (snd v) (fst v))) ls = true).
       { eapply allb_impl. eauto. simpl. intros. destruct (nth_error (typeof_preds preds) (snd x)); auto.
         rewrite all2_map_1 in H11. eapply all2_impl; try eassumption. intros.
@@ -871,7 +869,7 @@ Module Make (SUBST : Subst)
       do 2 rewrite SEP_UFACTS.impuresD_forget_impuresInstantiate by eassumption.
       rewrite impuresD_mmap_add. rewrite Func_forget_exprInstantiate by eassumption.
       rewrite heq_star_comm with (Q := SH.starred
-        (fun v : list (expr types) * func =>
+        (fun v : list expr * func =>
           Func (snd v) (map (SUBST.exprInstantiate S) (fst v))) ls Emp).
       repeat rewrite heq_star_assoc. reflexivity.
     Qed.
@@ -891,7 +889,7 @@ Module Make (SUBST : Subst)
       Valid Prover_correct U G summ ->
       cancel_in_order bound summ tp ls acc rem sub progress = Some (L, R, S) ->
       allb (fun v => SE.WellTyped_sexpr tf tp tU tG 
-        (Func (snd v) (map (@SUBST.exprInstantiate _ S) (fst v)))) ls = true ->
+        (Func (snd v) (map (SUBST.exprInstantiate S) (fst v)))) ls = true ->
       SH.WellTyped_impures tf tp tU tG acc = true ->
       SH.WellTyped_impures tf tp tU tG rem = true ->
       forall P Q,
@@ -900,7 +898,7 @@ Module Make (SUBST : Subst)
         (Star (SH.impuresD (impuresInstantiate S L)) Q) ->
       himp funcs preds U G 
         (Star (SH.impuresD (impuresInstantiate S rem)) P)
-        (Star (Star (SH.starred (fun v => (Func (snd v) (map (@SUBST.exprInstantiate _ S) (fst v)))) ls Emp)
+        (Star (Star (SH.starred (fun v => (Func (snd v) (map (SUBST.exprInstantiate S) (fst v)))) ls Emp)
                     (SH.impuresD (impuresInstantiate S acc))) Q).
     Proof.
       induction ls; simpl; intros.
@@ -920,7 +918,7 @@ Module Make (SUBST : Subst)
         { assert (all2 (is_well_typed (typeof_funcs funcs) (typeof_env U) (typeof_env G)) e (SDomain p) = true).
           { rewrite all2_map_1 in H8. eapply all2_impl. eapply H8. intros. simpl in *.
             rewrite <- SUBST.exprInstantiate_WellTyped in H11; eauto. }
-          assert (List.Forall (fun r : list (expr types) =>
+          assert (List.Forall (fun r : list expr =>
             all2 (is_well_typed (typeof_funcs funcs) (typeof_env U) (typeof_env G)) r (SDomain p) = true) l).
           { eapply SH.WellTyped_impures_eq in H6; eauto. destruct l. constructor.
             rewrite nth_error_typeof_preds in *. rewrite H4 in H6. revert H6.
@@ -934,7 +932,7 @@ Module Make (SUBST : Subst)
           5: subst t; eassumption. 2: solve [ eauto ]. 2: solve [ eauto ].
 (* eauto using typeof_env_WellTyped_env, typeof_funcs_WellTyped_funcs. *)
           intuition.
-          assert (allb (fun v : list (expr types) * func =>
+          assert (allb (fun v : list expr * func =>
             WellTyped_sexpr (typeof_funcs funcs) (typeof_preds preds)
             (typeof_env U) (typeof_env G) (Func (snd v) (fst v))) ls = true).
           { eapply allb_impl. eassumption. simpl. intros.
@@ -950,10 +948,10 @@ Module Make (SUBST : Subst)
           generalize H13. eapply cancel_in_order_PureFacts in H13; eauto.
           intuition.
           do 2 rewrite SEP_UFACTS.impuresD_forget_impuresInstantiate by eassumption.
-          assert (MM.PROPS.Add n l (FM.remove (elt:=list (exprs types)) n rem) rem).
+          assert (MM.PROPS.Add n l (FM.remove (elt:=list exprs) n rem) rem).
           { red. intro. rewrite MF.FACTS.add_o. rewrite MF.FACTS.remove_o.
             destruct (MF.FACTS.eq_dec n y); subst; auto. }
-          assert (~FM.In (elt:=list (exprs types)) n (FM.remove (elt:=list (exprs types)) n rem)).
+          assert (~FM.In (elt:=list exprs) n (FM.remove (elt:=list exprs) n rem)).
           { rewrite MF.FACTS.remove_in_iff. intro. intuition; congruence. }
           rewrite SH.impuresD_Add with (i := FM.remove n rem) (i' := rem) (f := n) (argss := l) by eassumption.
           rewrite heq_star_assoc.          
@@ -978,10 +976,10 @@ Module Make (SUBST : Subst)
 
     (** NOTE: return None if we don't make progress
      **)
-    Definition sepCancel (bound : nat) (tpreds : SE.tpredicates) (summ : Facts Prover) (l r : SH.SHeap types) (s : SUBST.Subst types) 
-      : option (SH.SHeap _ * SH.SHeap _ * SUBST.Subst types) :=
+    Definition sepCancel (bound : nat) (tpreds : SE.tpredicates) (summ : Facts Prover) (l r : SH.SHeap) (s : SUBST.Subst) 
+      : option (SH.SHeap * SH.SHeap * SUBST.Subst) :=
       let ordered_r := O.order_impures (SH.impures r) in
-      let sorted_l := FM.map (fun v => Ordering.sort _ (@O.meta_order_args _) v) (SH.impures l) in 
+      let sorted_l := FM.map (fun v => Ordering.sort _ (O.meta_order_args) v) (SH.impures l) in 
       match 
         cancel_in_order bound summ tpreds ordered_r (MM.empty _) sorted_l s false
         with
@@ -999,10 +997,10 @@ Module Make (SUBST : Subst)
     Proof.
       unfold sepCancel. intros.
       destruct (cancel_in_order bound summ tp (O.order_impures (SH.impures r))
-              (MM.empty (exprs types))
+              (MM.empty exprs)
               (FM.map
-                 (fun v : list (exprs types) =>
-                  Ordering.sort (exprs types) (@O.meta_order_args _) v)
+                 (fun v : list exprs =>
+                  Ordering.sort exprs (O.meta_order_args) v)
                  (SH.impures l)) s). destruct p. destruct p. inversion H.
       auto. congruence.
     Qed.
@@ -1028,7 +1026,7 @@ Module Make (SUBST : Subst)
 
 
     Lemma WellTyped_empty : forall tf tp tU tG,
-      SH.WellTyped_impures tf tp tU tG (MM.empty (exprs types)) = true.
+      SH.WellTyped_impures tf tp tU tG (MM.empty exprs) = true.
     Proof. clear.
       intros. rewrite SH.WellTyped_impures_spec_eq. rewrite MF.PROPS.fold_Empty; auto with typeclass_instances.
       apply FM.empty_1.
@@ -1039,15 +1037,15 @@ Module Make (SUBST : Subst)
     Lemma map_sort_WellTyped : forall C tf tp tU tG imp,
       SH.WellTyped_impures tf tp tU tG imp = true ->
       SH.WellTyped_impures tf tp tU tG
-      (FM.map (fun v : list (exprs types) => Ordering.sort (exprs types) C v) imp) = true.
+      (FM.map (fun v : list exprs => Ordering.sort exprs C v) imp) = true.
     Proof. clear.
       intros. eapply SH.WellTyped_impures_eq; intros. rewrite MF.FACTS.map_o in H0.
-      consider (FM.find (elt:=list (exprs types)) k imp); simpl in *; try congruence; intros.
+      consider (FM.find (elt:=list exprs) k imp); simpl in *; try congruence; intros.
       inversion H1; clear H1; subst.
       eapply SH.WellTyped_impures_eq in H0. 2: eassumption.
       destruct l; auto. destruct (nth_error tp k); try contradiction.
       erewrite allb_permutation in H0. 2: symmetry; eapply Ordering.sort_permutation.
-      rewrite H0. destruct (Ordering.sort (exprs types) C (e :: l)); auto. 
+      rewrite H0. destruct (Ordering.sort exprs C (e :: l)); auto. 
     Qed.
 
     Theorem sepCancel_PureFacts : forall tU tG bound summ l r l' r' s s',
@@ -1064,10 +1062,10 @@ Module Make (SUBST : Subst)
     Proof. 
       unfold sepCancel. intros.
       consider (cancel_in_order bound summ (typeof_preds preds) (O.order_impures (SH.impures r))
-              (MM.empty (exprs types))
+              (MM.empty exprs)
               (FM.map
-                 (fun v : list (exprs types) =>
-                  Ordering.sort (exprs types) (@O.meta_order_args _) v)
+                 (fun v : list exprs =>
+                  Ordering.sort exprs (O.meta_order_args) v)
                  (SH.impures l)) s false); intros.
       destruct p. destruct p. inversion H3; clear H3; subst.
       rewrite SH.WellTyped_sheap_eq in H1.
@@ -1100,10 +1098,10 @@ Module Make (SUBST : Subst)
              end.
       do 2 rewrite SH.sheapD_def. simpl. 
       eapply cancel_in_orderOk with (U := U) (G := G) 
-        (P := Star (SH.starred (@SE.Inj _) pures SE.Emp)
-                   (SH.starred (@SE.Const _) other SE.Emp)) 
-        (Q := Star (SH.starred (@SE.Inj _) pures0 SE.Emp)
-                   (SH.starred (@SE.Const _) other0 SE.Emp)) in H3;
+        (P := Star (SH.starred (SE.Inj) pures SE.Emp)
+                   (SH.starred (SE.Const) other SE.Emp)) 
+        (Q := Star (SH.starred (SE.Inj) pures0 SE.Emp)
+                   (SH.starred (SE.Const) other0 SE.Emp)) in H3;
         eauto using typeof_env_WellTyped_env, typeof_funcs_WellTyped_funcs, SUBST.Subst_empty_WellTyped.
       { clear H4.
         do 2 rewrite impuresD_forget_impuresInstantiate in H3 by eassumption. 

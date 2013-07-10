@@ -1,7 +1,8 @@
 Require Import List Arith Bool.
 Require Import Expr Env.
-Require Import EquivDec EqdepClass.
-Require Import DepList.
+Require Import ExtLib.Structures.Eqdep.
+Require Import EquivDec.
+Require Import ExtLib.Data.HList.
 Require Import Word Prover.
 
 Set Implicit Arguments.
@@ -152,11 +153,11 @@ Section TransitivityProver.
   Section with_vars.
   Variables uvars vars : env types.
 
-  Definition transitivity_summary : Type := list (list (expr types)).
+  Definition transitivity_summary : Type := list (list expr).
 
   Coercion typeof_env : env >-> tenv.
 
-  Definition eqD (e1 e2 : expr types) : Prop :=
+  Definition eqD (e1 e2 : expr) : Prop :=
     match typeof (typeof_funcs fs) uvars vars e1 with
       | None => False
       | Some t =>
@@ -199,7 +200,7 @@ Section TransitivityProver.
   Qed.
 *)
 
-  Fixpoint transitivityLearn (sum : transitivity_summary) (hyps : list (expr types)) : transitivity_summary :=
+  Fixpoint transitivityLearn (sum : transitivity_summary) (hyps : list expr) : transitivity_summary :=
     match hyps with
       | nil => sum
       | h :: hyps' =>
@@ -212,15 +213,15 @@ Section TransitivityProver.
   Definition groupsOf := transitivityLearn nil.
 
   Definition transitivityEqProver (groups : transitivity_summary)
-    (x y : expr types) := inSameGroup (@expr_seq_dec _) groups x y.
+    (x y : expr) := inSameGroup (@expr_seq_dec _) groups x y.
 
-  Fixpoint proveEqual (groups : transitivity_summary) (e1 e2 : expr types) {struct e1} :=
+  Fixpoint proveEqual (groups : transitivity_summary) (e1 e2 : expr) {struct e1} :=
     expr_seq_dec e1 e2 || 
       (inSameGroup (@expr_seq_dec _) groups e1 e2
         || match e1, e2 with
              | Func f1 args1, Func f2 args2 =>
                if eq_nat_dec f1 f2
-                 then (fix proveEquals (es1 es2 : list (expr types)) :=
+                 then (fix proveEquals (es1 es2 : list expr) :=
                    match es1, es2 with
                      | nil, nil => true
                      | e1 :: es1', e2 :: es2' => proveEqual groups e1 e2 && proveEquals es1' es2'
@@ -232,7 +233,7 @@ Section TransitivityProver.
     ).
 
   Definition transitivityProve (groups : transitivity_summary)
-    (goal : expr types) :=
+    (goal : expr) :=
     match goal with
       | Equal _ x y => proveEqual groups x y
       | _ => false
@@ -265,12 +266,12 @@ Section TransitivityProver.
 
   Ltac eqD := unfold eqD; intros; repeat eqD1; t.
   
-  Theorem eqD_sym : forall x y : expr types, eqD x y -> eqD y x.
+  Theorem eqD_sym : forall x y : expr, eqD x y -> eqD y x.
     unfold eqD; intros.
     eqD.
   Qed.
 
-  Theorem eqD_trans : forall x y z : expr types, eqD x y -> eqD y z -> eqD x z.
+  Theorem eqD_trans : forall x y z : expr, eqD x y -> eqD y z -> eqD x z.
     eqD.
   Qed.
 

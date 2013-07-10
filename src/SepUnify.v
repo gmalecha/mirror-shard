@@ -14,14 +14,14 @@ Module Make (SUBST : Instantiation.Subst)
 
   Section typed.
     Variable types : list type.
-    Variable s : SUBST.Subst types.
+    Variable s : SUBST.Subst.
 
-    Definition impuresInstantiate : MM.mmap (exprs types) -> MM.mmap (exprs types) :=
-      MM.mmap_map (map (@SUBST.exprInstantiate _ s)).
+    Definition impuresInstantiate : MM.mmap exprs -> MM.mmap exprs :=
+      MM.mmap_map (map (SUBST.exprInstantiate s)).
 
-    Definition sheapInstantiate (h : SH.SHeap types) : SH.SHeap types :=
+    Definition sheapInstantiate (h : SH.SHeap) : SH.SHeap :=
       {| SH.impures := impuresInstantiate (SH.impures h)
-       ; SH.pures   := map (@SUBST.exprInstantiate _ s) (SH.pures h)
+       ; SH.pures   := map (SUBST.exprInstantiate s) (SH.pures h)
        ; SH.other   := SH.other h
        |}.
 
@@ -33,7 +33,7 @@ Module Make (SUBST : Instantiation.Subst)
     Lemma impuresInstantiate_mmap_add : forall n e acc, SE.heq funcs preds U G
         (SH.impuresD (impuresInstantiate (MM.mmap_add n e acc)))
         (SH.impuresD 
-          (MM.mmap_add n (map (@SUBST.exprInstantiate _ s) e) 
+          (MM.mmap_add n (map (SUBST.exprInstantiate s) e) 
                          (impuresInstantiate acc))).
     Proof.
       clear. intros. eapply MM.PROPS.map_induction with (m := acc); intros.
@@ -79,9 +79,7 @@ Module Make (SUBST : Instantiation.Subst)
         rewrite SH.impuresD_Add with (i := FM.map (map (map (SUBST.exprInstantiate s))) m) (f := n) (argss := map (map (SUBST.exprInstantiate s)) e).
         symmetry; rewrite SH.starred_base. heq_canceler.
         repeat rewrite SH.starred_def.
-        match goal with
-          | [ |- context [ @SE.Emp ?X ] ] => generalize (@SE.Emp X)
-        end.
+        generalize SE.Emp.
         clear. induction e; simpl; intros; try reflexivity.
         rewrite IHe. heq_canceler.
 
@@ -94,8 +92,8 @@ Module Make (SUBST : Instantiation.Subst)
     Lemma applyD_forget_exprInstantiate :
       SUBST.Subst_equations funcs U G s ->
       forall D R F l,
-        applyD (exprD funcs U G) D (map (SUBST.exprInstantiate s) l) R F =
-        applyD (exprD funcs U G) D l R F.
+        applyD types (exprD funcs U G) D (map (SUBST.exprInstantiate s) l) R F =
+        applyD types (exprD funcs U G) D l R F.
     Proof.
       clear. induction D; destruct l; simpl; auto.
       rewrite SUBST.Subst_equations_exprInstantiate; eauto.
@@ -106,7 +104,7 @@ Module Make (SUBST : Instantiation.Subst)
       SUBST.Subst_equations funcs U G s ->
       forall e,
       SE.heq funcs preds U G 
-        (SH.starred (fun v : list (expr types) => SE.Func x (map (SUBST.exprInstantiate s) v)) e P)
+        (SH.starred (fun v : list expr => SE.Func x (map (SUBST.exprInstantiate s) v)) e P)
         (SH.starred (SE.Func x) e P).
     Proof.
       clear. induction e; intros; repeat rewrite SH.starred_def; simpl; repeat rewrite <- SH.starred_def; SEP_FACTS.heq_canceler.

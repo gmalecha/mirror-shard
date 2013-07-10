@@ -10,11 +10,11 @@ Module Type SepLemmaType (ST : SepTheory.SepTheory) (SE : SepExpr ST).
     Variable types : list type.
     
     Definition sepConcl : Type :=
-      (SE.sexpr types * SE.sexpr types)%type.
+      (SE.sexpr * SE.sexpr)%type.
 
-    Definition Lhs (l : lemma types sepConcl) : SE.sexpr types :=
+    Definition Lhs (l : lemma sepConcl) : SE.sexpr :=
       fst (Concl l).
-    Definition Rhs (l : lemma types sepConcl) : SE.sexpr types :=
+    Definition Rhs (l : lemma sepConcl) : SE.sexpr :=
       snd (Concl l).
     
     Definition WellTyped_sepConcl tfuncs tpreds (vars : list tvar) (c : sepConcl) : bool :=
@@ -26,7 +26,7 @@ Module Type SepLemmaType (ST : SepTheory.SepTheory) (SE : SepExpr ST).
     Definition sepConclD funcs preds (uvars vars : env types) (c : sepConcl) : Prop :=
       SE.himp funcs preds uvars vars (fst c) (snd c).
 
-    Definition sepLemma : Type := lemma types sepConcl.
+    Definition sepLemma : Type := lemma sepConcl.
 
     Definition WellTyped_sepLemma tfuncs tpreds (l : sepLemma) : bool :=
       WellTyped_lemma (WellTyped_sepConcl tfuncs tpreds) tfuncs l.
@@ -45,11 +45,11 @@ Module SepLemma (ST : SepTheory.SepTheory) (SE : SepExpr ST) <: SepLemmaType ST 
     Variable types : list type.
     
     Definition sepConcl : Type :=
-      (SE.sexpr types * SE.sexpr types)%type.
+      (SE.sexpr * SE.sexpr)%type.
 
-    Definition Lhs (l : lemma types sepConcl) : SE.sexpr types :=
+    Definition Lhs (l : lemma sepConcl) : SE.sexpr :=
       fst (Concl l).
-    Definition Rhs (l : lemma types sepConcl) : SE.sexpr types :=
+    Definition Rhs (l : lemma sepConcl) : SE.sexpr :=
       snd (Concl l).
     
     Definition WellTyped_sepConcl tfuncs tpreds (vars : list tvar) (c : sepConcl) : bool :=
@@ -61,7 +61,7 @@ Module SepLemma (ST : SepTheory.SepTheory) (SE : SepExpr ST) <: SepLemmaType ST 
     Definition sepConclD funcs preds (uvars vars : env types) (c : sepConcl) : Prop :=
       SE.himp funcs preds uvars vars (fst c) (snd c).
 
-    Definition sepLemma : Type := lemma types sepConcl.
+    Definition sepLemma : Type := lemma sepConcl.
 
     Definition WellTyped_sepLemma tfuncs tpreds (l : sepLemma) : bool :=
       WellTyped_lemma (WellTyped_sepConcl tfuncs tpreds) tfuncs l.

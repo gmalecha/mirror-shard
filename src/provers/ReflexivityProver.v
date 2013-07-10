@@ -15,15 +15,15 @@ Section ReflexivityProver.
   
   Definition reflexivityValid (_ _ : env types) (_ : unit) := True.
 
-  Definition reflexivitySummarize (_ : list (expr types)) := tt.
+  Definition reflexivitySummarize (_ : list expr) := tt.
 
-  Definition reflexivityProve (_ : unit) (goal : expr types) := 
+  Definition reflexivityProve (_ : unit) (goal : expr) := 
     match goal with
       | Equal _ x y => if expr_seq_dec x y then true else false
       | _ => false
     end.
 
-  Definition reflexivityLearn (sum : unit) (hyps : list (expr types)) := sum.
+  Definition reflexivityLearn (sum : unit) (hyps : list expr) := sum.
 
   Lemma reflexivitySummarizeCorrect : forall uvars vars hyps,
     AllProvable fs uvars vars hyps ->

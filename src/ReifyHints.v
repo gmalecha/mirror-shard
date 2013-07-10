@@ -160,7 +160,6 @@ Ltac lift_ssignatures_over_repr fs rp :=
 
 Ltac lift_expr_over_repr e rp :=
   match eval hnf in e with
-    | @Expr.Const _ ?t ?v => constr:(fun ts => @Expr.Const (repr rp ts) t v)
     | Expr.Var ?v => constr:(fun ts => @Expr.Var (repr rp ts) v)
     | Expr.UVar ?v => constr:(fun ts => @Expr.UVar (repr rp ts) v)
     | Expr.Func ?f ?args =>

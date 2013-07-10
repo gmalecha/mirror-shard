@@ -23,19 +23,19 @@ Section unfolder.
   Variable preds : SE.predicates types.
   Variable prover : ProverT types.
   Variable facts : Facts prover.
-  Variable hintsFwd : UNF.hintSide types.
-  Variable hintsBwd : UNF.hintSide types.
+  Variable hintsFwd : UNF.hintSide.
+  Variable hintsBwd : UNF.hintSide.
 
   Record unfolderResult : Type :=
   { Alls : list tvar
   ; Exs  : list tvar
-  ; Lhs  : SH.SHeap types
-  ; Rhs  : SH.SHeap types
+  ; Lhs  : SH.SHeap
+  ; Rhs  : SH.SHeap
   ; Know : Facts prover
   }.
 
   Definition unfold (uvars : list tvar)
-    (ql : list tvar) (lhs rhs : SH.SHeap types) : unfolderResult * bool :=
+    (ql : list tvar) (lhs rhs : SH.SHeap) : unfolderResult * bool :=
     let pre :=
       {| UNF.Vars  := ql
        ; UNF.UVars := uvars
@@ -86,7 +86,7 @@ Section unfolder.
   Lemma ApplyUnfold_with_eq' : 
     forall (var_env meta_env : env types),
     Valid prover_Correct meta_env var_env facts ->
-    forall (l r : SH.SHeap types) res,
+    forall (l r : SH.SHeap) res,
     forall (WTR : SH.WellTyped_sheap (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env meta_env) (typeof_env var_env) r = true) b,
     unfold (typeof_env meta_env) (typeof_env var_env) l r = (res, b) ->
     match res with

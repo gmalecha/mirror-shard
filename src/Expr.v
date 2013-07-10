@@ -135,7 +135,7 @@ Section env.
   Unset Elimination Schemes.
 
   Inductive expr : Type :=
-  | Const : forall t : tvar, tvarD t -> expr
+(*  | Const : forall t : tvar, tvarD t -> expr *)
   | Var : var -> expr
   | Func : forall f : func, list expr -> expr
   | Equal : tvar -> expr -> expr -> expr
@@ -150,7 +150,7 @@ Section env.
     Variable P : expr -> Prop.
 
     Hypotheses
-      (Hc : forall (t : tvar) (t0 : tvarD t), P (Const t t0))
+(*      (Hc : forall (t : tvar) (t0 : tvarD t), P (Const t t0)) *)
       (Hv : forall x : var, P (Var x))
       (Hu : forall x : uvar, P (UVar x))
       (Hf : forall (f : func) (l : list expr), Forall P l -> P (Func f l))
@@ -161,7 +161,7 @@ Section env.
     Proof.
       refine (fix recur e : P e :=
         match e as e return P e with
-          | Const t v => @Hc t v 
+(*          | Const t v => @Hc t v  *)
           | Var x => Hv x
           | UVar x => Hu x
           | Func f xs => @Hf f xs ((fix prove ls : Forall P ls :=
@@ -255,6 +255,7 @@ Section env.
 
   Fixpoint exprD (e : expr) (t : tvar) : option (tvarD t) :=
     match e with
+(*
       | Const t' c =>
         match equiv_dec t' t with
           | left pf => 
@@ -263,6 +264,7 @@ Section env.
                  end
           | right _ => None 
         end
+*)
       | Var x => lookupAs var_env t x
       | UVar x => lookupAs meta_env t x 
       | Func f xs =>
@@ -328,7 +330,7 @@ Section env.
 
     Fixpoint typeof (e : expr) : option tvar :=
       match e with
-        | Const t _ => Some t
+(*        | Const t _ => Some t *)
         | Var x => nth_error tvar_env x
         | UVar x => nth_error tmeta_env x
         | Func f _ => match nth_error tfuncs f with
@@ -394,8 +396,9 @@ Section env.
 
     Fixpoint is_well_typed (e : expr) (t : tvar) {struct e} : bool :=
       match e with 
-        | Const t' _ => 
+(*        | Const t' _ => 
           if tvar_seqb t' t then true else false
+*)
         | Var x => match nth_error tvar_env x with
                      | None => false
                      | Some t' => if tvar_seqb t t' then true else false
@@ -428,7 +431,7 @@ Section env.
 
       Fixpoint mentionsU (e : expr) : bool :=
         match e with
-          | Const _ _ 
+(*          | Const _ _  *)
           | Var _ => false
           | UVar n => if EqNat.beq_nat uv n then true else false
           | Func _ args =>
@@ -651,7 +654,7 @@ Section env.
                (erewrite WellTyped_env_nth_error_None' by eauto)
              | [ |- _ ] => unfold lookupAs in *; simpl in *
         end; think; eauto; try congruence.
-    { consider (tvar_seqb t1 t1); auto. }
+(*    { consider (tvar_seqb t1 t1); auto. } *)
     { consider (tvar_seqb (projT1 s) (projT1 s)); intros; auto. }
     { consider (tvar_seqb (projT1 s) (projT1 s)); intros; auto. }
     { eapply Forall2_nth_error_R in WT_funcs; eauto. destruct WT_funcs. intuition.
@@ -770,8 +773,10 @@ Section env.
 
   Fixpoint expr_seq_dec (a b : expr) : bool :=
     match a,b  with 
+(*
       | Const t c , Const t' c' =>      
         const_seqb t t' c c'
+*)
       | Var x , Var y => 
         EqNat.beq_nat x y 
       | UVar x , UVar y => 
@@ -806,7 +811,7 @@ Section env.
                  consider (tvar_seqb X Y); intro
                | [ H : _ , H' : expr_seq_dec _ _ = true |- _ ] => apply H in H'; try subst
              end; simpl in *; subst; try congruence; auto.
-    consider (const_seqb t t1 t0 t2). intro. destruct H. subst. eauto.
+(*    consider (const_seqb t t1 t0 t2). intro. destruct H. subst. eauto. *)
     intro; subst. intros; f_equal. generalize dependent l0. induction H; destruct l0; try congruence.
       consider (expr_seq_dec x e). intros. apply H in H1. subst. apply IHForall in H2. f_equal; auto.
   Qed.    
@@ -826,7 +831,7 @@ Section env.
      **)
     Fixpoint liftExpr (e : expr) : expr :=
       match e with
-        | Const _ _ => e
+(*        | Const _ _ => e *)
         | Var x => 
           Var (if NPeano.ltb x a then x else b + x)
         | UVar x => 
@@ -862,7 +867,7 @@ Section env.
   Fixpoint exprSubstU (a b c : nat) (s : expr (*a (b ++ c ++ d)*)) {struct s}
     : expr (* (c ++ a) (b ++ d) *) :=
     match s with
-      | Const _ t => Const _ t
+(*      | Const _ t => Const _ t *)
       | Var x =>
         if NPeano.ltb x a 
         then Var x
@@ -1157,8 +1162,8 @@ Proof.
 Qed.
 
 Lemma applyD_weaken : forall types (funcs : functions types) l D R F U G UE GE v,
-  applyD (exprD funcs U G) D l R F = Some v ->
-  applyD (exprD funcs (U ++ UE) (G ++ GE)) D l R F = Some v.
+  applyD types (exprD funcs U G) D l R F = Some v ->
+  applyD types (exprD funcs (U ++ UE) (G ++ GE)) D l R F = Some v.
 Proof.
   induction l; destruct D; simpl; intros; try congruence.
   consider (exprD funcs U G a t); intros.
@@ -1220,7 +1225,7 @@ Section exists_subst.
   
   (* Unification variables corresponding to genuine Coq existentials *)
   Fixpoint exists_subst (CU : env types)
-    (U : list (tvar * option (expr types)))
+    (U : list (tvar * option expr))
     : (env types -> Prop) -> Prop :=
     match U , CU with
       | nil , nil => fun cc => cc nil
@@ -1240,7 +1245,7 @@ Section exists_subst.
       | _ , _ => fun _ => False
     end.
 
-Lemma exists_subst_exists : forall (B : list (tvar * option (expr types))) CU P,
+Lemma exists_subst_exists : forall (B : list (tvar * option expr)) CU P,
   exists_subst CU B P ->
   exists C, P C.
 Proof.
@@ -1265,7 +1270,7 @@ Proof.
   eapply IHls in H. omega.
 Qed.
 
-Definition is_well_typed_not_mentionsU_last : forall tfuncs tU tG t (e : expr types) t',
+Definition is_well_typed_not_mentionsU_last : forall tfuncs tU tG t (e : expr) t',
   is_well_typed tfuncs (tU ++ t :: nil) tG e t' = true ->
   mentionsU (length tU) e = false ->
   is_well_typed tfuncs tU tG e t' = true.
@@ -1288,7 +1293,7 @@ Proof.
     rewrite H by eauto. eapply IHForall; eauto. }
 Qed.
 
-Lemma is_well_typed_weaken : forall tf tu tg u' g' (e : expr types) t,
+Lemma is_well_typed_weaken : forall tf tu tg u' g' (e : expr) t,
   is_well_typed tf tu tg e t = true ->
   is_well_typed tf (tu ++ u') (tg ++ g') e t = true.
 Proof.
@@ -1299,7 +1304,7 @@ Proof.
 Qed.
 
 Lemma all2_is_well_typed_weaken : forall tf tU tG es ts,
-  all2 (is_well_typed (types := types) tf tU tG) es ts = true ->
+  all2 (is_well_typed tf tU tG) es ts = true ->
   forall u g,
     all2 (is_well_typed tf (tU ++ u) (tG ++ g)) es ts = true.
 Proof.
@@ -1309,10 +1314,10 @@ Qed.
 End exists_subst.
 
 Lemma applyD_impl_Forall : forall types F F' P Dom args R D v,
-  applyD (types := types) F Dom args R D = Some v ->
+  applyD types F Dom args R D = Some v ->
   Forall P args ->
   (forall x y v, P x -> F x y = Some v -> F' x y = Some v) ->
-  applyD F' Dom args R D = Some v.
+  applyD types F' Dom args R D = Some v.
 Proof.
   induction Dom; destruct args; simpl; intros; think; auto. inversion H0; subst; intros.
   erewrite H1; eauto.
@@ -1320,14 +1325,14 @@ Qed.
 
 Lemma applyD_impl : forall types F F' Dom args R D,
   (forall x y, F x y = F' x y) ->
-  applyD (types := types) F Dom args R D = applyD F' Dom args R D.
+  applyD types F Dom args R D = applyD types F' Dom args R D.
 Proof.
   induction Dom; destruct args; simpl; intros; think; auto.
   destruct (F' e a); auto.
 Qed.
 
 Lemma applyD_map : forall types F F' Dom args R D,
-  applyD (types := types) F Dom (map F' args) R D = applyD (fun x y => F (F' x) y) Dom args R D.
+  applyD types F Dom (map F' args) R D = applyD types (fun x y => F (F' x) y) Dom args R D.
 Proof.
   induction Dom; destruct args; simpl; intros; think; auto.
   destruct (F (F' e) a); auto.
@@ -1339,10 +1344,11 @@ Qed.
 Definition env_ext (T : Type) n (ls : list T) : list T :=
   firstn (length ls - n) ls.
   
+(*
 Arguments Const {types} {t} (_).
 Arguments Var {types} (_).
 Arguments UVar {types} (_).
 Arguments Func {types} (_) (_).
 Arguments Equal {types} (_) (_) (_).
 Arguments Not {types} (_).
-
+*)

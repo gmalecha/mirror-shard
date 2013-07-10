@@ -22,12 +22,11 @@ Module Make (FM : S with Definition E.t := uvar
     Variable types : list type.
 
     Section Normalization.
-      Variable ctx : FM.t (expr types).
+      Variable ctx : FM.t expr.
             
-      Fixpoint normalized (e : expr types) : bool :=
+      Fixpoint normalized (e : expr) : bool :=
         match e with
-          | Var _ 
-          | Const _ _ => true
+          | Var _ => true
           | UVar x => match FM.find x ctx with
                         | None => true
                         | Some _ => false
@@ -39,18 +38,18 @@ Module Make (FM : S with Definition E.t := uvar
         end.
     End Normalization.
 
-    Definition WellFormed (this : FM.t (expr types)) : Prop :=
+    Definition WellFormed (this : FM.t expr) : Prop :=
       forall k v,
         FM.MapsTo k v this -> normalized this v = true.
 
     Definition Subst : Type :=
-    { this : FM.t (expr types) & WellFormed this }.
+    { this : FM.t expr & WellFormed this }.
 
     Definition Subst_WellTyped (funcs : tfunctions) (U G : tenv) (s : Subst) : Prop :=
       forall k v, FM.MapsTo k v (projT1 s) -> 
         exists t, nth_error U k = Some t /\ is_well_typed funcs U G v t = true.
 
-    Definition subst_empty : FM.t (expr types) := FM.empty _. 
+    Definition subst_empty : FM.t expr := FM.empty _. 
 
     Theorem WF_subst_empty : WellFormed subst_empty.
       red; unfold subst_empty; intros. apply FACTS.empty_mapsto_iff in H. exfalso; auto.
@@ -66,10 +65,10 @@ Module Make (FM : S with Definition E.t := uvar
       exfalso. apply FACTS.empty_mapsto_iff in H; auto.
     Qed.
 
-    Definition subst_lookup (k : nat) (s : FM.t (expr types)) : option (expr types) :=
+    Definition subst_lookup (k : nat) (s : FM.t expr) : option expr :=
       FM.find k s.
     
-    Definition Subst_lookup k (s : Subst) : option (expr types) :=
+    Definition Subst_lookup k (s : Subst) : option expr :=
       subst_lookup k (projT1 s).
 
     Definition Subst_size (s : Subst) : nat := FM.cardinal (projT1 s).
@@ -100,11 +99,10 @@ Module Make (FM : S with Definition E.t := uvar
     Qed.
 
     Section Instantiate.
-      Variable sub : FM.t (expr types).
+      Variable sub : FM.t expr.
 
-      Fixpoint subst_exprInstantiate (e : expr types) : expr types :=
+      Fixpoint subst_exprInstantiate (e : expr) : expr :=
         match e with 
-          | Const _ _ 
           | Var _ => e
           | UVar n => match subst_lookup n sub with
                         | None => e 
@@ -181,8 +179,8 @@ Module Make (FM : S with Definition E.t := uvar
       }
     Qed.
 
-    Definition subst_set (k : nat) (v : expr types) (s : FM.t (expr types)) 
-      : option (FM.t (expr types)) :=
+    Definition subst_set (k : nat) (v : expr) (s : FM.t expr) 
+      : option (FM.t expr) :=
       let v' := subst_exprInstantiate s v in
       if mentionsU k v'
       then None
@@ -276,7 +274,7 @@ Module Make (FM : S with Definition E.t := uvar
     Qed.
 
 
-    Definition Subst_set (k : nat) (v : expr types) (s : Subst) : option Subst :=
+    Definition Subst_set (k : nat) (v : expr) (s : Subst) : option Subst :=
       match subst_set k v (projT1 s) as t return subst_set k v (projT1 s) = t -> _ with
         | None => fun _ => None
         | Some s' => fun pf => Some (@existT _ _ s' (@subst_set_wf _ _ _ _ (projT2 s) pf))
@@ -415,8 +413,8 @@ Module Make (FM : S with Definition E.t := uvar
       unfold exprInstantiate. rewrite subst_exprInstantiate_idem; auto. destruct sub; auto.
     Qed.
 
-    Lemma adf : forall (k : nat) (v : expr types) (x : FM.t (expr types)) 
-     (k0 : FM.key) (v0 : expr types),
+    Lemma adf : forall (k : nat) (v : expr) (x : FM.t expr) 
+     (k0 : FM.key) (v0 : expr),
      mentionsU k (subst_exprInstantiate x v) = false ->
      ~ eq k k0 ->
      normalized x v0 = true ->
@@ -530,12 +528,9 @@ Module Make (FM : S with Definition E.t := uvar
     Lemma exprInstantiate_Var : forall a x, 
       exprInstantiate a (Var x) = Var x.
     Proof. reflexivity. Qed.
-    Lemma exprInstantiate_Const : forall a t v, 
-      exprInstantiate a (@Const types t v) = (@Const types t v).
-    Proof. reflexivity. Qed.
 
     Hint Rewrite exprInstantiate_Func exprInstantiate_Equal exprInstantiate_Not 
-      exprInstantiate_UVar exprInstantiate_Var exprInstantiate_Const : subst_simpl.
+      exprInstantiate_UVar exprInstantiate_Var : subst_simpl.
 
     Theorem exprInstantiate_WellTyped : forall funcs U G sub,
       Subst_WellTyped funcs U G sub ->
@@ -752,7 +747,7 @@ Module Make (FM : S with Definition E.t := uvar
 
     Transparent Subst_set.
     
-    Lemma Subst_set_unroll_None: forall (u : nat) (E : expr types) (sub : Subst),
+    Lemma Subst_set_unroll_None: forall (u : nat) (E : expr) (sub : Subst),
       Subst_set u E sub = None ->
       mentionsU u (exprInstantiate sub E) = true.
     Proof.
@@ -778,7 +773,7 @@ Module Make (FM : S with Definition E.t := uvar
     Proof.
       induction x; simpl; intros; auto.
       { unfold subst_lookup.
-        consider (FM.find (elt:=expr types) x (projT1 sub)); try congruence; intros.
+        consider (FM.find (elt:=expr) x (projT1 sub)); try congruence; intros.
         rewrite MFACTS.PROPS.F.add_o. destruct (FM.E.eq_dec k x); unfold FM.E.eq in *; subst.
         generalize (exprInstantiate_Extends H); unfold exprInstantiate.
         intro. rewrite H3.
@@ -798,13 +793,13 @@ Module Make (FM : S with Definition E.t := uvar
       forall t, exprInstantiate y (exprInstantiate x t) = exprInstantiate x t.
     Proof.
       induction t; simpl; intros; think; auto.
-      { consider (FM.find (elt:=expr types) x0 (projT1 x)); intros.
+      { consider (FM.find (elt:=expr) x0 (projT1 x)); intros.
         apply MFACTS.PROPS.F.find_mapsto_iff in H0. 
         eapply (projT2 x) in H0.
         eapply WellFormed_Canonical.
         destruct y; destruct x. eapply normalized_Lt. eassumption. eassumption.
         simpl. unfold subst_lookup.
-        consider (FM.find (elt:=expr types) x0 (projT1 y)); intros.
+        consider (FM.find (elt:=expr) x0 (projT1 y)); intros.
         apply MFACTS.PROPS.F.find_mapsto_iff in H1.
         apply H in H1.
         apply MFACTS.PROPS.F.find_mapsto_iff in H1. congruence. auto. }
@@ -920,8 +915,8 @@ Module Make (FM : S with Definition E.t := uvar
       generalize dependent sub.
       eapply PROPS.map_induction with (m := t); intros.
       { eapply SE_Refl. red. red; intros.
-        consider (FM.find (elt:=expr types) y (projT1 sub'));
-        consider (FM.find (elt:=expr types) y (projT1 sub)); intros; auto.
+        consider (FM.find (elt:=expr) y (projT1 sub'));
+        consider (FM.find (elt:=expr) y (projT1 sub)); intros; auto.
         { f_equal.
           assert (normalized (projT1 sub') e = true).
           cut (forall k, FM.In k (projT1 sub') -> FM.In k (projT1 sub)).

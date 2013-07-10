@@ -12,7 +12,7 @@ Definition ProverCorrect types (fs : functions types) (summary : Type)
     (** Some prover work only needs to be done once per set of hypotheses,
        so we do it once and save the outcome in a summary of this type. *)
   (valid : env types -> env types -> summary -> Prop)
-  (prover : summary -> expr types -> bool) : Prop :=
+  (prover : summary -> expr -> bool) : Prop :=
   forall vars uvars sum,
     valid uvars vars sum ->
     forall goal, 
@@ -22,9 +22,9 @@ Definition ProverCorrect types (fs : functions types) (summary : Type)
 
 Record ProverT (types : list type) : Type :=
 { Facts : Type
-; Summarize : exprs types -> Facts
-; Learn : Facts -> exprs types -> Facts
-; Prove : Facts -> expr types -> bool
+; Summarize : exprs -> Facts
+; Learn : Facts -> exprs -> Facts
+; Prove : Facts -> expr -> bool
 }.
 
 Record ProverT_correct (types : list type) (P : ProverT types) (funcs : functions types) : Type :=
@@ -69,7 +69,6 @@ Ltac t1 := match goal with
 (*             | [ H : _ === _ |- _ ] => rewrite H in * *)
 
              | [ |- context[match ?E with
-                              | Const _ _ => _
                               | Var _ => _
                               | UVar _ => _
                               | Func _ _ => _
@@ -88,7 +87,6 @@ Ltac t1 := match goal with
                             end] ] => destruct E
              | [ H : _ || _ = true |- _ ] => apply orb_true_iff in H; destruct H
              | [ _ : context[match ?E with
-                               | Const _ _ => _
                                | Var _ => _
                                | UVar _ => _
                                | Func _ _ => _

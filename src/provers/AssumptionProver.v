@@ -13,12 +13,12 @@ Section AssumptionProver.
   Variable types : list type.
   Variable fs : functions types.
 
-  Definition assumption_summary : Type := list (expr types).
+  Definition assumption_summary : Type := list expr.
 
-  Definition assumptionSummarize (hyps : list (expr types)) : assumption_summary := hyps.
+  Definition assumptionSummarize (hyps : list expr) : assumption_summary := hyps.
 
   Fixpoint assumptionProve (hyps : assumption_summary)
-    (goal : expr types) : bool :=
+    (goal : expr) : bool :=
     match hyps with
       | nil => false
       | exp :: b => if expr_seq_dec exp goal
@@ -26,7 +26,7 @@ Section AssumptionProver.
         else assumptionProve b goal
     end.
 
-  Definition assumptionLearn (sum : assumption_summary) (hyps : list (expr types)) : assumption_summary :=
+  Definition assumptionLearn (sum : assumption_summary) (hyps : list expr) : assumption_summary :=
     sum ++ hyps.
 
   Definition assumptionValid (uvars vars : env types) (sum : assumption_summary) : Prop :=

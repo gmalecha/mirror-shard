@@ -30,8 +30,8 @@ Module Type Canceller (SUBST : Subst)
      **)
     Parameter sepCancel : forall (bound : nat) (tpreds : SE.tpredicates)
       (facts : Facts (types := types) prover) 
-      (l r : SH.SHeap types) (s : SUBST.Subst types),
-      option (SH.SHeap types * SH.SHeap types * SUBST.Subst types).
+      (l r : SH.SHeap) (s : SUBST.Subst),
+      option (SH.SHeap * SH.SHeap * SUBST.Subst).
 
     Variable PC : ProverT_correct prover funcs.
 

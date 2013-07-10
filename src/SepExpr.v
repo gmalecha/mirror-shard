@@ -8,9 +8,9 @@ Require Import Folds Tactics.
 Set Implicit Arguments.
 Set Strict Implicit.
 
-Definition BadInj types (e : expr types) := False.
+Definition BadInj (e : expr) := False.
 Definition BadPred (f : func) := False.
-Definition BadPredApply types (f : func) (es : list (expr types)) (_ : env types) := False.
+Definition BadPredApply types (f : func) (es : list expr) (_ : env types) := False.
 
 Module Type SepExpr (ST : SepTheory.SepTheory).
 
@@ -28,10 +28,10 @@ Module Type SepExpr (ST : SepTheory.SepTheory).
 
     Inductive sexpr : Type :=
     | Emp : sexpr
-    | Inj : expr types -> sexpr
+    | Inj : expr -> sexpr
     | Star : sexpr -> sexpr -> sexpr
     | Exists : tvar -> sexpr -> sexpr
-    | Func : func -> list (expr types) -> sexpr
+    | Func : func -> list expr -> sexpr
     | Const : ST.hprop -> sexpr
     .
 
@@ -97,7 +97,7 @@ Module Type SepExpr (ST : SepTheory.SepTheory).
             match nth_error preds f with
               | None => ST.inj (BadPred f)
               | Some f' =>
-                match applyD (@exprD types funcs meta_env var_env) (SDomain f') b _ (SDenotation f') with
+                match applyD types (@exprD types funcs meta_env var_env) (SDomain f') b _ (SDenotation f') with
                   | None => ST.inj (BadPredApply f b var_env)
                   | Some p => p
                 end
@@ -123,12 +123,14 @@ Module Type SepExpr (ST : SepTheory.SepTheory).
 
   End env.
 
+(*
   Implicit Arguments Emp [ types ].
   Implicit Arguments Star [ types ].
   Implicit Arguments Exists [ types ].
   Implicit Arguments Func [ types ].
   Implicit Arguments Const [ types ].
   Implicit Arguments Inj [ types ].
+*)
 
 End SepExpr.
 
@@ -194,7 +196,7 @@ Module SepExprFacts (ST : SepTheory) (SE : SepExpr ST).
       WellTyped_funcs tfuncs funcs ->
       (forall p, 
         nth_error preds f = Some p ->
-        Folds.all2 (@is_well_typed types tfuncs tU tG) l (SE.SDomain p) = true ->
+        Folds.all2 (@is_well_typed tfuncs tU tG) l (SE.SDomain p) = true ->
         SE.himp funcs preds U G (SE.Star (SE.Func f l) P) Q) ->
       SE.himp funcs preds U G (SE.Star (SE.Func f l) P) Q.
     Proof.
@@ -212,25 +214,25 @@ Module SepExprFacts (ST : SepTheory) (SE : SepExpr ST).
       erewrite is_well_typed_correct_only by eauto. eapply IHSDomain; eauto. congruence.
     Qed.
 
-    Add Parametric Relation : (@SE.sexpr types) (@SE.himp types funcs preds U G)
+    Add Parametric Relation : (@SE.sexpr) (@SE.himp types funcs preds U G)
       reflexivity proved by  Refl_himp
       transitivity proved by Trans_himp
     as himp_rel.
 
-    Add Parametric Relation : (@SE.sexpr types) (@SE.heq types funcs preds U G)
+    Add Parametric Relation : (@SE.sexpr) (@SE.heq types funcs preds U G)
       reflexivity proved by  Refl_heq
       symmetry proved by Sym_heq
       transitivity proved by Trans_heq
     as heq_rel.
 
-    Global Add Parametric Morphism : (@SE.Star types) with
+    Global Add Parametric Morphism : (@SE.Star) with
       signature (SE.himp funcs preds U G ==> SE.himp funcs preds U G ==> SE.himp funcs preds U G)      
       as star_himp_mor.
     Proof.
       unfold SE.himp; simpl; intros; eapply SEP_FACTS.star_himp_mor; eauto.
     Qed.
 
-    Global Add Parametric Morphism : (@SE.Star types) with
+    Global Add Parametric Morphism : (@SE.Star) with
       signature (SE.heq funcs preds U G ==> SE.heq funcs preds U G ==> SE.heq funcs preds U G)      
       as star_heq_mor.
     Proof.
@@ -477,7 +479,7 @@ Module SepExprFacts (ST : SepTheory) (SE : SepExpr ST).
       rewrite <- liftExpr_ext. destruct (exprD funcs (U ++ U') (G ++ G') e a); eauto.
     Qed.
 
-    Theorem liftSExpr_combine : forall (s : SE.sexpr types) ua ub uc a b c,
+    Theorem liftSExpr_combine : forall (s : SE.sexpr) ua ub uc a b c,
       SE.liftSExpr ua ub a b (SE.liftSExpr ua uc a c s) = 
       SE.liftSExpr ua (uc + ub) a (c + b) s.
     Proof.
@@ -486,7 +488,7 @@ Module SepExprFacts (ST : SepTheory) (SE : SepExpr ST).
       f_equal. clear. induction l; simpl; intros; try rewrite liftExpr_combine; think; auto.
     Qed.
 
-    Theorem liftSExpr_0 : forall (s : SE.sexpr types) ua a,
+    Theorem liftSExpr_0 : forall (s : SE.sexpr) ua a,
       SE.liftSExpr ua 0 a 0 s = s.
     Proof.
       clear; induction s; intros; simpl; think; try reflexivity.
@@ -535,7 +537,7 @@ Module SepExprFacts (ST : SepTheory) (SE : SepExpr ST).
 
   Module ST_EXT := SepTheory.SepTheory_Ext ST.
 
-  Lemma himp_existsEach_ST_EXT_existsEach : forall types funcs preds U (P : SE.sexpr types) vars G,
+  Lemma himp_existsEach_ST_EXT_existsEach : forall types (funcs : functions types) preds U (P : SE.sexpr) vars G,
     ST.heq (SE.sexprD funcs preds U G (SE.existsEach vars P)) 
            (ST_EXT.existsEach vars (fun env => SE.sexprD funcs preds U (rev env ++ G) P)).
   Proof.
@@ -546,8 +548,8 @@ Module SepExprFacts (ST : SepTheory) (SE : SepExpr ST).
     simpl. eapply ST_EXT.heq_existsEach. intros. rewrite app_ass. reflexivity.
   Qed.
 
-  Theorem WellTyped_sexpr_weaken : forall ts tf tp U U' r G G',
-    SE.WellTyped_sexpr (types := ts) tf tp U G r = true ->
+  Theorem WellTyped_sexpr_weaken : forall tf tp U U' r G G',
+    SE.WellTyped_sexpr tf tp U G r = true ->
     SE.WellTyped_sexpr tf tp (U ++ U') (G ++ G') r = true.
   Proof.
     clear. induction r; simpl in *; intros; auto.
@@ -579,10 +581,10 @@ Module Make (ST : SepTheory.SepTheory) <: SepExpr ST.
 
     Inductive sexpr : Type :=
     | Emp : sexpr
-    | Inj : expr types -> sexpr
+    | Inj : expr -> sexpr
     | Star : sexpr -> sexpr -> sexpr
     | Exists : tvar -> sexpr -> sexpr
-    | Func : func -> list (expr types) -> sexpr
+    | Func : func -> list expr -> sexpr
     | Const : ST.hprop -> sexpr
     .
 
@@ -633,7 +635,7 @@ Module Make (ST : SepTheory.SepTheory) <: SepExpr ST.
           match nth_error sfuncs f with
             | None => ST.inj (BadPred f)
             | Some f' =>
-              match applyD (@exprD types funcs meta_env var_env) (SDomain f') b _ (SDenotation f') with
+              match applyD types (@exprD types funcs meta_env var_env) (SDomain f') b _ (SDenotation f') with
                 | None => ST.inj (BadPredApply f b var_env)
                 | Some p => p
               end
