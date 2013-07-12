@@ -14,7 +14,7 @@ clean:
 	$(MAKE) -C examples clean
 
 dist:
-	git archive --format=tgz mirror-shard.tgz
+	git archive --prefix mirror-shard/ HEAD -o mirror-shard.tgz
 
 .dir-locals.el: tools/dir-locals.el Makefile
 	@ sed s,PWD,$(shell pwd -P),g tools/dir-locals.el | sed s,MOD,$(MODULE),g > .dir-locals.el
