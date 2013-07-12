@@ -22,7 +22,7 @@ def gather_deps(files):
         assert len(l) == 1
         (_, d) = l[0].split(':')
         deps = [ get_name(x) for x in d.split(' ')
-                 if x.strip().endswith('.vo') ]
+                 if x.strip().endswith('.vo') and not x.startswith('..') ]
 
         result[name] = deps
 
