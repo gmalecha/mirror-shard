@@ -44,9 +44,9 @@ Record ProverT_correct (types : list type) (P : ProverT) (funcs : functions type
 Record ProverPackage : Type :=
 { ProverTypes : Repr type
 ; ProverFuncs : forall ts, Repr (signature (repr ProverTypes ts))
-; Prover : forall ts, ProverT
+; Prover : ProverT
 ; Prover_correct : forall ts fs, 
-  ProverT_correct (Prover ts) (repr (ProverFuncs ts) fs)
+  ProverT_correct Prover (repr (ProverFuncs ts) fs)
 }.
 
 
