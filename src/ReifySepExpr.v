@@ -207,7 +207,7 @@ Module ReifySepExpr (ST : SepTheory.SepTheory) (Import SEP : SepExpr ST).
         | fun x : ReifyExpr.VarType ?T => @ST.star (@?L x) (@?R x) =>
           reflect L funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs L =>
             reflect R funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs R => 
-              let r := constr:(@Star types L R) in
+              let r := constr:(@Star L R) in
               k uvars funcs sfuncs r))
         | fun x : ?T => @ST.ex ?T' (fun y => @?B x y) =>
           let v := constr:(fun x : ReifyExpr.VarType (T' * T) => 
@@ -215,7 +215,7 @@ Module ReifySepExpr (ST : SepTheory.SepTheory) (Import SEP : SepExpr ST).
           let v := eval simpl in v in
           let nv := reflectType types T' in
           reflect v funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs B =>
-            let r := constr:(@Exists types nv B) in
+            let r := constr:(@Exists nv B) in
             k uvars funcs sfuncs r)
 
         | fun x : ?T => @ST.ex ?T' (@?B x) =>
@@ -224,65 +224,65 @@ Module ReifySepExpr (ST : SepTheory.SepTheory) (Import SEP : SepExpr ST).
           let v := eval simpl in v in
           let nv := reflectType types T' in
           reflect v funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs B =>
-            let r := constr:(@Exists types nv B) in
+            let r := constr:(@Exists nv B) in
             k uvars funcs sfuncs r)
 
         | fun x : ?T => @ST.emp => 
-          let r := constr:(@Emp types) in
+          let r := constr:(@Emp) in
           k uvars funcs sfuncs r
 
         | fun x : ?T => @ST.inj (@?P x) =>
           reify_expr isConst P types funcs uvars vars ltac:(fun uvars funcs P =>
-            let r := constr:(@Inj types P) in
+            let r := constr:(@Inj P) in
             k uvars funcs sfuncs r)
 
         | @ST.emp => 
-          let r := constr:(@Emp types) in
+          let r := constr:(@Emp) in
           k uvars funcs sfuncs r
 
         | @ST.inj ?P =>
           reify_expr isConst P types funcs uvars vars ltac:(fun uvars funcs P =>
-            let r := constr:(@SEP.Inj types P) in
+            let r := constr:(@SEP.Inj P) in
             k uvars funcs sfuncs r)
         | @ST.inj ?PX =>
-          let r := constr:(@Const types PX) in
+          let r := constr:(@Const PX) in
           k uvars funcs sfuncs r
         | @ST.star ?L ?R =>
           reflect L funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs L => 
             reflect R funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs R => 
-              let r := constr:(@SEP.Star types L R) in
+              let r := constr:(@SEP.Star L R) in
               k uvars funcs sfuncs r))
         | @ST.ex ?T (fun x => @?B x) =>
           let v := constr:(fun x : ReifyExpr.VarType (T * unit) => B (@openUp _ T (@fst _ _) x)) in
           let v := eval simpl in v in
           let nv := reflectType types T in
           reflect v funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs B =>
-            let r := constr:(@Exists types nv B) in
+            let r := constr:(@Exists nv B) in
             k uvars funcs sfuncs r)
         | @ST.ex ?T ?B =>
           let v := constr:(fun x : ReifyExpr.VarType (T * unit) => B (@openUp _ T (@fst _ _) x)) in
           let v := eval simpl in v in
           let nv := reflectType types T in
           reflect v funcs sfuncs uvars vars ltac:(fun uvars funcs sfuncs B =>
-            let r := constr:(@Exists types nv B) in
+            let r := constr:(@Exists nv B) in
             k uvars funcs sfuncs r)
         | ?X =>
           let rec bt_args args uvars funcs k :=
             match args with
               | tt => 
-                let v := constr:(@nil (@expr types)) in
+                let v := constr:(@nil expr) in
                 k uvars funcs v
               | (?a,?b) =>
                 reify_expr isConst a types funcs uvars vars ltac:(fun uvars funcs a =>
                   bt_args b uvars funcs ltac:(fun uvars funcs b => 
-                  let v := constr:(@cons (@expr types) a b) in
+                  let v := constr:(@cons expr a b) in
                   k uvars funcs v))
             end
           in
           let cc f Ts As :=
             getSFunction pcType stateType types f sfuncs ltac:(fun sfuncs F =>
             bt_args As uvars funcs ltac:(fun uvars funcs args =>
-            let r := constr:(@Func types F args) in
+            let r := constr:(@Func F args) in
             k uvars funcs sfuncs r))
           in
           refl_app cc X

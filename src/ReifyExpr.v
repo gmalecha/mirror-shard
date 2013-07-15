@@ -390,7 +390,7 @@ Ltac reify_expr isConst e types funcs uvars vars k :=
         let t := type of X in
         let T := reflectType types t in
         get_or_extend_var types uvars T X ltac:(fun uvars v =>
-          let r := constr:(@UVar types v) in
+          let r := constr:(@UVar v) in
           k uvars funcs r)
       | fun _ => ?X => is_evar X ;
         (** TODO : test this **)
@@ -398,12 +398,12 @@ Ltac reify_expr isConst e types funcs uvars vars k :=
         let t := type of X in
         let T := reflectType types t in
         get_or_extend_var types uvars T X ltac:(fun uvars v =>
-          let r := constr:(@UVar types v) in
+          let r := constr:(@UVar v) in
           k uvars funcs r)
       | fun x => (@openUp _ _ _ _) =>
         (** this is a variable **)
         let v := getVar e in
-        let r := constr:(@Var types v) in
+        let r := constr:(@Var v) in
         (k uvars funcs r)
 
       | @eq ?T ?e1 ?e2 =>
@@ -437,19 +437,19 @@ Ltac reify_expr isConst e types funcs uvars vars k :=
         let rec bt_args uvars funcs args k :=
           match args with
             | tt => 
-              let v := constr:(@nil (@expr types)) in
+              let v := constr:(@nil expr) in
               k uvars funcs v
             | (?a, ?b) =>
               reflect a funcs uvars ltac:(fun uvars funcs a =>
                 bt_args uvars funcs b ltac:(fun uvars funcs b =>
-                  let r := constr:(@cons (@expr types) a b) in
+                  let r := constr:(@cons expr a b) in
                   k uvars funcs r))
           end
         in
         let cc f Ts args :=
           getFunction types f funcs args ltac:(fun funcs F =>
             bt_args uvars funcs args ltac:(fun uvars funcs args => 
-              let r := constr:(@Func types F args) in 
+              let r := constr:(@Func F args) in 
               k uvars funcs r))
         in
         match e with
@@ -471,7 +471,7 @@ Ltac reify_expr isConst e types funcs uvars vars k :=
          match T with
            | VarType _ => fail 1
            | _ => getFunction types e funcs tt ltac:(fun funcs F =>
-             let r := constr:(@Func types F nil) in
+             let r := constr:(@Func F nil) in
                k uvars funcs r)
          end
        | _ => reflect e funcs uvars k

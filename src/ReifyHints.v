@@ -59,17 +59,17 @@ Module Make (ST : SepTheory.SepTheory) (SE : SepExpr.SepExpr ST)
       | fun x => @?H x -> @?P x =>
         ReifyExpr.reify_expr isConst H types funcs (@nil tvar) vars ltac:(fun _ funcs H =>
           reify_hint' pcType stateType isConst P types funcs preds vars ltac:(fun funcs preds P =>
-            let lem := eval simpl in (@Lemma.Build_lemma types (@SL.sepConcl types) vars (H :: Lemma.Hyps P) (Lemma.Concl P)) in
+            let lem := eval simpl in (@Lemma.Build_lemma SL.sepConcl vars (H :: Lemma.Hyps P) (Lemma.Concl P)) in
             k funcs preds lem))
       | fun x => @ST.himp (@?L x) (@?R x) =>
         SEP_REIFY.reify_sexpr isConst L types funcs pcType stateType preds (@nil tvar) vars ltac:(fun _uvars funcs preds L =>
           SEP_REIFY.reify_sexpr isConst R types funcs pcType stateType preds (@nil tvar) vars ltac:(fun _uvars funcs preds R =>
-            let lem := constr:(@Lemma.Build_lemma types (@SL.sepConcl types) vars nil (L, R)) in
+            let lem := constr:(@Lemma.Build_lemma SL.sepConcl vars nil (L, R)) in
             k funcs preds lem))
       | fun x => ?Z (@?L x) (@?R x) =>
         SEP_REIFY.reify_sexpr isConst L types funcs pcType stateType preds (@nil tvar) vars ltac:(fun _ funcs preds L =>
           SEP_REIFY.reify_sexpr isConst R types funcs pcType stateType preds (@nil tvar) vars ltac:(fun _ funcs preds R =>
-            let lem := constr:(@Lemma.Build_lemma types (@SL.sepConcl types) vars nil (L, R)) in
+            let lem := constr:(@Lemma.Build_lemma SL.sepConcl vars nil (L, R)) in
             k funcs preds lem))
     end.
 
@@ -91,6 +91,7 @@ Module Make (ST : SepTheory.SepTheory) (SE : SepExpr.SepExpr ST)
       | _ => reify_hint' pcType stateType isConst P types funcs preds vars k
     end.
 
+  (* Main entry point tactic, to generate a hint database *)
   Ltac reify_hints unfoldTac pcType stateType isConst Ps types funcs preds k :=
     match Ps with
       | tt => k funcs preds (@nil (Lemma.lemma types (@SL.sepConcl types))) || fail 2
@@ -128,196 +129,42 @@ Module Make (ST : SepTheory.SepTheory) (SE : SepExpr.SepExpr ST)
             constr:(T :: types)
     end.
 
-  (* Main entry point tactic, to generate a hint database *)
-Ltac lift_signature_over_repr s rp :=
-  let d := eval simpl Domain in (Domain s) in
-  let r := eval simpl Range in (Range s) in
-  let den := eval simpl Denotation in (Denotation s) in
-  constr:(fun ts' => @Sig (Env.repr rp ts') d r den).
-
-Ltac lift_signatures_over_repr fs rp :=
-  match eval hnf in fs with
-    | nil => constr:(fun ts' => @nil (signature (repr rp ts')))
-    | ?f :: ?fs => 
-      let f := lift_signature_over_repr f rp in
-      let fs := lift_signatures_over_repr fs rp in
-      constr:(fun ts' => (f ts') :: (fs ts'))
-  end.
-
-Ltac lift_ssignature_over_repr s rp :=
-  let d := eval simpl SE.SDomain in (SE.SDomain s) in
-  let den := eval simpl SE.SDenotation in (SE.SDenotation s) in
-  constr:(fun ts' => @SE.PSig (repr rp ts') d den).
-
-Ltac lift_ssignatures_over_repr fs rp :=
-  match eval hnf in fs with
-    | nil => constr:(fun ts' => @nil (SE.predicate (repr rp ts')))
-    | ?f :: ?fs => 
-      let f := lift_ssignature_over_repr f rp in
-      let fs := lift_ssignatures_over_repr fs rp in
-      constr:(fun ts' => (f ts') :: (fs ts'))
-  end.
-
-Ltac lift_expr_over_repr e rp :=
-  match eval hnf in e with
-    | Expr.Var ?v => constr:(fun ts => @Expr.Var (repr rp ts) v)
-    | Expr.UVar ?v => constr:(fun ts => @Expr.UVar (repr rp ts) v)
-    | Expr.Func ?f ?args =>
-      let args := lift_exprs_over_repr args rp in
-      constr:(fun ts => @Expr.Func (repr rp ts) f (args ts))
-    | Expr.Equal ?t ?l ?r =>
-      let l := lift_expr_over_repr l rp in
-      let r := lift_expr_over_repr r rp in
-      constr:(fun ts => @Expr.Equal (repr rp ts) t (l ts) (r ts))
-    | Expr.Not ?e1 =>
-      let e1 := lift_expr_over_repr e1 rp in
-      constr:(fun ts => @Expr.Not (repr rp ts) (e1 ts))
-  end
-with lift_exprs_over_repr es rp :=
-  match eval hnf in es with
-    | nil => constr:(fun ts => @nil (expr (repr rp ts)))
-    | ?e :: ?es =>
-      let e := lift_expr_over_repr e rp in
-      let es := lift_exprs_over_repr es rp in
-      constr:(fun ts => e ts :: es ts)
-  end.
-
-Ltac lift_sexpr_over_repr e rp :=
-  match eval hnf in e with
-    | @SE.Emp _ => constr:(fun ts => @SE.Emp (repr rp ts))
-    | @SE.Inj _ ?e => 
-      let e := lift_expr_over_repr e rp in
-      constr:(fun ts => @SE.Inj (repr rp ts) (e ts))
-    | @SE.Star _ ?l ?r =>
-      let l := lift_sexpr_over_repr l rp in
-      let r := lift_sexpr_over_repr r rp in
-      constr:(fun ts => @SE.Star (repr rp ts) (l ts) (r ts))
-    | @SE.Exists _ ?t ?e =>
-      let e := lift_sexpr_over_repr e rp in
-      constr:(fun ts => @SE.Exists (repr rp ts) t (e ts))
-    | @SE.Func _ ?f ?args => 
-      let args := lift_exprs_over_repr args rp in
-      constr:(fun ts => @SE.Func (repr rp ts) f (args ts))
-    | @SE.Const _ ?b => constr:(fun ts => @SE.Const (repr rp ts) b)
-  end.
-
-Ltac lift_lemma_over_repr lm rp :=
-  match eval hnf in lm with
-    | @Lemma.Build_lemma _ (SL.sepConcl _) ?f ?h (?l,?r) =>
-      let h := lift_exprs_over_repr h rp in
-      let l := lift_sexpr_over_repr l rp in
-      let r := lift_sexpr_over_repr r rp in
-      constr:(fun ts => 
-        @Lemma.Build_lemma (repr rp ts) (SL.sepConcl (repr rp ts)) f (h ts) (l ts, r ts))
-  end.
-
-Ltac lift_lemmas_over_repr lms rp :=
-  match lms with
-    | nil => constr:(fun ts => let ts' := repr rp ts in @nil (Lemma.lemma ts' (SL.sepConcl ts')))
-    | ?lml ++ ?lmr =>
-      let lml := lift_lemmas_over_repr lml rp in
-      let lmr := lift_lemmas_over_repr lmr rp in
-      constr:(fun ts => lml ts ++ lmr ts)
-    | ?lm :: ?lms =>
-      let lm := lift_lemma_over_repr lm rp in
-      let lms := lift_lemmas_over_repr lms rp in
-      constr:(fun ts => lm ts :: lms ts)
-  end.
-
-(*
-Require TypedPackage.
-Module Packaged (CE : TypedPackage.CoreEnv).
-
-(*
-  (** Package hints together with their environment/parameters. *)
-  Record hints := {
-    Types : Repr type;
-    Functions : forall ts, Repr (signature (repr Types ts));
-    PcType : tvar;
-    StateType : tvar;
-    Predicates : forall ts, Repr (SE.predicate (Env.repr Types ts) PcType StateType);
-    Hints : forall ts, hintsPayload (repr Types ts) PcType StateType;
-    HintsOk : forall ts fs ps, hintsSoundness (repr (Functions ts) fs) (repr (Predicates ts) ps) (Hints ts)
-  }.
-*)
+  Ltac lift_signature_over_repr s rp :=
+    let d := eval simpl Domain in (Domain s) in
+    let r := eval simpl Range in (Range s) in
+    let den := eval simpl Denotation in (Denotation s) in
+    constr:(fun ts' => @Sig (Env.repr rp ts') d r den).
   
-  Module PACK := TypedPackage.Make SE CE.
+  Ltac lift_signatures_over_repr fs rp :=
+    match eval hnf in fs with
+      | nil => constr:(fun ts' => @nil (signature (repr rp ts')))
+      | ?f :: ?fs => 
+        let f := lift_signature_over_repr f rp in
+        let fs := lift_signatures_over_repr fs rp in
+        constr:(fun ts' => (f ts') :: (fs ts'))
+    end.
   
-  Ltac prepareHints unfoldTac pcType stateType isConst env fwd bwd ret :=
-    let types := 
-      match type of env with
-        | PACK.TypeEnv => 
-          let ts := eval cbv beta iota zeta delta [ env PACK.applyTypes PACK.Types ] in (PACK.applyTypes env nil) in
-          eval simpl in ts
-        | PACK.TypeEnv => 
-          let ts := eval cbv beta iota zeta delta [ PACK.applyTypes PACK.Types ] in (PACK.applyTypes env nil) in
-          eval simpl in ts
-      end
-    in
-    collectTypes_hints unfoldTac isConst fwd (@nil Type) ltac:(fun rt =>
-      collectTypes_hints unfoldTac isConst bwd rt ltac:(fun rt =>
-        let rt := constr:((pcType : Type) :: (stateType : Type) :: rt) in
-        let types := ReifyExpr.extend_all_types rt types in
-        let pcT := ReifyExpr.reflectType types pcType in
-        let stateT := ReifyExpr.reflectType types stateType in
-        let funcs := eval simpl in (PACK.applyFuncs_red env types nil) in
-        let preds := eval simpl in (PACK.applyPreds_red env types nil) in
-        (reify_hints unfoldTac pcT stateT isConst fwd types funcs preds ltac:(fun funcs preds fwd' =>
-          reify_hints unfoldTac pcT stateT isConst bwd types funcs preds ltac:(fun funcs preds bwd' =>
-            let types_r := eval cbv beta iota zeta delta [ listToRepr ] in (listToRepr types EmptySet_type) in
-            let types_rV := fresh "types" in
-            (pose (types_rV := types_r) || fail 1000);
-            let funcs_r := lift_signatures_over_repr funcs types_rV in 
-            let funcs_r := eval cbv beta iota zeta delta [ listToRepr ] in (fun ts => listToRepr (funcs_r ts) (Default_signature (repr types_rV ts))) in
-            let funcs_rV := fresh "funcs" in
-            pose (funcs_rV := funcs_r) ;
-            let preds_r := lift_ssignatures_over_repr preds types_rV in
-            let preds_rV := fresh "preds" in
-            let preds_r := eval cbv beta iota zeta delta [ listToRepr ] in (fun ts => listToRepr (preds_r ts) (SE.Default_predicate (repr types_rV ts) pcT stateT)) in
-            pose (preds_rV := preds_r) ;
-            let fwd' := lift_lemmas_over_repr fwd' types_rV in
-            let bwd' := lift_lemmas_over_repr bwd' types_rV in
-            let pf := fresh "fwd_pf" in
-            assert (pf : forall ts fs ps, hintsSoundness (repr (funcs_rV ts) fs) (repr (preds_rV ts) ps) ({| Forward := fwd' ts ; Backward := bwd' ts |})) by 
-              (abstract (constructor; [ prove fwd | prove bwd ])) ;
-            let res := constr:(
-              {| Types      := types_rV
-               ; PcType     := pcT
-               ; StateType  := stateT
-               ; Functions  := funcs_rV
-               ; Predicates := preds_rV
-               ; Hints      := fun ts => {| Forward := fwd' ts ; Backward := bwd' ts |}
-               ; HintsOk    := pf
-               |}) in ret res))))).
-
-  (* Main entry point to simplify a goal *)
-(*
-  Ltac unfolder isConst hs bound :=
-    intros;
-      let types := eval simpl in (repr (Types hs) nil) in
-      match goal with
-        | [ |- ST.himp _ ?P ?Q ] =>
-          SEP_REIFY.collectTypes_sexpr isConst P (@nil Type) ltac:(fun rt =>
-          SEP_REIFY.collectTypes_sexpr isConst Q rt ltac:(fun rt =>
-            let types := extend_all_types rt types in
-            let funcs := eval simpl in (repr (Functions hs types) nil) in
-            let preds := eval simpl in (repr (Predicates hs types) nil) in
-            let pc := eval simpl in (PcType hs) in
-            let state := eval simpl in (StateType hs) in
-            SEP_REIFY.reify_sexpr isConst P types funcs pc state preds (@nil type) (@nil type) ltac:(fun uvars funcs preds P =>
-            SEP_REIFY.reify_sexpr isConst Q types funcs pc state preds (@nil type) (@nil type) ltac:(fun uvars funcs preds Q =>
-            let proverC := constr:(@Provers.reflexivityProver_correct types funcs) in
-            apply (@unfolderOk types funcs pc state preds (Hints hs types) _ (HintsOk hs types funcs preds) proverC bound P Q)))))
-      end.
-*)
+  Ltac lift_ssignature_over_repr s rp :=
+    let d := eval simpl SE.SDomain in (SE.SDomain s) in
+    let den := eval simpl SE.SDenotation in (SE.SDenotation s) in
+    constr:(fun ts' => @SE.PSig (repr rp ts') d den).
+  
+  Ltac lift_ssignatures_over_repr fs rp :=
+    match eval hnf in fs with
+      | nil => constr:(fun ts' => @nil (SE.predicate (repr rp ts')))
+      | ?f :: ?fs => 
+        let f := lift_ssignature_over_repr f rp in
+        let fs := lift_ssignatures_over_repr fs rp in
+        constr:(fun ts' => (f ts') :: (fs ts'))
+    end.
 
 (*
   Module TESTS.
     Section Tests.
     Variables pc state : Type.
 
-    Variable f : nat -> ST.hprop pc state nil.
-    Variable h : bool -> unit -> ST.hprop pc state nil.
+    Variable f : nat -> ST.hprop.
+    Variable h : bool -> unit -> ST.hprop.
     Variable g : bool -> nat -> nat -> nat.
 
     Ltac isConst e :=
@@ -329,28 +176,25 @@ Module Packaged (CE : TypedPackage.CoreEnv).
         | _ => false
       end.
 
+    Theorem cmp_false T : forall (x y : T), (fun x y => false) x y = true -> x = y.
+    Proof. inversion 1. Qed.
+
     Definition nat_type := {|
       Impl := nat;
-      Eq := fun x y => match equiv_dec x y with
-                         | left pf => Some pf
-                         | _ => None 
-                       end
+      Eqb := fun x y => false ;
+      Eqb_correct := cmp_false _
       |}.
 
     Definition bool_type := {|
       Impl := bool;
-      Eq := fun x y => match equiv_dec x y with
-                         | left pf => Some pf
-                         | _ => None 
-                       end
+      Eqb := fun x y => false ;
+      Eqb_correct := cmp_false _
       |}.
 
     Definition unit_type := {|
       Impl := unit;
-      Eq := fun x y => match equiv_dec x y with
-                         | left pf => Some pf
-                         | _ => None 
-                       end
+      Eqb := fun x y => false ;
+      Eqb_correct := cmp_false _
       |}.
 
     Definition types0 := nat_type :: bool_type :: unit_type :: nil.
@@ -396,8 +240,6 @@ Module Packaged (CE : TypedPackage.CoreEnv).
     Defined.
     End Tests.
   End TESTS.
-*)
-End Packaged.
 *)
 
 End Make.

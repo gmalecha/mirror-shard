@@ -65,11 +65,11 @@ Module Type Package (ST : SepTheory.SepTheory) (SEP : SepExpr ST).
 End Package.
 
 Module Type AlgoTypes (ST : SepTheory.SepTheory) (SEP : SepExpr ST) (CE : CoreEnv).
-  Parameter AlgoImpl  : list type -> Type.
+  Parameter AlgoImpl  : Type.
   Parameter AlgoProof : forall ts : list type, 
     functions (repr CE.core ts) -> 
     SEP.predicates (repr CE.core ts) ->
-    AlgoImpl ts -> Type.
+    AlgoImpl -> Type.
 End AlgoTypes.
 
 Module Make (ST : SepTheory.SepTheory) (SEP : SepExpr ST) (CE' : CoreEnv) 
@@ -116,9 +116,9 @@ Module AlgoPack (ST : SepTheory.SepTheory) (SEP : SepExpr ST) (P : Package ST SE
 
   Record TypedPackage : Type :=
   { Env   : P.TypeEnv 
-  ; Algos : forall ts, A.AlgoImpl ts
+  ; Algos : A.AlgoImpl
   ; Algos_correct : forall ts (fs : functions (P.applyTypes Env ts)) ps, 
-    @A.AlgoProof (repr (P.Types Env) ts) (P.applyFuncs Env ts fs) (P.applyPreds Env ts ps) (Algos _)
+    @A.AlgoProof (repr (P.Types Env) ts) (P.applyFuncs Env ts fs) (P.applyPreds Env ts ps) Algos
   }.
 
   (** given to [TypedPackage]s, combines them and passes the combined [TypedPackage]
