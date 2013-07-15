@@ -179,6 +179,49 @@ Module MultiSepMemFacts (SM : SeparationMemory).
         { intro. eapply H. left; reflexivity. left. auto. } } }
   Qed.
 
+  Lemma smem_get_set_valid_multi1 : forall T (N : nat) k b s addrs val k',
+                                        @multi_read_addrs T SM.smem SM.M.addr SM.M.value SM.smem_get b N addrs k <> None ->
+                                        forall p, SM.smem_set p val b = Some s ->
+                                        @multi_read_addrs T SM.smem SM.M.addr SM.M.value SM.smem_get s N addrs k' <> None.
+  Proof.
+    induction N; simpl; intros; try congruence.
+    repeat match goal with
+             | _ : context [ match ?X with _ => _ end ] |- _ =>
+               (consider X; auto; try congruence); [ intros ]
+             | |- context [ match ?X with _ => _ end ] =>
+               consider X; intros
+           end.
+    { eapply IHN. 2: eauto. eapply H1. }
+    { exfalso.
+      destruct (SM.M.addr_dec p (fst addrs)); subst.
+      { eapply SM.smem_set_get_eq in H0.
+        match type of H2 with 
+          | ?X = _ => match type of H0 with
+                        | ?Y = _ => change X with Y in * 
+                      end
+        end. congruence. }
+      { erewrite <- SM.smem_set_get_neq in H. 3: eassumption. 2: eassumption. congruence. } }
+  Qed.
+
+  Theorem smem_get_set_valid_multi' : forall T (N : nat) k b addrs vals,
+                                        @multi_read_addrs T SM.smem SM.M.addr SM.M.value SM.smem_get b N addrs k <> None ->
+                                        @multi_write_addrs SM.smem SM.M.addr SM.M.value SM.smem_set N addrs vals b <> None.
+  Proof.
+    induction N; simpl; intros; try congruence.
+    match goal with
+      | _ : match ?X with _ => _ end <> _ |- _ =>
+        consider X; intros; try congruence;
+        assert (X <> None) by congruence
+    end.
+    eapply SM.smem_get_set_valid with (v := fst vals) in H1.
+    match goal with
+      | |- match ?X with _ => _ end <> _ =>
+        consider X
+    end; auto; intros.
+    eapply IHN. instantiate (1 := fun vs : vector SM.M.value N => k (v, vs)).
+    eapply smem_get_set_valid_multi1; eauto.
+  Qed.
+
   Lemma split_smem_read_multi' : forall T (N : nat) k a b c addrs v,
     SM.split a b c ->
       @multi_read_addrs T SM.smem SM.M.addr SM.M.value SM.smem_get b N addrs k = Some v ->
