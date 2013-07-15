@@ -300,6 +300,15 @@ Module MultiSepMemFacts (SM : SeparationMemory).
     Proof.
       intros. eapply split_smem_write_multi'; eauto.
     Qed.
+
+    Theorem smem_set_get_valid_multi : forall p v m,
+      @multi_read T SM.smem _ _ N footprint implode SM.smem_get p m <> None ->
+      @multi_write T SM.smem SM.M.addr SM.M.value N footprint explode SM.smem_set p v m <> None.
+    Proof.
+      unfold multi_read, multi_write.
+      intros; eapply smem_get_set_valid_multi'; eauto.
+    Qed.
+
   End exposed.
 
 End MultiSepMemFacts.
