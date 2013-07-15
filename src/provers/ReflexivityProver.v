@@ -44,7 +44,7 @@ Section ReflexivityProver.
     unfold reflexivityProve; t.
   Qed.
 
-  Definition reflexivityProver : ProverT types :=
+  Definition reflexivityProver : ProverT :=
   {| Facts := unit
    ; Summarize := fun _ => tt
    ; Learn := fun x _ => x

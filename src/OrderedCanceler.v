@@ -264,7 +264,7 @@ Module Make (SUBST : Subst)
     Variable preds : SE.predicates types.
 
     (** The actual tactic code **)
-    Variable Prover : ProverT types.
+    Variable Prover : ProverT.
     Variable Prover_correct : ProverT_correct Prover funcs.
 
     Definition unifyArgs (bound : nat) (summ : Facts Prover) (l r : list expr) (ts : list tvar) (sub : SUBST.Subst)

@@ -24,12 +24,12 @@ Module Type Canceller (SUBST : Subst)
     Variable types : list type.
     Variable funcs : functions types.
     Variable preds : SE.predicates types.
-    Variable prover : ProverT types.
+    Variable prover : ProverT.
 
     (** NOTE: return None if we don't make progress
      **)
     Parameter sepCancel : forall (bound : nat) (tpreds : SE.tpredicates)
-      (facts : Facts (types := types) prover) 
+      (facts : Facts prover) 
       (l r : SH.SHeap) (s : SUBST.Subst),
       option (SH.SHeap * SH.SHeap * SUBST.Subst).
 

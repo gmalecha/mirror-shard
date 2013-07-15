@@ -9,7 +9,7 @@ Set Strict Implicit.
 Section prover.
   Variable ts : list type.
   Variable fs : functions ts.
-  Variable prover : ProverT ts.
+  Variable prover : ProverT.
 
   Fixpoint provePures (facts : Facts prover) (ls : exprs) : exprs :=
     match ls with

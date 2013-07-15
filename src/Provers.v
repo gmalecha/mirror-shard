@@ -7,11 +7,10 @@ Set Implicit Arguments.
 Set Strict Implicit.
 
 Section typed.
-  Variable ts : list type.
-  
-  Definition trivialProver : ProverT ts :=
-    composite_ProverT (@reflexivityProver ts) (assumptionProver ts).
+  Definition trivialProver : ProverT :=
+    composite_ProverT reflexivityProver assumptionProver.
 
+  Variable ts : list type.
   Variable fs : functions ts.
 
   Definition trivialProver_correct : ProverT_correct trivialProver fs.

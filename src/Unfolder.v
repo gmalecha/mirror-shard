@@ -17,7 +17,7 @@ Module Type Unfolder (ST : SepTheory.SepTheory)
   
   Section parametric.
     Variable types : list type.
-    Variable prover : ProverT types.
+    Variable prover : ProverT.
 
     (* As we iterate through unfolding, we modify this sort of state. *)
     Record unfoldingState :=
@@ -259,7 +259,7 @@ Module Make (ST : SepTheory.SepTheory)
     Section unfoldOne.
       Variable unify_bound : nat.
       
-      Variable prover : ProverT types.
+      Variable prover : ProverT.
       (* This prover must discharge all pure obligations of an unfolding lemma, if it is to be applied. *)
       Variable facts : Facts prover.
 
@@ -398,7 +398,7 @@ Module Make (ST : SepTheory.SepTheory)
     Section unfolder.
       Definition unify_bound := 5.
       Variable hs : hintSide.
-      Variable prover : ProverT types.
+      Variable prover : ProverT.
 
       (* Perform up to [bound] simplifications, based on [hs]. *)
       Fixpoint forward (bound : nat) (facts : Facts prover) (s : unfoldingState) : unfoldingState * nat :=
@@ -1602,7 +1602,7 @@ Module Make (ST : SepTheory.SepTheory)
 
   Section interface.
     Variable types : list type.
-    Variable prover : ProverT types.
+    Variable prover : ProverT.
 
     Definition refineForward (hs : hintSide) (bound : nat) (facts : Facts prover)
       (us : unfoldingState) : (unfoldingState) * bool :=

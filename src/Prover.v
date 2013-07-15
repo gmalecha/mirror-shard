@@ -20,14 +20,14 @@ Definition ProverCorrect types (fs : functions types) (summary : Type)
       ValidProp fs uvars vars goal ->
       Provable fs uvars vars goal.
 
-Record ProverT (types : list type) : Type :=
+Record ProverT : Type :=
 { Facts : Type
 ; Summarize : exprs -> Facts
 ; Learn : Facts -> exprs -> Facts
 ; Prove : Facts -> expr -> bool
 }.
 
-Record ProverT_correct (types : list type) (P : ProverT types) (funcs : functions types) : Type :=
+Record ProverT_correct (types : list type) (P : ProverT) (funcs : functions types) : Type :=
 { Valid : env types -> env types -> Facts P -> Prop
 ; Valid_weaken : forall u g f ue ge,
   Valid u g f -> Valid (u ++ ue) (g ++ ge) f
@@ -44,7 +44,7 @@ Record ProverT_correct (types : list type) (P : ProverT types) (funcs : function
 Record ProverPackage : Type :=
 { ProverTypes : Repr type
 ; ProverFuncs : forall ts, Repr (signature (repr ProverTypes ts))
-; Prover : forall ts, ProverT (repr ProverTypes ts)
+; Prover : forall ts, ProverT
 ; Prover_correct : forall ts fs, 
   ProverT_correct (Prover ts) (repr (ProverFuncs ts) fs)
 }.
@@ -125,10 +125,9 @@ Ltac t := repeat t1; eauto.
 
 (** Composite Prover **)
 Section composite.
-  Variable types : list type.
-  Variables pl pr : ProverT types.
+  Variables pl pr : ProverT.
 
-  Definition composite_ProverT : ProverT types :=
+  Definition composite_ProverT : ProverT :=
   {| Facts := Facts pl * Facts pr
    ; Summarize := fun hyps =>
      (Summarize pl hyps, Summarize pr hyps)
@@ -140,6 +139,7 @@ Section composite.
      (Prove pl fl goal) || (Prove pr fr goal)
    |}.
 
+  Variable types : list type.
   Variable funcs : functions types.
   Variable pl_correct : ProverT_correct pl funcs.
   Variable pr_correct : ProverT_correct pr funcs.

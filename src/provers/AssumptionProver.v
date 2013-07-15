@@ -58,7 +58,7 @@ Section AssumptionProver.
     t; induction sum; t.
   Qed.
 
-  Definition assumptionProver : ProverT types :=
+  Definition assumptionProver : ProverT :=
   {| Facts := assumption_summary
    ; Summarize := assumptionSummarize
    ; Learn := assumptionLearn

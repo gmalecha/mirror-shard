@@ -51,7 +51,7 @@ Module Make (ST : SepTheory.SepTheory)
     Variable tfuncs : tfunctions.
     Variable tpreds : SE.tpredicates.
     Variables hintsFwd hintsBwd : UNF.hintSide.
-    Variable prover : ProverT types.
+    Variable prover : ProverT.
 
     Record CancellerResult : Type :=
     { AllExt : variables

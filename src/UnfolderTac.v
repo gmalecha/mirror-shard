@@ -21,7 +21,7 @@ Section unfolder.
   Variable types : list type.
   Variable funcs : functions types.
   Variable preds : SE.predicates types.
-  Variable prover : ProverT types.
+  Variable prover : ProverT.
   Variable facts : Facts prover.
   Variable hintsFwd : UNF.hintSide.
   Variable hintsBwd : UNF.hintSide.
