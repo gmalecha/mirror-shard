@@ -38,10 +38,14 @@ install: coq
 	$(MAKE) -f Makefile.coq install
 
 Makefile.coq: Makefile $(VS)
-	coq_makefile $(ARGS) $(VS) -o Makefile.coq
+	coq_makefile $(ARGS) $(VS) \
+	| sed -re 's/-R ([^ ]+) ExtLib/-I \1 -as ExtLib/g' \
+	> Makefile.coq
 
 Makefile.test.coq: Makefile $(TVS)
-	coq_makefile $(ARGS) $(TVS) -o Makefile.test.coq
+	coq_makefile $(ARGS) $(TVS) \
+	| sed -re 's/-R ([^ ]+) ExtLib/-I \1 -as ExtLib/g' \
+	> Makefile.test.coq
 
 test: coq Makefile.test.coq
 	$(MAKE) -f Makefile.test.coq
