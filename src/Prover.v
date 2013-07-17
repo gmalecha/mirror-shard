@@ -60,9 +60,6 @@ Ltac t1 := match goal with
              | _ => progress (hnf in *; simpl in *; intuition; subst)
              | [ x := _ : _ |- _ ] => subst x || (progress (unfold x in * ))
              | [ H : ex _ |- _ ] => destruct H
-             | [ H : context[nth_error (updateAt ?new ?ls ?n) ?n] |- _ ] =>
-               rewrite (nth_error_updateAt new ls n) in H
-                 || rewrite nth_error_updateAt in H
              | [ s : signature _ |- _ ] => destruct s
              | [ H : Some _ = Some _ |- _ ] => injection H; clear H
              | [ H : _ = Some _ |- _ ] => rewrite H in *
@@ -85,7 +82,7 @@ Ltac t1 := match goal with
                               | nil => _
                               | _ :: _ => _
                             end] ] => destruct E
-             | [ H : _ || _ = true |- _ ] => apply orb_true_iff in H; destruct H
+             | [ H : orb _ _ = true |- _ ] => apply Bool.orb_true_iff in H; destruct H
              | [ _ : context[match ?E with
                                | Var _ => _
                                | UVar _ => _
@@ -136,7 +133,7 @@ Section composite.
      (Learn pl fl hyps, Learn pr fr hyps)
    ; Prove := fun facts goal =>
      let (fl,fr) := facts in
-     (Prove pl fl goal) || (Prove pr fr goal)
+     orb (Prove pl fl goal) (Prove pr fr goal)
    |}.
 
   Variable types : list type.
@@ -152,7 +149,7 @@ Section composite.
           Valid pl_correct uvars vars fl /\ Valid pr_correct uvars vars fr
       |}); destruct pl_correct; destruct pr_correct; simpl; try destruct facts; intuition eauto.
     unfold ProverCorrect. destruct sum; intuition.
-    apply orb_true_iff in H.
+    apply Bool.orb_true_iff in H.
     destruct H; eauto.
   Qed.
 End composite.

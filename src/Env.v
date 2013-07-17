@@ -26,117 +26,6 @@ Ltac loop := repeat (repeat (hypRewriter; autorewrite with provers in *); simpl 
 
 Ltac provers := intuition; loop; unlet; loop; try congruence; firstorder.
 
-(* null hint to initialize db *)
-Hint Rewrite app_nil_l : provers.
-
-Section UpdateAt.
-  Variable A : Type.
-  
-  Variable new default : A.
-
-  Fixpoint updateAt (ls : list A) (n : nat) : list A :=
-    match n with
-      | 0 => new :: tail ls
-      | S n => match head ls with
-                 | None => default
-                 | Some v => v 
-               end :: updateAt (tail ls) n
-    end.
-
-  Definition defaulted (ls : list A) (n : nat) (n' : nat) : option A :=
-    match Compare_dec.lt_eq_lt_dec n n' with
-      | inleft (left _) => nth_error ls n'
-      | inleft (right _) => Some new
-      | inright _ => match nth_error ls n' with
-                       | None => Some default
-                       | Some v => Some v 
-                     end
-    end.
-
-
-  Lemma nth_error_updateAt : forall n l,
-    nth_error (updateAt l n) n = value new.
-    induction n; destruct l; simpl; (reflexivity || apply IHn).
-  Defined.
-  
-  Lemma nth_error_updateAt_not : forall old n' ls n,
-    n <> n' ->
-    nth_error ls n = Some old ->
-    nth_error (updateAt ls n') n = Some old.
-  Proof.
-    induction n'; destruct ls; destruct n; simpl; intros; try solve [ discriminate | exfalso; auto | auto ].
-  Qed.
-
-  Lemma nth_error_updateAt_gt : forall n n' ls,
-    n < n' ->
-    nth_error (updateAt ls n) n' = nth_error ls n'.
-  Proof.
-    induction n; simpl; intros.
-      destruct n'; destruct ls; simpl; intros; try solve [ auto | exfalso; omega | destruct n'; reflexivity ].
-
-      destruct n'. exfalso; omega.
-        destruct ls; simpl. rewrite IHn. destruct n'; auto. omega.
-        apply IHn. omega.
-  Defined.
-
-  Lemma nth_error_updateAt_lt : forall n' n ls,
-    n' < n ->
-    nth_error (updateAt ls n) n' = 
-      match nth_error ls n' with
-        | None => Some default
-        | Some v => Some v
-      end.
-  Proof.
-    induction n'; simpl; intros.
-      destruct n; [ exfalso; omega | ]. destruct ls; auto.
-      destruct n; [ exfalso; omega | ]. destruct ls; simpl; rewrite IHn' by omega. destruct n'; auto.
-      auto.
-  Defined. 
-
-  Theorem nth_error_updateAt_eq : forall n ls n',
-    nth_error (updateAt ls n) n' = defaulted ls n n'.
-  Proof.
-    unfold defaulted; intros.
-      destruct (lt_eq_lt_dec n n'). destruct s.
-      eapply nth_error_updateAt_gt; auto.
-      subst; eapply nth_error_updateAt; auto.
-      eapply nth_error_updateAt_lt; auto.
-  Defined.
-
-  (** **)
-  Fixpoint cast (P : option A -> Type) ls idx
-    : P (nth_error (updateAt ls idx) idx) -> P (Some new) :=
-    match idx with
-      | O => match ls
-             return P (nth_error (updateAt ls O) O) -> _ with
-               | nil => fun x => x
-               | _ => fun x => x
-             end
-      | S idx => 
-        match ls return P (nth_error (updateAt ls (S idx)) (S idx)) -> _ with
-          | nil => cast P nil idx
-          | _ => cast P _ idx
-        end
-    end.
-
-  Theorem cast_inj : forall P idx ls x y, cast P ls idx x = cast P ls idx y -> x = y.
-  Proof.
-    induction idx; destruct ls; simpl; intros; auto.
-  Qed.
-
-End UpdateAt.
-
-Section UpdatePosition2.
-  Variable A : Type.
-
-  Hint Rewrite nth_error_updateAt : provers.
-  Lemma nth_error_updateAt_2 : forall A (ls : list A) d d' a b m n, 
-    m <> n ->
-    nth_error (updateAt a d (updateAt b d' ls n) m) n = value b.
-    induction ls; induction m; induction n; provers.
-  Qed.
-End UpdatePosition2.
-
 (** This is representation 
  ** 1) avoids nats (including comparison)
  ** 2) is canonical
@@ -212,6 +101,30 @@ Section Repr2.
       destruct b; auto. rewrite IHfootprint0; auto. simpl.
       rewrite IHfootprint0. auto.
     Qed.
+
+    Section updateAt.
+      Variable new : T.
+
+      Fixpoint updateAt (ls : list (option T)) (n : nat) : list (option T) :=
+        match n with
+          | 0 => Some new :: tail ls
+          | S n => match head ls with
+                     | None => None
+                     | Some v => v 
+                   end :: updateAt (tail ls) n
+        end.
+    End updateAt.
+
+    Fixpoint assocToList (ls : list (nat * T)) (acc : list (option T)) {struct ls} : list (option T) :=
+      match ls with
+        | nil => acc
+        | (n,v) :: ls => assocToList ls (updateAt v acc n)
+      end.
+
+    Definition assocToRepr (ls : list (nat * T)) (d : T) : Repr :=
+      {| footprint := assocToList ls nil
+       ; default := d
+       |}.
 
   End parametric.
 End Repr2.
