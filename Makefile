@@ -19,13 +19,17 @@ dist:
 .dir-locals.el: tools/dir-locals.el Makefile
 	@ sed s,PWD,$(shell pwd -P),g tools/dir-locals.el | sed s,MOD,$(MODULE),g > .dir-locals.el
 
-install: 
+install:
 	$(MAKE) -C src install
+
+init:
+	@ ./tools/setup.sh
+	@ (cd coq-ext-lib; $(MAKE))
 
 time:
 	@ rm -rf timing
 	@ ./tools/timer.py timing/ src/*.v examples/*.v src/*/*.v
 	@ cp Makefile timing/Makefile
-	@ cp -r src/Makefile src/Makefile.coq src/reification/ timing/src 
+	@ cp -r src/Makefile src/Makefile.coq src/reification/ timing/src
 	@ cp examples/Makefile examples/Makefile.coq timing/examples
 	@ (cd timing; $(MAKE) all)
