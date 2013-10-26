@@ -1,5 +1,7 @@
-Require Import ExtLib.Tactics.Consider.
+Require Import Omega.
 Require Import Bool.
+Require Import Equivalence.
+Require Import ExtLib.Tactics.Consider.
 
 Ltac think' ext solver :=
   repeat (match goal with
@@ -9,9 +11,9 @@ Ltac think' ext solver :=
             | [ H : _ |- _ ] => erewrite H in * |- by solver
             | [ H : _ |- _ ] => erewrite H by solver
             | [ H : andb _ _ = true |- _ ] => 
-              apply andb_true_iff in H ; destruct H
+              apply Bool.andb_true_iff in H ; destruct H
             | [ H : orb _ _ = false |- _ ] => 
-              apply orb_false_iff in H ; destruct H
+              apply Bool.orb_false_iff in H ; destruct H
             | [ H : Equivalence.equiv _ _ |- _ ] => 
               unfold Equivalence.equiv in H ; subst
             | [ H : _ /\ _ |- _ ] => destruct H

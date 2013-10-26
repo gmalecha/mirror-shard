@@ -1,7 +1,8 @@
 Require Import List Bool.
-Require Import Folds Tactics. 
-Require Import ExtLib.Tactics.Consider.
+Require Import Folds Tactics.
 Require Import ExtLib.Core.EquivDec.
+Require Import ExtLib.Tactics.Consider.
+Require Import ExtLib.Data.Nat.
 Require Import ExtLib.Tactics.EqDep.
 
 Set Implicit Arguments.

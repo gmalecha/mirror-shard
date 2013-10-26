@@ -23,10 +23,10 @@ Module Make (FM : S with Definition E.t := uvar
 
     Section Normalization.
       Variable ctx : FM.t (expr types).
-            
+
       Fixpoint normalized (e : expr types) : bool :=
         match e with
-          | Var _ 
+          | Var _
           | Const _ _ => true
           | UVar x => match FM.find x ctx with
                         | None => true
@@ -47,10 +47,10 @@ Module Make (FM : S with Definition E.t := uvar
     { this : FM.t (expr types) & WellFormed this }.
 
     Definition Subst_WellTyped (funcs : tfunctions) (U G : tenv) (s : Subst) : Prop :=
-      forall k v, FM.MapsTo k v (projT1 s) -> 
+      forall k v, FM.MapsTo k v (projT1 s) ->
         exists t, nth_error U k = Some t /\ is_well_typed funcs U G v t = true.
 
-    Definition subst_empty : FM.t (expr types) := FM.empty _. 
+    Definition subst_empty : FM.t (expr types) := FM.empty _.
 
     Theorem WF_subst_empty : WellFormed subst_empty.
       red; unfold subst_empty; intros. apply FACTS.empty_mapsto_iff in H. exfalso; auto.
@@ -68,7 +68,7 @@ Module Make (FM : S with Definition E.t := uvar
 
     Definition subst_lookup (k : nat) (s : FM.t (expr types)) : option (expr types) :=
       FM.find k s.
-    
+
     Definition Subst_lookup k (s : Subst) : option (expr types) :=
       subst_lookup k (projT1 s).
 
@@ -89,7 +89,7 @@ Module Make (FM : S with Definition E.t := uvar
         destruct H2. destruct x0. compute in H2. inversion H2. simpl in *; subst.
         auto. }
       { intros. apply in_map_iff in H. destruct H. destruct x; intuition; subst. exists e.
-        apply FACTS.find_mapsto_iff. apply FACTS.elements_mapsto_iff. 
+        apply FACTS.find_mapsto_iff. apply FACTS.elements_mapsto_iff.
         eapply SetoidList.InA_alt. exists (k0,e). simpl. intuition auto. reflexivity. }
     Qed.
 
@@ -103,11 +103,11 @@ Module Make (FM : S with Definition E.t := uvar
       Variable sub : FM.t (expr types).
 
       Fixpoint subst_exprInstantiate (e : expr types) : expr types :=
-        match e with 
-          | Const _ _ 
+        match e with
+          | Const _ _
           | Var _ => e
           | UVar n => match subst_lookup n sub with
-                        | None => e 
+                        | None => e
                         | Some v => v
                       end
           | Func f args => Func f (map subst_exprInstantiate args)
@@ -115,7 +115,7 @@ Module Make (FM : S with Definition E.t := uvar
           | Not e => Not (subst_exprInstantiate e)
         end.
     End Instantiate.
-    
+
     Definition exprInstantiate (sub : Subst) := subst_exprInstantiate (projT1 sub).
 
     Section Subst_equations.
@@ -137,7 +137,7 @@ Module Make (FM : S with Definition E.t := uvar
     Definition Subst_Equal (l r : Subst) : Prop :=
       FM.Equal (projT1 l) (projT1 r).
 
-    Local Ltac think := 
+    Local Ltac think :=
       unfold subst_lookup in *; simpl in *; intros;
       repeat (match goal with
                 | [ H : _ && _ = true |- _ ] =>
@@ -181,7 +181,7 @@ Module Make (FM : S with Definition E.t := uvar
       }
     Qed.
 
-    Definition subst_set (k : nat) (v : expr types) (s : FM.t (expr types)) 
+    Definition subst_set (k : nat) (v : expr types) (s : FM.t (expr types))
       : option (FM.t (expr types)) :=
       let v' := subst_exprInstantiate s v in
       if mentionsU k v'
@@ -190,7 +190,7 @@ Module Make (FM : S with Definition E.t := uvar
            let s := FM.map (subst_exprInstantiate s) s in
            Some s.
 
-    
+
     Lemma wf_instantiate_normalized : forall s e,
       WellFormed s ->
       normalized s (subst_exprInstantiate s e) = true.
@@ -210,7 +210,7 @@ Module Make (FM : S with Definition E.t := uvar
       mentionsU k e = false ->
       subst_exprInstantiate (FM.add k e' s) e = subst_exprInstantiate s e.
     Proof.
-      induction e; simpl; intros; think; auto. 
+      induction e; simpl; intros; think; auto.
       { f_equal. revert H0. induction H; simpl; intros; think; auto. }
     Qed.
 
@@ -218,9 +218,9 @@ Module Make (FM : S with Definition E.t := uvar
       normalized (FM.map F s) e = normalized s e.
     Proof.
       induction e; simpl; intros; think; auto.
-        generalize true. induction H; simpl; intros; think; auto. 
+        generalize true. induction H; simpl; intros; think; auto.
     Qed.
-    
+
     Lemma normalized_add : forall k v s e,
       mentionsU k e = false ->
       normalized (FM.add k v s) e = normalized s e.
@@ -234,10 +234,10 @@ Module Make (FM : S with Definition E.t := uvar
         subst_exprInstantiate s v = v.
     Proof.
       induction v; simpl; auto.
-        { unfold subst_lookup. destruct (FM.find x s); auto; congruence. }          
+        { unfold subst_lookup. destruct (FM.find x s); auto; congruence. }
         { generalize true at 1. intros. f_equal. generalize dependent l.
           induction 1; simpl; intros; auto.
-          apply andb_true_iff in H1. intuition. f_equal; eauto. }            
+          apply andb_true_iff in H1. intuition. f_equal; eauto. }
         { intros. apply andb_true_iff in H; f_equal; firstorder. }
         { intros; f_equal; auto. }
     Qed.
@@ -285,7 +285,7 @@ Module Make (FM : S with Definition E.t := uvar
     Lemma Subst_set_unroll : forall u E sub sub',
       Subst_set u E sub = Some sub' ->
       mentionsU u (exprInstantiate sub E) = false /\
-      projT1 sub' = 
+      projT1 sub' =
         (FM.map
           (subst_exprInstantiate
             (FM.add u (exprInstantiate sub E) (projT1 sub)))
@@ -297,7 +297,7 @@ Module Make (FM : S with Definition E.t := uvar
       end.
       simpl in *.
       generalize (subst_set u E (projT1 sub)) at 2 3. destruct o; intros; try congruence.
-      unfold subst_set in *. 
+      unfold subst_set in *.
       inversion H; clear H; subst. simpl in *.
       unfold exprInstantiate.
       destruct (mentionsU u (subst_exprInstantiate (projT1 sub) E)); try congruence.
@@ -315,7 +315,7 @@ Module Make (FM : S with Definition E.t := uvar
 *)
 
     Definition Subst_Extends (l r : Subst) : Prop :=
-      forall k v, FM.MapsTo k v (projT1 r) -> 
+      forall k v, FM.MapsTo k v (projT1 r) ->
         FM.MapsTo k (exprInstantiate l v) (projT1 l).
 
     Theorem Equiv_Subst_Equal : RelationClasses.Equivalence Subst_Equal.
@@ -324,10 +324,10 @@ Module Make (FM : S with Definition E.t := uvar
         reflexivity.
         symmetry; auto.
         etransitivity; eauto.
-    Qed.    
+    Qed.
 
     Lemma normalized_Lt' : forall s s' v,
-      normalized (projT1 s) v = true -> 
+      normalized (projT1 s) v = true ->
       Subst_Extends s s' ->
       normalized (projT1 s') v = true.
     Proof.
@@ -341,7 +341,7 @@ Module Make (FM : S with Definition E.t := uvar
         apply andb_true_iff in H2. apply andb_true_iff. intuition. }
       { apply andb_true_iff. apply andb_true_iff in H. intuition. }
     Qed.
-    
+
     Lemma exprInstantiate_Extends : forall x y,
       Subst_Extends x y ->
       forall t, exprInstantiate x (exprInstantiate y t) = exprInstantiate x t.
@@ -359,7 +359,7 @@ Module Make (FM : S with Definition E.t := uvar
     Qed.
 
     Lemma normalized_Lt : forall s s' w w' v,
-      normalized s' v = true -> 
+      normalized s' v = true ->
       Subst_Extends (@existT _ _ s' w') (@existT _ _ s w) ->
       normalized s v = true.
     Proof.
@@ -415,7 +415,7 @@ Module Make (FM : S with Definition E.t := uvar
       unfold exprInstantiate. rewrite subst_exprInstantiate_idem; auto. destruct sub; auto.
     Qed.
 
-    Lemma adf : forall (k : nat) (v : expr types) (x : FM.t (expr types)) 
+    Lemma adf : forall (k : nat) (v : expr types) (x : FM.t (expr types))
      (k0 : FM.key) (v0 : expr types),
      mentionsU k (subst_exprInstantiate x v) = false ->
      ~ eq k k0 ->
@@ -444,7 +444,7 @@ Module Make (FM : S with Definition E.t := uvar
       match goal with
         | [ |- context [ eq_refl ?X ] ] => generalize (eq_refl X)
       end.
-      generalize (subst_set k v (projT1 sub)) at 2 3. intro. 
+      generalize (subst_set k v (projT1 sub)) at 2 3. intro.
       destruct o; intros; try congruence.
         inversion H; clear H; subst.
         destruct sub. unfold Subst_Extends, Subst_lookup, subst_set, exprInstantiate in *; simpl in *.
@@ -452,7 +452,7 @@ Module Make (FM : S with Definition E.t := uvar
         think. clear e. apply FACTS.map_mapsto_iff. case_eq (FM.E.eq_dec k k0); intros.
           rewrite e in H0. exfalso. eapply FACTS.not_find_in_iff in H0. eapply H0. eexists. eapply H3.
 
-          exists v0. split. 
+          exists v0. split.
           2: eapply FACTS.add_mapsto_iff; right; split; eauto.
 
           eapply adf; eauto.
@@ -472,7 +472,7 @@ Module Make (FM : S with Definition E.t := uvar
 
     Lemma exprInstantiate_extends : forall sub sub' l r,
       exprInstantiate sub l = exprInstantiate sub r ->
-      Subst_Extends sub' sub -> 
+      Subst_Extends sub' sub ->
       exprInstantiate sub' l = exprInstantiate sub' r.
     Proof.
       intros.
@@ -482,7 +482,7 @@ Module Make (FM : S with Definition E.t := uvar
 
     Lemma Subst_set_exprInstantiate : forall x e sub sub',
       Subst_set x e sub = Some sub' ->
-      Subst_lookup x sub = None -> 
+      Subst_lookup x sub = None ->
       exprInstantiate sub' (UVar x) = exprInstantiate sub' e.
     Proof.
       unfold Subst_set, Subst_lookup, exprInstantiate; simpl; intros;
@@ -527,31 +527,31 @@ Module Make (FM : S with Definition E.t := uvar
                                      | Some v => v
                                    end.
     Proof. reflexivity. Qed.
-    Lemma exprInstantiate_Var : forall a x, 
+    Lemma exprInstantiate_Var : forall a x,
       exprInstantiate a (Var x) = Var x.
     Proof. reflexivity. Qed.
-    Lemma exprInstantiate_Const : forall a t v, 
+    Lemma exprInstantiate_Const : forall a t v,
       exprInstantiate a (@Const types t v) = (@Const types t v).
     Proof. reflexivity. Qed.
 
-    Hint Rewrite exprInstantiate_Func exprInstantiate_Equal exprInstantiate_Not 
+    Hint Rewrite exprInstantiate_Func exprInstantiate_Equal exprInstantiate_Not
       exprInstantiate_UVar exprInstantiate_Var exprInstantiate_Const : subst_simpl.
 
     Theorem exprInstantiate_WellTyped : forall funcs U G sub,
       Subst_WellTyped funcs U G sub ->
-      forall e t, 
+      forall e t,
         is_well_typed funcs U G e t = is_well_typed funcs U G (exprInstantiate sub e) t.
     Proof.
       unfold exprInstantiate, Subst_WellTyped; induction e; simpl; intros; eauto;
       repeat (match goal with
-                | [ |- context [ FM.find ?X ?Y ] ] => 
+                | [ |- context [ FM.find ?X ?Y ] ] =>
                   case_eq (FM.find X Y); intros
                 | [ |- context [ nth_error ?X ?Y ] ] =>
                   case_eq (nth_error X Y); intros
                 | [ |- context [ equiv_dec ?X ?Y ] ] =>
                   destruct (equiv_dec X Y); intros; unfold equiv in *; try subst
                 | [ |- _ ] => progress (unfold subst_lookup || simpl in * )
-                | [ H : FM.find _ _ = _ |- _ ] => 
+                | [ H : FM.find _ _ = _ |- _ ] =>
                   eapply FACTS.find_mapsto_iff in H
                 | [ H : ?X = _ , H' : ?X = _ |- _ ] =>
                   rewrite H in H'
@@ -563,13 +563,13 @@ Module Make (FM : S with Definition E.t := uvar
                 | [ H : Some _ = Some _ |- _ ] => inversion H; clear H; subst
               end); try solve [ auto | congruence | symmetry; eapply H; eauto using FACTS.find_mapsto_iff ].
       symmetry. eapply is_well_typed_only; eauto.
-      
+
       intros. generalize dependent (TDomain t0). clear H1. clear - H0.
       induction H0; simpl. reflexivity.
       destruct l0; auto; simpl in *.
       rewrite <- IHForall. rewrite <- H. reflexivity.
-    Qed. 
-          
+    Qed.
+
     Lemma Subst_set_WellTyped : forall funcs U G u E t sub sub',
       Subst_set u E sub = Some sub' ->
       nth_error U u = Some t ->
@@ -587,22 +587,22 @@ Module Make (FM : S with Definition E.t := uvar
         simpl. change (subst_exprInstantiate x E) with (exprInstantiate (@existT _ _ _ w) E).
         rewrite <- exprInstantiate_WellTyped; eauto. }
       { intuition. eapply H2 in H5. destruct H5; intuition. eexists. split; eauto.
-        revert H6. clear H5. clear H4. clear H3. revert x1. 
+        revert H6. clear H5. clear H4. clear H3. revert x1.
         induction x0; simpl; intros; think;
         repeat (progress simpl ||
           match goal with
             | [ H : _ = _ |- _ ] => rewrite H in *
             | [ H : equiv _ _ |- _ ] => unfold equiv in H; subst; try congruence
-            | [ H : context [ match ?X with 
+            | [ H : context [ match ?X with
                                 | _ => _
-                              end ] |- _ ] => 
+                              end ] |- _ ] =>
             revert H; consider X; intros
             | [ |- context [ FM.E.eq_dec ?X ?Y ] ] => destruct (FM.E.eq_dec X Y); subst
             | [ H : Some _ = Some _ |- _ ] => inversion H; clear H; subst
             | [ |- _ ] => rewrite <- exprInstantiate_WellTyped by assumption
             | [ |- context [ FM.find ?X ?Y ] ] =>
               case_eq (FM.find X Y); intros; try congruence
-            | [ H : FM.find _ _ = Some _ |- _ ] => 
+            | [ H : FM.find _ _ = Some _ |- _ ] =>
               apply FACTS.find_mapsto_iff in H
             | [ H : forall x y, FM.MapsTo x y ?X -> _ , H' : FM.MapsTo _ _ ?X |- _ ] =>
               apply H in H'
@@ -634,7 +634,7 @@ Module Make (FM : S with Definition E.t := uvar
 
     Hint Extern 1 (is_well_typed _ _ _ _ _ = _) =>
       simpl;
-        repeat match goal with 
+        repeat match goal with
                  | [ H : _ = _ |- _ ] => rewrite H
                  | [ |- _ ] => rewrite EquivDec_refl_left
                  | [ |- _ ] => rewrite tvar_seqb_refl
@@ -649,9 +649,9 @@ Module Make (FM : S with Definition E.t := uvar
       rewrite PROPS.fold_Add with (m1 := FM.remove x (projT1 sub)) (m2 := projT1 sub) (k := x) (e := e) in H0;
         eauto with typeclass_instances.
       { repeat match goal with
-               | [ H : match ?X with 
-                         | _ => _ 
-                       end |- _ ] => 
+               | [ H : match ?X with
+                         | _ => _
+                       end |- _ ] =>
                revert H; case_eq X; intros; try contradiction
              end.
         intuition. subst.
@@ -659,7 +659,7 @@ Module Make (FM : S with Definition E.t := uvar
         destruct (equiv_dec x0 t).
         { red in e0. subst. auto. }
         { case_eq (exprD funcs U G e t); intros; auto.
-          exfalso. apply c. unfold equiv; 
+          exfalso. apply c. unfold equiv;
           eapply exprD_det with (e := e) (funcs := funcs) (meta_env := U) (var_env := G); congruence. } }
       { clear. repeat (red; intros; subst).
         destruct (nth_error U y); intros.
@@ -671,7 +671,7 @@ Module Make (FM : S with Definition E.t := uvar
                                   end ] ] => destruct X
                end; firstorder. }
         { intro. rewrite FACTS.remove_in_iff in H1. intuition; congruence. }
-        { unfold PROPS.Add. intros; rewrite FACTS.add_o; rewrite FACTS.remove_o. 
+        { unfold PROPS.Add. intros; rewrite FACTS.add_o; rewrite FACTS.remove_o.
           destruct (FM.E.eq_dec x y); auto; unfold FM.E.eq in *.
           Transparent Subst_lookup.
           unfold Subst_lookup, subst_lookup in *. subst; auto. }
@@ -682,11 +682,11 @@ Module Make (FM : S with Definition E.t := uvar
       exprD funcs U G (exprInstantiate sub e) t = exprD funcs U G e t.
     Proof.
       induction e; simpl; intros; think; autorewrite with subst_simpl in *; symmetry;
-        repeat (simpl in *; 
+        repeat (simpl in *;
           match goal with
             | [ H : context [ match ?X with
                                 | _ => _
-                              end ] |- _ ] => 
+                              end ] |- _ ] =>
             revert H; case_eq X; intros; try congruence
             | [ H : equiv _ _ |- _ ] => unfold equiv in H; subst
                  | [ H : _ |- _ ] => erewrite H by eauto
@@ -694,14 +694,14 @@ Module Make (FM : S with Definition E.t := uvar
                                | tvProp => _
                                | tvType _ => _
                              end ] ] => destruct X
-            
+
           end); auto; try congruence.
-      { change (FM.find x (projT1 sub)) with (Subst_lookup x sub). 
-        case_eq (Subst_lookup x sub); intros; simpl; auto.        
+      { change (FM.find x (projT1 sub)) with (Subst_lookup x sub).
+        case_eq (Subst_lookup x sub); intros; simpl; auto.
         erewrite Subst_lookup_Subst_equations; eauto. }
       { simpl. destruct (nth_error funcs f); auto.
         destruct (equiv_dec (Range s) t); auto. red in e; subst.
-        destruct s; simpl in *.  
+        destruct s; simpl in *.
         generalize dependent Domain. induction H; destruct Domain; simpl; auto.
         erewrite H by eauto. intros. destruct (exprD funcs U G x t); auto. }
     Qed.
@@ -713,7 +713,7 @@ Module Make (FM : S with Definition E.t := uvar
       exists t, nth_error U u = Some t /\
       is_well_typed funcs U G e t = true.
     Proof.
-      unfold Subst_WellTyped, Subst_lookup, subst_lookup. intros. 
+      unfold Subst_WellTyped, Subst_lookup, subst_lookup. intros.
       apply FACTS.find_mapsto_iff in H0. eauto.
     Qed.
 
@@ -740,7 +740,7 @@ Module Make (FM : S with Definition E.t := uvar
       Subst_lookup k sub = Some e ->
       exprInstantiate sub e' = e'' ->
       mentionsU k e'' = false.
-    Proof.      
+    Proof.
       induction e'; simpl in *; intros; think; subst; think; auto.
       { destruct sub. unfold Subst_lookup, subst_lookup in *; simpl in *.
         consider (FM.find x x0); intros; simpl.
@@ -751,7 +751,7 @@ Module Make (FM : S with Definition E.t := uvar
     Qed.
 
     Transparent Subst_set.
-    
+
     Lemma Subst_set_unroll_None: forall (u : nat) (E : expr types) (sub : Subst),
       Subst_set u E sub = None ->
       mentionsU u (exprInstantiate sub E) = true.
@@ -785,7 +785,7 @@ Module Make (FM : S with Definition E.t := uvar
         apply MFACTS.PROPS.F.find_mapsto_iff in H1. rewrite H1.
         change (exprInstantiate sub' v = v).
         eapply exprInstantiate_instantiated. unfold Subst_lookup, subst_lookup.
-        eassumption. 
+        eassumption.
         rewrite H2. reflexivity. }
       { f_equal. rewrite map_map.
         revert H3; induction H; simpl; intros; think; auto. }
@@ -799,7 +799,7 @@ Module Make (FM : S with Definition E.t := uvar
     Proof.
       induction t; simpl; intros; think; auto.
       { consider (FM.find (elt:=expr types) x0 (projT1 x)); intros.
-        apply MFACTS.PROPS.F.find_mapsto_iff in H0. 
+        apply MFACTS.PROPS.F.find_mapsto_iff in H0.
         eapply (projT2 x) in H0.
         eapply WellFormed_Canonical.
         destruct y; destruct x. eapply normalized_Lt. eassumption. eassumption.
@@ -832,7 +832,7 @@ Module Make (FM : S with Definition E.t := uvar
         apply MFACTS.PROPS.F.find_mapsto_iff in H0.
         apply MFACTS.PROPS.F.map_mapsto_iff in H8. destruct H8. intuition. subst.
         apply MFACTS.PROPS.F.add_mapsto_iff in H9. destruct H9; intuition; subst.
-        { match goal with 
+        { match goal with
           | H : FM.MapsTo ?A ?Y ?B |- FM.MapsTo ?A ?X ?B => cutrewrite (X = Y); auto
           end.
           rewrite subst_exprInstantiate_add_not_mentions by auto.
@@ -840,7 +840,7 @@ Module Make (FM : S with Definition E.t := uvar
           2: destruct sub; auto. rewrite H5.
           apply WellFormed_Canonical.
           destruct sub' as [ sub' ? ]; simpl in *. eapply w. eauto. }
-        { match goal with 
+        { match goal with
             | |- FM.MapsTo _ ?X _ => cutrewrite (X = exprInstantiate sub' x); auto
           end.
           eapply Subst_Extends_fin_instantiate; eauto.
@@ -881,14 +881,14 @@ Module Make (FM : S with Definition E.t := uvar
       FM.Equal (PROPS.diff m m') (PROPS.diff m (FM.map F m')).
     Proof. clear.
       intros; red; intros.
-      consider (FM.find (elt:=T) y (PROPS.diff m m')); 
+      consider (FM.find (elt:=T) y (PROPS.diff m m'));
       consider (FM.find (elt:=T) y (PROPS.diff m (FM.map F m'))); intros; auto;
         repeat match goal with
                  | |- Some _ = None => exfalso
                  | |- None = Some _ => exfalso
-                 | H : FM.find _ (PROPS.diff _ _) = Some _ |- _ => 
+                 | H : FM.find _ (PROPS.diff _ _) = Some _ |- _ =>
                    apply FACTS.find_mapsto_iff in H; apply PROPS.diff_mapsto_iff in H
-                 | H : FM.find ?A (PROPS.diff ?B ?C) = None |- _ => 
+                 | H : FM.find ?A (PROPS.diff ?B ?C) = None |- _ =>
                    apply FACTS.not_find_in_iff in H
                  | H : ~ FM.In _ (PROPS.diff _ _) |- _ => rewrite PROPS.diff_in_iff in H; apply H; clear H; split
                  | H : FM.MapsTo _ _ _ |- _ => apply FACTS.find_mapsto_iff in H
@@ -914,7 +914,7 @@ Module Make (FM : S with Definition E.t := uvar
       Subst_Extends sub' sub ->
       Subst_Extends' sub' sub.
     Proof.
-      intros. 
+      intros.
       remember (PROPS.diff (projT1 sub') (projT1 sub)).
       assert (FM.Equal t (PROPS.diff (projT1 sub') (projT1 sub))). subst; reflexivity. clear Heqt. rename H0 into Heqt.
       generalize dependent sub.
@@ -925,9 +925,9 @@ Module Make (FM : S with Definition E.t := uvar
         { f_equal.
           assert (normalized (projT1 sub') e = true).
           cut (forall k, FM.In k (projT1 sub') -> FM.In k (projT1 sub)).
-          cut (normalized (projT1 sub) e = true). clear. 
+          cut (normalized (projT1 sub) e = true). clear.
           { induction e; simpl; intros; think; auto.
-            { apply FACTS.not_find_in_iff in H. exfalso. apply H. apply H0. 
+            { apply FACTS.not_find_in_iff in H. exfalso. apply H. apply H0.
               exists e. apply FACTS.find_mapsto_iff; auto. }
             { revert H0. induction H; simpl; intros; think; auto. } }
           eapply (projT2 sub). apply FACTS.find_mapsto_iff. eassumption.
@@ -946,30 +946,30 @@ Module Make (FM : S with Definition E.t := uvar
           destruct H3. apply FACTS.find_mapsto_iff in H3. congruence. }
         { exfalso. clear Heqt. apply FACTS.find_mapsto_iff in H1. eapply H0 in H1.
           apply FACTS.find_mapsto_iff in H1. congruence. } }
-      { generalize (H1 x); intro. 
+      { generalize (H1 x); intro.
         rewrite FACTS.add_o in H3. destruct (FM.E.eq_dec x x); try congruence. clear e0.
         apply FACTS.find_mapsto_iff in H3. rewrite Heqt in *.
         eapply PROPS.diff_mapsto_iff in H3. destruct H3.
-        eapply extends_add_from with (k := x) (v := e) in H2. 
+        eapply extends_add_from with (k := x) (v := e) in H2.
         remember (Subst_set x e sub). destruct o; try contradiction.
         eapply SE_Add with (k := x) (v := e).
         symmetry; eauto. eauto.
-        apply H; eauto. 
-        
+        apply H; eauto.
+
         symmetry in Heqo. eapply Subst_set_unroll in Heqo. destruct Heqo.
-        
+
         rewrite H6. rewrite <- diff_map_2. rewrite <- diff_add. rewrite <- Heqt.
         red. intro. specialize (H1 y). rewrite FACTS.remove_o.
-        rewrite H1. rewrite FACTS.add_o. 
+        rewrite H1. rewrite FACTS.add_o.
         destruct (FM.E.eq_dec x y); unfold FM.E.eq in *; subst; auto. apply FACTS.not_find_in_iff; auto.
-        
+
         unfold Subst_lookup, subst_lookup; apply FACTS.find_mapsto_iff. assumption.
         unfold Subst_lookup, subst_lookup; apply FACTS.not_find_in_iff; assumption. }
     Qed.
 
     Lemma Subst_equations_sem : forall funcs U G s,
       Subst_equations funcs U G s <->
-      (forall k e, 
+      (forall k e,
         Subst_lookup k s = Some e ->
         match nth_error U k with
           | None => False
@@ -982,10 +982,10 @@ Module Make (FM : S with Definition E.t := uvar
       unfold Subst_equations, Subst_lookup, subst_lookup. destruct s. simpl in *. clear w.
       cut True; auto. generalize True. intro.
       eapply PROPS.map_induction with (m := x); intros.
-      { split; intros. 
+      { split; intros.
         { rewrite MFACTS.find_Empty in H2; auto. congruence. }
         { rewrite PROPS.fold_Empty; eauto with typeclass_instances. } }
-      { split; intros. 
+      { split; intros.
         { rewrite PROPS.fold_Add in H3; eauto with typeclass_instances.
           repeat match goal with
                    | H : match ?X with _ => _ end |- _ => consider X; intros; try contradiction
@@ -995,14 +995,14 @@ Module Make (FM : S with Definition E.t := uvar
           { rewrite H5. simpl. inversion H4. subst; rewrite H6. reflexivity. }
           { eapply H; eauto. }
           { repeat (red; intros; subst);
-            repeat match goal with 
+            repeat match goal with
                      | |- context [ match ?X with _ => _ end ] => destruct X
                    end; intuition. }
           { repeat (red; intros; subst);
-            repeat match goal with 
+            repeat match goal with
                      | |- context [ match ?X with _ => _ end ] => destruct X
                    end; intuition. } }
-          { specialize (H H2). 
+          { specialize (H H2).
             rewrite PROPS.fold_Add; eauto with typeclass_instances.
             generalize (H3 x0 e); intros. rewrite H1 in H4. rewrite FACTS.add_o in H4.
             destruct (FM.E.eq_dec x0 x0); try congruence. specialize (H4 refl_equal).
@@ -1012,11 +1012,11 @@ Module Make (FM : S with Definition E.t := uvar
             rewrite FACTS.add_o. destruct (FM.E.eq_dec x0 k); unfold FM.E.eq in *; auto. subst. exfalso. apply H0.
             exists e1. apply FACTS.find_mapsto_iff; auto.
             { repeat (red; intros; subst);
-              repeat match goal with 
+              repeat match goal with
                        | |- context [ match ?X with _ => _ end ] => destruct X
                      end; intuition. }
             { repeat (red; intros; subst);
-              repeat match goal with 
+              repeat match goal with
                        | |- context [ match ?X with _ => _ end ] => destruct X
                      end; intuition. } } }
     Qed.
@@ -1030,7 +1030,7 @@ Module Make (FM : S with Definition E.t := uvar
       consider (nth_error U k); intros; try contradiction.
       erewrite nth_error_weaken by eauto.
       consider (exprD funcs U G e (projT1 s0)); intros; try contradiction.
-      erewrite exprD_weaken; eassumption. 
+      erewrite exprD_weaken; eassumption.
     Qed.
 
     Theorem Subst_equations_empty : forall funcs U G,
@@ -1078,14 +1078,14 @@ Module Make (FM : S with Definition E.t := uvar
       Subst_Extends sub' sub ->
       Subst_equations funcs U G sub' ->
       Subst_equations funcs U G sub.
-    Proof. 
+    Proof.
       intros. apply extends_as_extension in H.
       induction H.
       { unfold Subst_equations in *. unfold Subst_Equal in *.
         rewrite PROPS.fold_Equal in H0. eassumption. eauto with typeclass_instances.
         { repeat (red; intros; subst). destruct (nth_error U y); auto. destruct s. destruct (exprD funcs U G y0 x0); intuition. }
         { repeat (red; intros; subst);
-            repeat match goal with 
+            repeat match goal with
                      | |- context [ match ?X with _ => _ end ] => destruct X
                    end; intuition. }
         auto. }
@@ -1102,18 +1102,18 @@ Module Make (FM : S with Definition E.t := uvar
       Subst_equations funcs U G sub ->
       Subst_WellTyped (typeof_funcs funcs) (typeof_env U) (typeof_env G) sub.
     Proof.
-      intros. intro; intros. 
+      intros. intro; intros.
       eapply Subst_equations_sem with (k := k) (e := v) in H.
       consider (nth_error U k); intros; try contradiction.
       consider (exprD funcs U G v (projT1 s)); intros; try contradiction. subst.
       unfold typeof_env at 1. erewrite map_nth_error by eassumption. eexists; split. reflexivity.
-      eapply is_well_typed_correct_only in H1; eauto using typeof_env_WellTyped_env, typeof_funcs_WellTyped_funcs. 
+      eapply is_well_typed_correct_only in H1; eauto using typeof_env_WellTyped_env, typeof_funcs_WellTyped_funcs.
       unfold Subst_lookup, subst_lookup. apply FACTS.find_mapsto_iff; auto.
     Qed.
- 
+
     (** An incremental version of Subst_equations **)
     Section Subst_equations_to.
-      Variable funcs : functions types. 
+      Variable funcs : functions types.
       Variables uenv venv : env types.
       Variable subst : Subst.
 
@@ -1127,16 +1127,16 @@ Module Make (FM : S with Definition E.t := uvar
                             | None => False
                             | Some v => projT2 l = v
                           end
-            end /\ Subst_equations_to (S from) ls 
+            end /\ Subst_equations_to (S from) ls
         end.
-      
-      Lemma Subst_equations_to_sem : forall ls from, 
+
+      Lemma Subst_equations_to_sem : forall ls from,
         Subst_equations_to from ls ->
         forall n,
           match nth_error ls n with
             | None => True
             | Some v' =>
-              match Subst_lookup (from + n) subst with 
+              match Subst_lookup (from + n) subst with
                 | None => True
                 | Some e => match exprD funcs uenv venv e (projT1 v') with
                               | None => False
@@ -1152,12 +1152,12 @@ Module Make (FM : S with Definition E.t := uvar
       Qed.
 
 
-      Theorem Subst_equations_to_Subst_equations : 
+      Theorem Subst_equations_to_Subst_equations :
         Subst_WellTyped (typeof_funcs funcs) (typeof_env uenv) (typeof_env venv) subst ->
         Subst_equations_to 0 uenv ->
         Subst_equations funcs uenv venv subst.
       Proof.
-        intros. 
+        intros.
         eapply Subst_equations_sem. intros.
         assert (FM.MapsTo k e (projT1 subst)). apply FACTS.find_mapsto_iff. eapply H1.
         eapply H in H2. destruct H2.
