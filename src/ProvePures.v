@@ -21,7 +21,7 @@ Section prover.
     end.
 
   Variable proverOk : ProverT_correct prover fs.
-  
+
   Theorem provePuresOk : forall u g ls f ls',
     Valid proverOk u g f  ->
     Forall (ValidProp fs u g) ls ->
@@ -32,13 +32,17 @@ Section prover.
     induction ls; simpl; intros; auto.
     { inversion H0; clear H0; subst.
       consider (Prove prover f a).
-      { intuition. 
-        { eapply Prove_correct; eauto. }
+      { intuition.
+        { eapply ProverCorrect_ProverCorrect'.
+          eapply Prove_correct; eauto.
+          eauto. eauto. eauto. }
         { eapply IHls; [ | | reflexivity | eassumption ].
-          eapply Learn_correct; eauto. repeat constructor. eapply Prove_correct; eauto.
+          eapply Learn_correct; eauto. repeat constructor.
+          eapply ProverCorrect_ProverCorrect'.
+          eapply Prove_correct; eauto. eauto. eauto. eauto.
           eauto. } }
       { intros. inversion H1; clear H1; subst.
         intuition. eapply IHls; [ | | reflexivity | eassumption ]; eauto.
-        eapply Learn_correct; eauto. repeat constructor; auto. } } 
+        eapply Learn_correct; eauto. repeat constructor; auto. } }
   Qed.
-End prover.        
+End prover.

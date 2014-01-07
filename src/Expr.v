@@ -1,7 +1,9 @@
-Require Import List Bool.
+Require Import Coq.Lists.List Coq.Bool.Bool.
+Require Import Omega.
 Require Import Folds Tactics. 
-Require Import ExtLib.Tactics.Consider.
 Require Import ExtLib.Core.EquivDec.
+Require Import ExtLib.Data.Nat.
+Require Import ExtLib.Tactics.Consider.
 Require Import ExtLib.Tactics.EqDep.
 
 Set Implicit Arguments.
@@ -1345,4 +1347,3 @@ Arguments UVar {types} (_).
 Arguments Func {types} (_) (_).
 Arguments Equal {types} (_) (_) (_).
 Arguments Not {types} (_).
-

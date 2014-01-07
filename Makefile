@@ -4,12 +4,10 @@ MODULE:=MirrorShard
 
 all:
 	# BEWARE: This will probably take a long time (and may require up to 4GB of memory)!
-	$(MAKE) -C src/reification
 	$(MAKE) -C src
 	$(MAKE) -C examples
 
 clean:
-	$(MAKE) -C src/reification clean
 	$(MAKE) -C src clean
 	$(MAKE) -C examples clean
 
@@ -25,11 +23,3 @@ install:
 init:
 	@ ./tools/setup.sh
 	@ (cd coq-ext-lib; $(MAKE))
-
-time:
-	@ rm -rf timing
-	@ ./tools/timer.py timing/ src/*.v examples/*.v src/*/*.v
-	@ cp Makefile timing/Makefile
-	@ cp -r src/Makefile src/Makefile.coq src/reification/ timing/src
-	@ cp examples/Makefile examples/Makefile.coq timing/examples
-	@ (cd timing; $(MAKE) all)

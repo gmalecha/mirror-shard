@@ -1,5 +1,6 @@
+Require Import Coq.Bool.Bool.
+Require Coq.Classes.Equivalence.
 Require Import ExtLib.Tactics.Consider.
-Require Import Bool.
 
 Ltac think' ext solver :=
   repeat (match goal with
@@ -29,8 +30,11 @@ Require Import List.
 Lemma nth_error_None_length : forall (T : Type) (ls : list T) (n : nat),
   nth_error ls n = None -> length ls <= n.
 Proof.
-  induction ls; destruct n; simpl; intros; think; try omega. inversion H.
-  eapply IHls in H. omega.
+  induction ls; destruct n; simpl; intros; think.
+  constructor.
+  apply Le.le_0_n.
+  inversion H.
+  eapply IHls in H. apply Le.le_n_S. assumption.
 Qed.
 
 Lemma map_nth_error_full : forall T U (F : T -> U) ls n,

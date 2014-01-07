@@ -8,6 +8,18 @@ Set Strict Implicit.
 
 (** Provers that establish [expr]-encoded facts *)
 
+Definition ProverCorrect' types (fs : functions types) (summary : Type)
+    (** Some prover work only needs to be done once per set of hypotheses,
+       so we do it once and save the outcome in a summary of this type. *)
+  (valid : env types -> env types -> summary -> Prop)
+  (prover : summary -> expr types -> bool) : Prop :=
+  forall vars uvars sum,
+    valid uvars vars sum ->
+    forall goal,
+      prover sum goal = true ->
+      ValidProp fs uvars vars goal ->
+      Provable fs uvars vars goal.
+
 Definition ProverCorrect types (fs : functions types) (summary : Type)
     (** Some prover work only needs to be done once per set of hypotheses,
        so we do it once and save the outcome in a summary of this type. *)
@@ -15,10 +27,29 @@ Definition ProverCorrect types (fs : functions types) (summary : Type)
   (prover : summary -> expr types -> bool) : Prop :=
   forall vars uvars sum,
     valid uvars vars sum ->
-    forall goal, 
+    forall goal,
       prover sum goal = true ->
-      ValidProp fs uvars vars goal ->
-      Provable fs uvars vars goal.
+      match exprD fs uvars vars goal tvProp with
+        | None => True
+        | Some P => P
+      end.
+
+Theorem ProverCorrect_ProverCorrect'
+: forall t f s v p,
+    (@ProverCorrect' t f s v p) <-> (@ProverCorrect t f s v p).
+Proof.
+  unfold ProverCorrect, ProverCorrect'.
+  split; intros.
+  { specialize (H _ _ _ H0 _ H1).
+    unfold ValidProp, Provable in *.
+    destruct (exprD f uvars vars goal tvProp); auto.
+    eapply H. eauto. }
+  { unfold ValidProp, Provable in *.
+    specialize (H _ _ _ H0 _ H1).
+    destruct H2. rewrite H2 in *.
+    assumption. }
+Qed.
+
 
 Record ProverT (types : list type) : Type :=
 { Facts : Type
@@ -147,13 +178,15 @@ Section composite.
   Variable pr_correct : ProverT_correct pr funcs.
 
   Theorem composite_ProverT_correct : ProverT_correct composite_ProverT funcs.
-    
     refine (
       {| Valid := fun uvars vars (facts : Facts composite_ProverT) =>
         let (fl,fr) := facts in
           Valid pl_correct uvars vars fl /\ Valid pr_correct uvars vars fr
       |}); destruct pl_correct; destruct pr_correct; simpl; try destruct facts; intuition eauto.
-    unfold ProverCorrect. destruct sum; intuition.
+    apply ProverCorrect_ProverCorrect'.
+    apply ProverCorrect_ProverCorrect' in Prove_correct1.
+    apply ProverCorrect_ProverCorrect' in Prove_correct0.
+    unfold ProverCorrect'. destruct sum; intuition.
     apply orb_true_iff in H.
     destruct H; eauto.
   Qed.

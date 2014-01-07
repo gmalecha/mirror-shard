@@ -55,6 +55,7 @@ Section AssumptionProver.
   Qed.
 
   Theorem assumptionProverCorrect : ProverCorrect fs assumptionValid assumptionProve.
+    apply ProverCorrect_ProverCorrect'.
     t; induction sum; t.
   Qed.
 
