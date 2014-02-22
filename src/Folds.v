@@ -1,4 +1,4 @@
-Require Import List Bool.
+Require Import Coq.Lists.List Coq.Bool.Bool.
 Require Import ExtLib.Tactics.Consider.
 
 Set Implicit Arguments.
