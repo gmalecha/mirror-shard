@@ -1,8 +1,8 @@
-Require Import Setoid.
+Require Import Coq.Setoids.Setoid.
 
 (** Separation Heaps **)
 Module Type Memory.
-  
+
   Parameters addr value : Type.
 
   Parameter mem : Type.
@@ -11,14 +11,14 @@ Module Type Memory.
   Parameter mem_set : mem -> addr -> value -> option mem.
 
   (** mem writes persist **)
-  Parameter mem_get_set_eq : forall m p v' m', 
+  Parameter mem_get_set_eq : forall m p v' m',
     mem_set m p v' = Some m' ->
     mem_get m' p = Some v'.
 
-  (** mem_set only modifies p **)  
-  Parameter mem_get_set_neq : forall m p v m', 
+  (** mem_set only modifies p **)
+  Parameter mem_get_set_neq : forall m p v m',
     mem_set m p v = Some m' ->
-    forall p', p <> p' -> 
+    forall p', p <> p' ->
       mem_get m' p' = mem_get m p'.
 
   Parameter mem_get_mem_set : forall m p,
@@ -63,7 +63,7 @@ Module Type SeparationMemory.
   Parameter split_in_domain : forall a b c,
     split a b c ->
     forall p, in_domain p a <-> (in_domain p b \/ in_domain p c).
-  
+
   Parameter split_disjoint : forall a b c,
     split a b c ->
       (forall p, in_domain p b -> ~in_domain p c).
@@ -82,7 +82,7 @@ Module Type SeparationMemory.
     same_domain s s' /\
     exists m', M.mem_set m a v = Some m' /\ models s' m'.
 
-  Parameter smem_set_get_eq : forall m p v' m', 
+  Parameter smem_set_get_eq : forall m p v' m',
     smem_set p v' m = Some m' ->
     smem_get p m' = Some v'.
 
@@ -90,7 +90,7 @@ Module Type SeparationMemory.
     smem_get p m <> None ->
     smem_set p v m <> None.
 
-  Parameter smem_set_get_neq : forall m p v' m', 
+  Parameter smem_set_get_neq : forall m p v' m',
     smem_set p v' m = Some m' ->
     forall p', p <> p' ->
       smem_get p' m' = smem_get p' m.
@@ -107,4 +107,3 @@ Module Type SeparationMemory.
         smem_set p v a = Some a'.
 
 End SeparationMemory.
-

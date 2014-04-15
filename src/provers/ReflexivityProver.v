@@ -1,6 +1,6 @@
-Require Import List.
-Require Import Expr Env.
-Require Import Prover.
+Require Import Coq.Lists.List.
+Require Import MirrorShard.Expr MirrorShard.Env.
+Require Import MirrorShard.Prover.
 
 Set Implicit Arguments.
 Set Strict Implicit.

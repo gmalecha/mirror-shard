@@ -1,5 +1,5 @@
-Require Import List.
-Require Import Expr.
+Require Import Coq.Lists.List.
+Require Import MirrorShard.Expr.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -7,7 +7,7 @@ Set Strict Implicit.
 Section over_types.
   Variable types : list type.
 
-  Inductive Quant : Type := 
+  Inductive Quant : Type :=
   | QAll  : variables -> Quant -> Quant
   | QEx   : variables -> Quant -> Quant
   | QBase : Quant.
@@ -15,9 +15,9 @@ Section over_types.
   (** NOTE: For efficiency, the outer-most quantifier should be
    ** the deepest quantifier
    **)
-  (** NOTE: 
+  (** NOTE:
    ** For forward reasoning we need to invert the quantifiers.
-   ** i.e. All quantifiers should become uvar and 
+   ** i.e. All quantifiers should become uvar and
    **      Ex quantifiers should become var
    **)
   Fixpoint quantD (ex_env all_env : env types) (qs : Quant) (k : env types -> env types -> Prop) : Prop :=
@@ -28,13 +28,13 @@ Section over_types.
     end.
 
   Fixpoint appendQ (q1 q2 : Quant) : Quant :=
-    match q1 with 
+    match q1 with
       | QBase => q2
       | QAll vs q1 => QAll vs (appendQ q1 q2)
       | QEx vs q1 => QEx vs (appendQ q1 q2)
     end.
 
-  Theorem quantD_app : forall qs' qs meta_env vars_env k, 
+  Theorem quantD_app : forall qs' qs meta_env vars_env k,
     quantD meta_env vars_env (appendQ qs qs') k <->
     quantD meta_env vars_env qs' (fun meta_env vars_env => quantD meta_env vars_env qs k).
   Proof.
@@ -58,14 +58,14 @@ Section over_types.
   Theorem quantD_impl : forall qs meta_env vars_env (k k' : _ -> _ -> Prop),
     quantD meta_env vars_env qs k ->
     (forall a b,
-      typeof_env a = gatherEx qs -> 
-      typeof_env b = gatherAll qs -> 
+      typeof_env a = gatherEx qs ->
+      typeof_env b = gatherAll qs ->
       k (meta_env ++ a) (vars_env ++ b) ->
       k' (meta_env ++ a) (vars_env ++ b)) ->
     quantD meta_env vars_env qs k'.
   Proof.
     clear. induction qs; simpl; intros; try (eapply IHqs; [ eauto | ]); simpl in *; intros; instantiate; simpl in *;
-    repeat match goal with 
+    repeat match goal with
              | [ |- existsEach _ _ ] => eapply existsEach_sem
              | [ |- forallEach _ _ ] => eapply forallEach_sem; intros
              | [ H : existsEach _ _ |- _ ] =>
@@ -74,7 +74,7 @@ Section over_types.
                eapply forallEach_sem in H; [ | solve [ eauto ] ]
              | [ H : _ /\ _ |- _ ] => destruct H
              | [ |- exists x, _ /\ _ ] =>
-               eexists; split; [ solve [ eauto ] | ]                   
+               eexists; split; [ solve [ eauto ] | ]
              | [ |- _ ] => rewrite app_ass in *
            end.
     { eapply H0; eauto. subst. rewrite <- H2. unfold typeof_env. rewrite map_app. auto. }
@@ -84,13 +84,13 @@ Section over_types.
 
   Require Import Tactics.
 
-  Theorem gatherEx_appendQ : forall q1 q2, 
+  Theorem gatherEx_appendQ : forall q1 q2,
     gatherEx (appendQ q1 q2) = gatherEx q2 ++ gatherEx q1.
   Proof.
     induction q1; simpl; intros; think; repeat (rewrite app_nil_r || rewrite app_ass); auto.
   Qed.
 
-  Theorem gatherAll_appendQ : forall q1 q2, 
+  Theorem gatherAll_appendQ : forall q1 q2,
     gatherAll (appendQ q1 q2) = gatherAll q2 ++ gatherAll q1.
   Proof.
     induction q1; simpl; intros; think; repeat (rewrite app_nil_r || rewrite app_ass); auto.
@@ -159,7 +159,7 @@ Section over_types.
   Fixpoint qsize (q : Quant) : nat :=
     match q with
       | QBase => 0
-      | QAll _ q              
+      | QAll _ q
       | QEx _ q => S (qsize q)
     end.
 
@@ -172,7 +172,7 @@ Section over_types.
   Ltac apply_eq f H :=
     match type of H with
       | ?X = ?Y =>
-        assert (f X = f Y); [ f_equal; apply H | ] 
+        assert (f X = f Y); [ f_equal; apply H | ]
     end.
 
   Lemma appendQ_proper : forall a b c,

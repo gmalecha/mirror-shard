@@ -1,11 +1,11 @@
-Require Import Instantiation.
-Require Import List.
+Require Import Coq.Lists.List.
 Require Import ExtLib.Tactics.Consider.
 Require Import ExtLib.Core.EquivDec.
-Require Import Expr Instantiation.
-Require Import Tactics.
-Require UnfolderTac.
-Require ExprUnify.
+Require Import MirrorShard.Instantiation.
+Require Import MirrorShard.Expr.
+Require Import MirrorShard.Tactics.
+Require MirrorShard.UnfolderTac.
+Require MirrorShard.ExprUnify.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -16,7 +16,7 @@ Lemma ex_iff : forall T (P P' : T -> Prop),
 Proof. split; intuition; destruct H0 as [ x ? ]; exists x; firstorder. Qed.
 
 Theorem existsEach_iff : forall ts a P Q,
-  (forall x, map (@projT1 _ _) x = a -> 
+  (forall x, map (@projT1 _ _) x = a ->
     (P x <-> Q x)) ->
   (@existsEach ts a P <-> existsEach a Q).
 Proof.
@@ -33,20 +33,20 @@ Module Make (SUBST : Subst).
     Variable funcs : functions types.
     Variable sub : SUBST.Subst types.
 
-    Fixpoint existsSubst (meta vars : env types) (from : nat) (vals : list tvar) 
+    Fixpoint existsSubst (meta vars : env types) (from : nat) (vals : list tvar)
       (ret : env types -> Prop) : Prop :=
       match vals with
         | nil => ret meta
         | t :: ts =>
           match SUBST.Subst_lookup from sub with
-            | None => 
-              exists x : tvarD types t, 
+            | None =>
+              exists x : tvarD types t,
                 existsSubst (meta ++ existT _ _ x :: nil) vars (S from) ts ret
             | Some v =>
               match exprD funcs meta vars v t with
-                | None => 
-                  exists x : tvarD types t, 
-                    existsSubst (meta ++ existT _ _ x :: nil) vars (S from) ts 
+                | None =>
+                  exists x : tvarD types t,
+                    existsSubst (meta ++ existT _ _ x :: nil) vars (S from) ts
                     (fun g => match exprD funcs g vars v t with
                                 | None => False
                                 | Some y => x = y /\ ret g
@@ -72,8 +72,8 @@ Module Make (SUBST : Subst).
         { rewrite IHvals; intuition.
           { exists t. eapply existsEach_sem in H1. eapply existsEach_sem.
             destruct H1. exists x. destruct H1. split; try assumption.
-            eapply exprD_weaken with (vars' := nil) (uvars' := existT (tvarD ts) a t :: x) in H0. 
-            rewrite app_nil_r in H0. rewrite H0. simpl in *. 
+            eapply exprD_weaken with (vars' := nil) (uvars' := existT (tvarD ts) a t :: x) in H0.
+            rewrite app_nil_r in H0. rewrite H0. simpl in *.
             rewrite app_ass in *; simpl in *. intuition. }
           { destruct H1.
             apply existsEach_sem in H1. apply existsEach_sem.
@@ -81,13 +81,13 @@ Module Make (SUBST : Subst).
             consider (exprD funcs (meta_env ++ existT (tvarD ts) a x :: x0) vars_env e a); intros.
             2: intuition.
             rewrite app_ass in *; simpl in *.
-            eapply exprD_weaken with (vars' := nil) (uvars' := existT (tvarD ts) a x :: x0) in H0. 
+            eapply exprD_weaken with (vars' := nil) (uvars' := existT (tvarD ts) a x :: x0) in H0.
             rewrite app_nil_r in H0. rewrite H0 in H2. inversion H2; clear H2; subst.
             intuition subst; intuition. } }
         { apply ex_iff; intros.
-          rewrite IHvals. 
+          rewrite IHvals.
           apply existsEach_iff; intros.
-          rewrite app_ass; simpl. 
+          rewrite app_ass; simpl.
           destruct (exprD funcs (meta_env ++ existT (tvarD ts) a x :: x0) vars_env e a); intuition. } }
       { apply ex_iff; intros.
         rewrite IHvals. apply existsEach_iff; intros. rewrite app_ass; simpl.

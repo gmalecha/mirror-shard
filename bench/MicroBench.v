@@ -1,11 +1,11 @@
-Require Import List.
-Require Import Expr.
-Require Import Evm_compute.
-Require Import CancelTacIL.
+Require Import Coq.Lists.List.
+Require Import evm_compute.Evm_compute.
+Require Import MirrorShard.Expr.
+(* Require Import MirrorShard.CancelTacIL. *)
 
-Add ML Path "reification". 
+Add ML Path "reification".
 Declare ML Module "extlib".
-Declare ML Module "reif". 
+Declare ML Module "reif".
 
 Parameter ptsto : nat -> nat -> hprop.
 Parameter mptsto : bool -> nat -> nat -> hprop.
@@ -39,10 +39,10 @@ refine (
 Defined.
 
 Fixpoint chainl {ts} (ls : list (Expr.expr ts)) {struct ls} : SEP.sexpr ts :=
-  match ls with 
+  match ls with
     | nil => SEP.Emp
     | a :: b =>
-      match b with 
+      match b with
         | nil => SEP.Emp
         | c :: d => SEP.Star (SEP.Func 0 (a :: c :: nil)) (chainl b)
       end
@@ -52,7 +52,7 @@ Definition chainr {ts} (ls : list (Expr.expr ts)) {struct ls} : SEP.sexpr ts :=
   rev (chainl ls).
 
 Fixpoint list_to (now : nat) (n : nat) : list (Expr.expr types) :=
-  match n with 
+  match n with
     | 0 => nil
     | S n => @Expr.Const types (tvType 0) (S n) :: list_to now n
   end.
@@ -79,7 +79,7 @@ Definition nsexprD (emp : hprop) (star : hprop -> hprop -> hprop) (ex : forall T
         match nth_error sfuncs f with
           | Some f' =>
             match
-              Expr.applyD (Expr.exprD funcs meta_env var_env) 
+              Expr.applyD (Expr.exprD funcs meta_env var_env)
               (SEP.SDomain f') b hprop (SEP.SDenotation f')
               with
               | Some p => p
@@ -90,7 +90,7 @@ Definition nsexprD (emp : hprop) (star : hprop -> hprop -> hprop) (ex : forall T
       | SEP.Const p => p
     end.
 
-Definition cancel (himp : hprop -> hprop -> Prop) (emp : hprop) (star : hprop -> hprop -> hprop) 
+Definition cancel (himp : hprop -> hprop -> Prop) (emp : hprop) (star : hprop -> hprop -> hprop)
   (ex : forall T : Type, (T -> hprop) -> hprop) (inj : Prop -> hprop)
   (ts : list Expr.type)
   (funcs : Expr.functions ts)
@@ -108,7 +108,7 @@ Definition cancel (himp : hprop -> hprop -> Prop) (emp : hprop) (star : hprop ->
   let tpreds := SEP.typeof_preds preds in
   if SEP.WellTyped_sexpr tfuncs tpreds (typeof_env uvars) nil rhs then
   match CANCEL_TAC.canceller tpreds (TacPackIL.UNF.Forward hints) (TacPackIL.UNF.Backward hints) prover (typeof_env uvars) hyps lhs rhs with
-                  | None => 
+                  | None =>
                     himp (nsexprD emp star ex inj _ funcs preds uvars nil lhs)
                     (nsexprD emp star ex inj _ funcs preds uvars nil rhs)
                   | Some {| CANCEL_TAC.AllExt := new_vars
@@ -155,15 +155,15 @@ Ltac evaluate_evm :=
 Ltac evaluate_vm := vm_compute.
 Ltac evaluate_cbv :=
   cbv beta iota zeta
-       delta [ 
+       delta [
          Quantifier.quantD Quantifier.appendQ
          Quantifier.qex Quantifier.qall
          Quantifier.gatherAll Quantifier.gatherEx
-            
+
          (** ILEnv **)
          ILEnv.comparator ILEnv.fPlus ILEnv.fMinus ILEnv.fMult
-         ILEnv.bedrock_types_r ILEnv.bedrock_funcs_r 
-         ILEnv.bedrock_types 
+         ILEnv.bedrock_types_r ILEnv.bedrock_funcs_r
+         ILEnv.bedrock_types
          ILEnv.BedrockCoreEnv.core
          ILEnv.BedrockCoreEnv.pc ILEnv.BedrockCoreEnv.st
          ILEnv.bedrock_type_W ILEnv.bedrock_type_nat
@@ -179,7 +179,7 @@ Ltac evaluate_cbv :=
          ILEnv.word_nat_r
          ILEnv.word_state_r
 (*         ILEnv.word_test_r *)
-         
+
          ILEnv.wplus_r
          ILEnv.wminus_r
          ILEnv.wmult_r
@@ -188,7 +188,7 @@ Ltac evaluate_cbv :=
          ILEnv.Regs_r
          ILEnv.wlt_r
          ILEnv.natToW_r
-             
+
          (** Env **)
          Env.repr_combine Env.default Env.footprint Env.repr'
          Env.updateAt Env.nil_Repr Env.repr Env.updateAt
@@ -206,13 +206,13 @@ Ltac evaluate_cbv :=
          Expr.Provable Expr.tvarD
          Expr.expr_seq_dec
          Expr.applyD Expr.exprD Expr.Range Expr.Domain Expr.Denotation
-         Expr.lookupAs 
+         Expr.lookupAs
          Expr.tvarD Expr.Eqb
          Expr.EqDec_tvar Expr.tvar_rec Expr.tvar_rect
-         Expr.Default_signature Expr.EmptySet_type Expr.Impl Expr.EqDec_tvar Expr.tvar_rec Expr.tvar_rect 
+         Expr.Default_signature Expr.EmptySet_type Expr.Impl Expr.EqDec_tvar Expr.tvar_rec Expr.tvar_rect
          Expr.expr_seq_dec  Expr.expr_seq_dec
          Expr.tvar_val_seqb  Expr.liftExpr Expr.exprSubstU
-         Expr.typeof Expr.typeof_env 
+         Expr.typeof Expr.typeof_env
          Expr.typeof_sig Expr.typeof_funcs
          Expr.Impl_ Expr.exprD
          Expr.expr_ind
@@ -241,7 +241,7 @@ Ltac evaluate_cbv :=
          CancelIL.U.FM.Raw.bal CancelIL.U.FM.Raw.remove_min CancelIL.U.FM.Raw.merge CancelIL.U.FM.Raw.join
          CancelIL.U.FM.Raw.t_left CancelIL.U.FM.Raw.t_opt CancelIL.U.FM.Raw.t_right
          CancelIL.U.FM.Raw.cardinal CancelIL.U.FM.Raw.empty CancelIL.U.FM.Raw.is_empty
-         CancelIL.U.FM.Raw.mem CancelIL.U.FM.Raw.find   
+         CancelIL.U.FM.Raw.mem CancelIL.U.FM.Raw.find
          CancelIL.U.FM.Raw.add  CancelIL.U.FM.Raw.remove
          CancelIL.U.FM.Raw.fold CancelIL.U.FM.Raw.map CancelIL.U.FM.Raw.mapi CancelIL.U.FM.Raw.map2
 
@@ -258,14 +258,14 @@ Ltac evaluate_cbv :=
          (** Unfolder **)
          Unfolder.FM.empty Unfolder.FM.add Unfolder.FM.remove
          Unfolder.FM.fold Unfolder.FM.map
-         Unfolder.FM.find 
+         Unfolder.FM.find
 (*         UNF.LEM.Foralls  *) UNF.Vars
          UNF.UVars UNF.Heap (* UNF.LEM.Hyps UNF.LEM.Lhs UNF.LEM.Rhs *)
          UNF.Forward UNF.forward UNF.unfoldForward UNF.Backward
-         UNF.backward UNF.unfoldBackward  equiv_dec 
-         UNF.find UNF.findWithRest UNF.findWithRest' 
-         Folds.allb 
-         UNF.openForUnification 
+         UNF.backward UNF.unfoldBackward  equiv_dec
+         UNF.find UNF.findWithRest UNF.findWithRest'
+         Folds.allb
+         UNF.openForUnification
          UNF.quant
          UNF.liftInstantiate
          SH.applySHeap
@@ -278,7 +278,7 @@ Ltac evaluate_cbv :=
          NatMap.IntMap.Raw.bal NatMap.IntMap.Raw.remove_min NatMap.IntMap.Raw.merge NatMap.IntMap.Raw.join
          NatMap.IntMap.Raw.t_left NatMap.IntMap.Raw.t_opt NatMap.IntMap.Raw.t_right
          NatMap.IntMap.Raw.cardinal NatMap.IntMap.Raw.empty NatMap.IntMap.Raw.is_empty
-         NatMap.IntMap.Raw.mem NatMap.IntMap.Raw.find   
+         NatMap.IntMap.Raw.mem NatMap.IntMap.Raw.find
          NatMap.IntMap.Raw.add  NatMap.IntMap.Raw.remove
          NatMap.IntMap.Raw.fold NatMap.IntMap.Raw.map NatMap.IntMap.Raw.mapi NatMap.IntMap.Raw.map2
 
@@ -289,25 +289,25 @@ Ltac evaluate_cbv :=
          NatMap.IntMap.map NatMap.IntMap.mapi NatMap.IntMap.map2
          NatMap.IntMap.elements NatMap.IntMap.cardinal NatMap.IntMap.fold
          NatMap.IntMap.equal
-        
+
          Int.Z_as_Int._0 Int.Z_as_Int._1 Int.Z_as_Int._2 Int.Z_as_Int._3
          Int.Z_as_Int.plus Int.Z_as_Int.max
          Int.Z_as_Int.gt_le_dec Int.Z_as_Int.ge_lt_dec
-         
+
          ZArith_dec.Z_gt_le_dec ZArith_dec.Z_ge_lt_dec ZArith_dec.Z_ge_dec
-         ZArith_dec.Z_gt_dec 
+         ZArith_dec.Z_gt_dec
          ZArith_dec.Zcompare_rec ZArith_dec.Zcompare_rect
-         
+
          BinInt.Z.add BinInt.Z.max BinInt.Z.pos_sub
          BinInt.Z.double BinInt.Z.succ_double BinInt.Z.pred_double
-    
+
          BinInt.Z.compare
 
-         BinPos.Pos.add BinPos.Pos.compare 
+         BinPos.Pos.add BinPos.Pos.compare
          BinPos.Pos.succ BinPos.Pos.compare_cont
 
-         Compare_dec.nat_compare CompOpp 
-         
+         Compare_dec.nat_compare CompOpp
+
          NatMap.Ordered_nat.compare
 
          sumor_rec sumor_rect
@@ -323,27 +323,27 @@ Ltac evaluate_cbv :=
 
 (*
          (** TransitivityProver **)
-         provers.TransitivityProver.transitivitySummarize 
+         provers.TransitivityProver.transitivitySummarize
          provers.TransitivityProver.transitivityLearn
          provers.TransitivityProver.transitivityProve
-         provers.TransitivityProver.groupsOf 
+         provers.TransitivityProver.groupsOf
          provers.TransitivityProver.addEquality
          provers.TransitivityProver.proveEqual
          provers.TransitivityProver.transitivityLearn
-         provers.TransitivityProver.inSameGroup 
-         provers.TransitivityProver.in_seq 
+         provers.TransitivityProver.inSameGroup
+         provers.TransitivityProver.in_seq
          provers.TransitivityProver.groupWith
          provers.TransitivityProver.transitivityProver
 *)
 
          (** AssumptionProver **)
-         provers.AssumptionProver.assumptionProver 
+         provers.AssumptionProver.assumptionProver
          provers.AssumptionProver.assumptionSummarize
          provers.AssumptionProver.assumptionLearn
          provers.AssumptionProver.assumptionProve
 
          (** ReflexivityProver **)
-         provers.ReflexivityProver.reflexivityProver 
+         provers.ReflexivityProver.reflexivityProver
          provers.ReflexivityProver.reflexivitySummarize
          provers.ReflexivityProver.reflexivityLearn
          provers.ReflexivityProver.reflexivityProve
@@ -369,12 +369,12 @@ Ltac evaluate_cbv :=
          provers.ArrayBoundProver.types
 
          (** Induction **)
-         list_ind list_rec list_rect 
+         list_ind list_rec list_rect
          sumbool_rect sumbool_rec
-         sumor_rec sumor_rect 
+         sumor_rec sumor_rect
          nat_rec nat_rect nat_ind
          eq_rect_r eq_rec_r eq_rec eq_rect
-         eq_sym f_equal 
+         eq_sym f_equal
          nat_rect eq_ind eq_rec eq_rect
          eq_rec_r eq_rect eq_rec nat_rec nat_rect
          sumbool_rec sumbool_rect
@@ -396,7 +396,7 @@ Ltac evaluate_cbv :=
          NPeano.leb NPeano.ltb
 
          (** SepExpr **)
-         SEP.SDomain SEP.SDenotation 
+         SEP.SDomain SEP.SDenotation
          SEP.Default_predicate
          SEP.himp SEP.sexprD
          SEP.heq
@@ -406,56 +406,56 @@ Ltac evaluate_cbv :=
          (** SepHeap **)
          SH.impures SH.pures SH.other
          SH.liftSHeap UNF.HEAP_FACTS.sheapSubstU
-         SH.hash 
-         SH.star_SHeap 
-         SH.SHeap_empty 
+         SH.hash
+         SH.star_SHeap
+         SH.SHeap_empty
          SH.sheapD
 
          SepHeap.FM.empty
          SepHeap.FM.map
          SepHeap.FM.find
-         SepHeap.FM.add 
-         SepHeap.FM.remove 
+         SepHeap.FM.add
+         SepHeap.FM.remove
          SepHeap.FM.fold
 
          (** SepCancel **)
-(*         CancelIL.CANCEL.sepCancel 
+(*         CancelIL.CANCEL.sepCancel
          CancelIL.CANCEL.expr_count_meta
          CancelIL.CANCEL.exprs_count_meta
          CancelIL.CANCEL.expr_size
          CancelIL.CANCEL.meta_order_funcs
          CancelIL.CANCEL.meta_order_args
-         CancelIL.CANCEL.order_impures 
+         CancelIL.CANCEL.order_impures
          CancelIL.CANCEL.cancel_in_order
          CancelIL.CANCEL.unify_remove
          CancelIL.CANCEL.unifyArgs
          CancelIL.CANCEL.expr_size
-          
+
          CancelIL.canceller
-         CancelIL.substInEnv 
+         CancelIL.substInEnv
          CancelIL.existsMaybe
          CancelIL.existsSubst
          *)
          (** Ordering **)
          Ordering.insert_in_order Ordering.list_lex_cmp Ordering.sort
-         
+
          (** Multimaps **)
          SepHeap.MM.mmap_add SepHeap.MM.mmap_extend SepHeap.MM.mmap_join
          SepHeap.MM.mmap_mapi SepHeap.MM.mmap_map
          SepHeap.MM.empty
 
          (** PtsTo Plugin **)
-         Plugin_PtsTo.ptsto32_ssig 
+         Plugin_PtsTo.ptsto32_ssig
          Plugin_PtsTo.expr_equal Plugin_PtsTo.sym_read_word_ptsto32
          Plugin_PtsTo.sym_write_word_ptsto32 Plugin_PtsTo.ptsto32_types_r
-         Plugin_PtsTo.types 
+         Plugin_PtsTo.types
          Plugin_PtsTo.MemEval_ptsto32
          Plugin_PtsTo.MemEvaluator_ptsto32
 
          (** General Recursion **)
          Fix Fix_F GenRec.wf_R_pair GenRec.wf_R_nat
-         GenRec.guard Acc_rect well_founded_ind 
-         well_founded_induction_type Acc_inv ExprUnify.wf_R_expr  
+         GenRec.guard Acc_rect well_founded_ind
+         well_founded_induction_type Acc_inv ExprUnify.wf_R_expr
 
          (** Folds **)
          Folds.fold_left_2_opt Folds.fold_left_3_opt
@@ -466,7 +466,7 @@ Ltac evaluate_cbv :=
          rev_append List.map app fold_left
 
          (** Aux Functions **)
-         fst snd projT1 projT2 Basics.impl value error 
+         fst snd projT1 projT2 Basics.impl value error
          projT1 projT2 andb orb
          plus minus
 
@@ -486,7 +486,7 @@ Ltac evaluate_cbv :=
          Locals.ascii_eq Locals.string_eq Bool.eqb
          Locals.nil_r Locals.cons_r Locals.sel_r Locals.upd_r
          Locals.deref Locals.listIn Locals.sym_sel Locals.sym_read Locals.sym_write
-         
+
          (** ?? **)
          DepList.hlist_hd DepList.hlist_tl
          eq_sym eq_trans
@@ -503,13 +503,13 @@ Ltac evaluate_cbv :=
          Env.repr_combine Env.footprint Env.nil_Repr
          Env.listToRepr
          app map
-         
-         ILEnv.bedrock_funcs_r ILEnv.bedrock_types_r 
+
+         ILEnv.bedrock_funcs_r ILEnv.bedrock_types_r
          ILAlgoTypes.AllAlgos_composite
-         ILAlgoTypes.oplus Prover.composite_ProverT 
+         ILAlgoTypes.oplus Prover.composite_ProverT
          (*TacPackIL.MEVAL.Composite.MemEvaluator_composite*) Env.listToRepr
 
-         Plugin_PtsTo.ptsto32_ssig Bedrock.sep.Array.ssig cancel 
+         Plugin_PtsTo.ptsto32_ssig Bedrock.sep.Array.ssig cancel
 CANCEL_TAC.canceller Provers.trivialProver SEP.typeof_preds types funcs preds
 UNF.refineForward AssumptionProver.assumption_summary SEP.typeof_pred UNF.refineBackward
 CANCEL_TAC.CANCEL.sepCancel SEP.WellTyped_sexpr CANCEL_TAC.CANCEL.cancel_in_order
@@ -530,35 +530,35 @@ CANCEL_TAC.CANCEL.expr_size].
 
 Ltac evaluate := evaluate_cbv.
 
-Goal @cancel himp emp star ex inj types funcs preds nil nil 
+Goal @cancel himp emp star ex inj types funcs preds nil nil
   (chainl (list_to 0 33))
   (chainr (list_to 0 33)).
 cbv beta iota zeta delta [ chainl chainr list_to ].
 Time (evaluate; reflexivity).
 Time Qed.
 
-Goal @cancel himp emp star ex inj types funcs preds nil nil 
+Goal @cancel himp emp star ex inj types funcs preds nil nil
   (chainl (list_to 0 65))
   (chainr (list_to 0 65)).
 cbv beta iota zeta delta [ chainl chainr list_to ].
 Time (evaluate; reflexivity).
 Time Qed.
 
-Goal @cancel himp emp star ex inj types funcs preds nil nil 
+Goal @cancel himp emp star ex inj types funcs preds nil nil
   (chainl (list_to 0 129))
   (chainr (list_to 0 129)).
 cbv beta iota zeta delta [ chainl chainr list_to ].
 Time (evaluate; reflexivity).
 Time Qed.
 
-Goal @cancel himp emp star ex inj types funcs preds nil nil 
+Goal @cancel himp emp star ex inj types funcs preds nil nil
   (chainl (list_to 0 257))
   (chainr (list_to 0 257)).
 cbv beta iota zeta delta [ chainl chainr list_to ].
 Time (evaluate; reflexivity).
 Time Qed.
 
-Goal @cancel himp emp star ex inj types funcs preds nil nil 
+Goal @cancel himp emp star ex inj types funcs preds nil nil
   (chainl (list_to 0 512))
   (chainr (list_to 0 512)).
 cbv beta iota zeta delta [ chainl chainr list_to ].

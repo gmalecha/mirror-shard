@@ -1,5 +1,5 @@
-Require Import Expr SepExpr.
-Require Import Lemma.
+Require Import MirrorShard.Expr MirrorShard.SepExpr.
+Require Import MirrorShard.Lemma.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -8,7 +8,7 @@ Module Type SepLemmaType (ST : SepTheory.SepTheory) (SE : SepExpr ST).
 
   Section typed.
     Variable types : list type.
-    
+
     Definition sepConcl : Type :=
       (SE.sexpr types * SE.sexpr types)%type.
 
@@ -16,10 +16,10 @@ Module Type SepLemmaType (ST : SepTheory.SepTheory) (SE : SepExpr ST).
       fst (Concl l).
     Definition Rhs (l : lemma types sepConcl) : SE.sexpr types :=
       snd (Concl l).
-    
+
     Definition WellTyped_sepConcl tfuncs tpreds (vars : list tvar) (c : sepConcl) : bool :=
       if SE.WellTyped_sexpr tfuncs tpreds nil vars (fst c)
-      then 
+      then
         SE.WellTyped_sexpr tfuncs tpreds nil vars (snd c)
       else false.
 
@@ -31,9 +31,9 @@ Module Type SepLemmaType (ST : SepTheory.SepTheory) (SE : SepExpr ST).
     Definition WellTyped_sepLemma tfuncs tpreds (l : sepLemma) : bool :=
       WellTyped_lemma (WellTyped_sepConcl tfuncs tpreds) tfuncs l.
 
-    Definition sepLemmaD (funcs : functions types) (preds : SE.predicates types) 
+    Definition sepLemmaD (funcs : functions types) (preds : SE.predicates types)
       (meta_base var_base : env types) (lem : sepLemma) : Prop :=
-      lemmaD (WellTyped_sepConcl (typeof_funcs funcs) (SE.typeof_preds preds)) 
+      lemmaD (WellTyped_sepConcl (typeof_funcs funcs) (SE.typeof_preds preds))
              (sepConclD funcs preds) funcs meta_base var_base lem.
   End typed.
 
@@ -43,7 +43,7 @@ Module SepLemma (ST : SepTheory.SepTheory) (SE : SepExpr ST) <: SepLemmaType ST 
 
   Section typed.
     Variable types : list type.
-    
+
     Definition sepConcl : Type :=
       (SE.sexpr types * SE.sexpr types)%type.
 
@@ -51,10 +51,10 @@ Module SepLemma (ST : SepTheory.SepTheory) (SE : SepExpr ST) <: SepLemmaType ST 
       fst (Concl l).
     Definition Rhs (l : lemma types sepConcl) : SE.sexpr types :=
       snd (Concl l).
-    
+
     Definition WellTyped_sepConcl tfuncs tpreds (vars : list tvar) (c : sepConcl) : bool :=
       if SE.WellTyped_sexpr tfuncs tpreds nil vars (fst c)
-      then 
+      then
         SE.WellTyped_sexpr tfuncs tpreds nil vars (snd c)
       else false.
 
@@ -66,9 +66,9 @@ Module SepLemma (ST : SepTheory.SepTheory) (SE : SepExpr ST) <: SepLemmaType ST 
     Definition WellTyped_sepLemma tfuncs tpreds (l : sepLemma) : bool :=
       WellTyped_lemma (WellTyped_sepConcl tfuncs tpreds) tfuncs l.
 
-    Definition sepLemmaD (funcs : functions types) (preds : SE.predicates types) 
+    Definition sepLemmaD (funcs : functions types) (preds : SE.predicates types)
       (meta_base var_base : env types) (lem : sepLemma) : Prop :=
-      lemmaD (WellTyped_sepConcl (typeof_funcs funcs) (SE.typeof_preds preds)) 
+      lemmaD (WellTyped_sepConcl (typeof_funcs funcs) (SE.typeof_preds preds))
              (sepConclD funcs preds) funcs meta_base var_base lem.
   End typed.
 

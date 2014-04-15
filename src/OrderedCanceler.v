@@ -1,9 +1,9 @@
-Require Import List.
-Require Import Folds Tactics.
+Require Import Coq.Lists.List.
 Require Import ExtLib.Tactics.Consider.
-Require Import Instantiation ExprUnify.
-Require Import Expr SepExpr SepHeap SepCancel.
-Require Import Prover.
+Require Import MirrorShard.Folds MirrorShard.Tactics.
+Require Import MirrorShard.Instantiation MirrorShard.ExprUnify.
+Require Import MirrorShard.Expr MirrorShard.SepExpr MirrorShard.SepHeap MirrorShard.SepCancel.
+Require Import MirrorShard.Prover.
 
 Set Implicit Arguments.
 Set Strict Implicit.

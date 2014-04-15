@@ -1,7 +1,7 @@
-Require Import List.
+Require Import Coq.Lists.List.
 Require Import ExtLib.Tactics.Consider.
-Require Import Prover.
-Require Import Expr.
+Require Import MirrorShard.Prover.
+Require Import MirrorShard.Expr.
 
 Set Implicit Arguments.
 Set Strict Implicit.

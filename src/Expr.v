@@ -1,10 +1,10 @@
 Require Import Coq.Lists.List Coq.Bool.Bool.
-Require Import Omega.
-Require Import Folds Tactics.
+Require Import Coq.omega.Omega.
 Require Import ExtLib.Core.EquivDec.
 Require Import ExtLib.Data.Nat.
 Require Import ExtLib.Tactics.Consider.
 Require Import ExtLib.Tactics.EqDep.
+Require Import MirrorShard.Folds MirrorShard.Tactics.
 
 Set Implicit Arguments.
 

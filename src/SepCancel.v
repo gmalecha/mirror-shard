@@ -1,16 +1,16 @@
-Require Import List.
-Require Import SepTheory.
-Require Import RelationClasses.
-Require Import Expr ExprUnify.
-Require Import SepExpr SepHeap.
-Require Import Setoid.
-Require Import Prover.
-Require Import SepExpr.
-Require Import Folds.
-Require Import Tactics.
-Require Import Instantiation.
-Require Ordering.
-Require SepUnify.
+Require Import Coq.Lists.List.
+Require Import Coq.Classes.RelationClasses.
+Require Import Coq.Setoids.Setoid.
+Require Import MirrorShard.SepTheory.
+Require Import MirrorShard.Expr MirrorShard.ExprUnify.
+Require Import MirrorShard.SepExpr MirrorShard.SepHeap.
+Require Import MirrorShard.Prover.
+Require Import MirrorShard.SepExpr.
+Require Import MirrorShard.Folds.
+Require Import MirrorShard.Tactics.
+Require Import MirrorShard.Instantiation.
+Require MirrorShard.Ordering.
+Require MirrorShard.SepUnify.
 
 Set Implicit Arguments.
 Set Strict Implicit.

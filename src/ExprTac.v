@@ -1,6 +1,6 @@
-Require Import List.
-Require Import Expr.
+Require Import Coq.Lists.List.
 Require Import Coq.Classes.EquivDec.
+Require Import MirrorShard.Expr.
 
 Section abstracted.
   Variable not : Prop -> Prop.

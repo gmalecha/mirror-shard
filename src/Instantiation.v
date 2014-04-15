@@ -1,7 +1,7 @@
-Require Import List.
-Require Import Expr.
+Require Import Coq.Lists.List.
 Require Import ExtLib.Core.EquivDec.
 Require Import ExtLib.Tactics.Consider.
+Require Import MirrorShard.Expr.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -12,7 +12,7 @@ Module Type Subst.
 
   Section typed.
     Variable types : list type.
-    
+
     (** Predicates **)
     Parameter Subst_WellTyped : tfunctions -> tenv -> tenv -> Subst types -> Prop.
 
@@ -37,22 +37,22 @@ Module Type Subst.
 
     Parameter Subst_size : Subst types -> nat.
     Parameter Subst_domain : Subst types -> list uvar.
-   
+
     (** Substitute meta variables **)
     Parameter exprInstantiate : Subst types -> expr types -> expr types.
 
     Axiom exprInstantiate_WellTyped : forall funcs U G sub,
       Subst_WellTyped funcs U G sub ->
-      forall e t, 
+      forall e t,
         is_well_typed funcs U G e t = is_well_typed funcs U G (exprInstantiate sub e) t.
-    
+
     Axiom exprInstantiate_Extends : forall x y,
       Subst_Extends x y ->
       forall t, exprInstantiate x (exprInstantiate y t) = exprInstantiate x t.
 
     Axiom exprInstantiate_extends : forall sub sub' l r,
       exprInstantiate sub l = exprInstantiate sub r ->
-      Subst_Extends sub' sub -> 
+      Subst_Extends sub' sub ->
       exprInstantiate sub' l = exprInstantiate sub' r.
 
     Axiom exprInstantiate_instantiated : forall k sub e,
@@ -87,10 +87,10 @@ Module Type Subst.
                                      | Some v => v
                                    end.
 
-    Axiom exprInstantiate_Var : forall a x, 
+    Axiom exprInstantiate_Var : forall a x,
       exprInstantiate a (Var x) = Var x.
 
-    Axiom exprInstantiate_Const : forall a t v, 
+    Axiom exprInstantiate_Const : forall a t v,
       exprInstantiate a (@Const types t v) = (@Const types t v).
 
     (** Subst_set & Subst_lookup **)
@@ -110,7 +110,7 @@ Module Type Subst.
 
     Axiom Subst_set_exprInstantiate : forall x e sub sub',
       Subst_set x e sub = Some sub' ->
-      Subst_lookup x sub = None -> 
+      Subst_lookup x sub = None ->
       exprInstantiate sub' (UVar x) = exprInstantiate sub' e.
 
     Axiom Subst_set_WellTyped : forall funcs U G u E t sub sub',
@@ -130,7 +130,7 @@ Module Type Subst.
       is_well_typed funcs U G e t = true.
 
     (** Semantics interpretation of substitutions **)
-    Parameter Subst_equations : 
+    Parameter Subst_equations :
       forall (funcs : functions types) (U G : env types), Subst types -> Prop.
 
     Axiom Subst_equations_empty : forall funcs U G,
@@ -155,7 +155,7 @@ Module Type Subst.
 
     (** An incremental version of Subst_equations **)
     Section Subst_equations_to.
-      Variable funcs : functions types. 
+      Variable funcs : functions types.
       Variables uenv venv : env types.
       Variable subst : Subst types.
 
@@ -169,16 +169,16 @@ Module Type Subst.
                             | None => False
                             | Some v => projT2 l = v
                           end
-            end /\ Subst_equations_to (S from) ls 
+            end /\ Subst_equations_to (S from) ls
         end.
 
-      Axiom Subst_equations_to_Subst_equations : 
+      Axiom Subst_equations_to_Subst_equations :
         Subst_WellTyped (typeof_funcs funcs) (typeof_env uenv) (typeof_env venv) subst ->
         Subst_equations_to 0 uenv ->
         Subst_equations funcs uenv venv subst.
 
     End Subst_equations_to.
-        
+
   End typed.
 
 End Subst.
@@ -196,7 +196,7 @@ Module SubstFacts (S : Subst).
     Proof.
       clear. induction vs; simpl; intros.
       { rewrite Plus.plus_0_r. intuition. }
-      { rewrite IHvs. rewrite <- Plus.plus_Snm_nSm. simpl. 
+      { rewrite IHvs. rewrite <- Plus.plus_Snm_nSm. simpl.
         intuition. }
     Qed.
 

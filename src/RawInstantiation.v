@@ -1,8 +1,8 @@
 Require Import Coq.Lists.List.
-Require Import Expr.
 Require Import ExtLib.Core.EquivDec.
 Require Import ExtLib.Tactics.Consider.
-Require Import Instantiation.
+Require Import MirrorShard.Expr.
+Require Import MirrorShard.Instantiation.
 
 Set Implicit Arguments.
 Set Strict Implicit.

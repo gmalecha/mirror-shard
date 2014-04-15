@@ -1,9 +1,10 @@
-Require Import List Bool Setoid RelationClasses.
+Require Import Coq.Lists.List Coq.Bool.Bool.
+Require Import Coq.Setoids.Setoid Coq.Classes.RelationClasses.
 Require Import ExtLib.Tactics.EqDep.
 Require Import ExtLib.Tactics.Consider.
-Require Import Expr.
-Require Import SepTheory.
-Require Import Folds Tactics.
+Require Import MirrorShard.Expr.
+Require Import MirrorShard.SepTheory.
+Require Import MirrorShard.Folds MirrorShard.Tactics.
 
 Set Implicit Arguments.
 Set Strict Implicit.

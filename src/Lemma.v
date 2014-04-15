@@ -1,6 +1,6 @@
-Require Import List Bool.
-Require Import Folds.
-Require Import Expr.
+Require Import Coq.Lists.List Coq.Bool.Bool.
+Require Import MirrorShard.Folds.
+Require Import MirrorShard.Expr.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -10,7 +10,7 @@ Section typed.
   Variable concl : Type.
 
   (** The type of one unfolding lemma *)
-  Record lemma := 
+  Record lemma :=
   { Foralls : variables
     (* The lemma statement begins with this sequence of [forall] quantifiers over these types. *)
   ; Hyps : list (expr types)
@@ -51,7 +51,7 @@ Section typed.
       | a :: b => fun cc =>
         forallEachR b (fun r => forall x : tvarD types a, cc (existT _ a x :: r))
     end.
-    
+
   Definition lemmaD (meta_base var_base : env types) (lem : lemma) : Prop :=
     WellTyped_lemma (typeof_funcs funcs) lem = true /\
     forallEachR (Foralls lem) (fun env =>
@@ -79,11 +79,11 @@ Section typed.
     induction HYPS; simpl; intros; auto;
       repeat match goal with
                | [ H : _ /\ _ |- _ ] => destruct H
-               | [ H : _ && _ = _ |- _ ] => 
+               | [ H : _ && _ = _ |- _ ] =>
                  apply andb_true_iff in H; destruct H
              end.
     eapply IHHYPS; eauto.
-  Qed. 
+  Qed.
 
   Lemma implyEach_sem : forall cc U G es,
     implyEach es U G cc <-> (AllProvable funcs U G es -> cc).

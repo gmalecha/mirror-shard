@@ -1,6 +1,6 @@
-Require Import List.
-Require Import Expr Env.
-Require Import Prover.
+Require Import Coq.Lists.List.
+Require Import MirrorShard.Expr MirrorShard.Env.
+Require Import MirrorShard.Prover.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -46,7 +46,7 @@ Section AssumptionProver.
   Qed.
 
   Lemma assumptionLearnCorrect : forall uvars vars sum,
-    assumptionValid uvars vars sum -> forall hyps, 
+    assumptionValid uvars vars sum -> forall hyps,
     AllProvable fs uvars vars hyps ->
     assumptionValid uvars vars (assumptionLearn sum hyps).
   Proof.

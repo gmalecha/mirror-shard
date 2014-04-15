@@ -1,18 +1,18 @@
-Require Import List Bool.
-Require Import Expr.
-Require Import ExprUnify.
-Require Import Instantiation.
+Require Import Coq.Lists.List Coq.Bool.Bool.
+Require Import MirrorShard.Expr.
+Require Import MirrorShard.ExprUnify.
+Require Import MirrorShard.Instantiation.
 
 Module Make (S : Subst) <: SyntacticUnifier S.
   Section typed.
     Variable types : list type.
 
     Section unify.
-      Variable exprUnify : expr types -> expr types -> S.Subst types -> option (S.Subst types).      
+      Variable exprUnify : expr types -> expr types -> S.Subst types -> option (S.Subst types).
 
       Fixpoint unify (l r : expr types) (sub : S.Subst types) : option (S.Subst types) :=
         match l , r with
-          | Const t v , Const t' v' => 
+          | Const t v , Const t' v' =>
             match equiv_dec t t' with
               | left pf => match pf in _ = k return tvarD _ k -> _ with
                              | refl_equal => fun v' =>
@@ -22,13 +22,13 @@ Module Make (S : Subst) <: SyntacticUnifier S.
                            end v'
               | right _ => None
             end
-          | Var v , Var v' => 
-            if Peano_dec.eq_nat_dec v v' 
+          | Var v , Var v' =>
+            if Peano_dec.eq_nat_dec v v'
               then Some sub
               else None
           | Func f1 args1 , Func f2 args2 =>
             if EqNat.beq_nat f1 f2 then
-              (fix unifyArgs (args1 args2 : list (expr types)) (s : S.Subst types) 
+              (fix unifyArgs (args1 args2 : list (expr types)) (s : S.Subst types)
                 : option (S.Subst types) :=
                 match args1 , args2 with
                   | nil , nil => Some s
@@ -51,9 +51,9 @@ Module Make (S : Subst) <: SyntacticUnifier S.
                 None
           | Not e1 , Not e2 =>
             unify e1 e2 sub
-          | UVar l , UVar r => 
+          | UVar l , UVar r =>
             if EqNat.beq_nat l r then Some sub
-              else 
+              else
                 match S.Subst_lookup l sub with
                   | None => S.Subst_set l (UVar r) sub
                   | Some l' =>
@@ -72,7 +72,7 @@ Module Make (S : Subst) <: SyntacticUnifier S.
             end
           | l , UVar u =>
             match S.Subst_lookup u sub with
-              | None => 
+              | None =>
                 S.Subst_set u l sub
               | Some r' =>
                 exprUnify l r' sub
@@ -82,12 +82,12 @@ Module Make (S : Subst) <: SyntacticUnifier S.
     End unify.
 
     Fixpoint exprUnify (bound : nat) : expr types -> expr types -> (S.Subst types) -> option (S.Subst types) :=
-      match bound with 
+      match bound with
         | 0 => fun _ _ _ => None
         | S bound =>
           fix unify (l r : expr types) (sub : S.Subst types) : option (S.Subst types) :=
             match l , r with
-              | Const t v , Const t' v' => 
+              | Const t v , Const t' v' =>
                 match equiv_dec t t' with
                   | left pf => match pf in _ = k return tvarD _ k -> _ with
                                  | refl_equal => fun v' =>
@@ -97,13 +97,13 @@ Module Make (S : Subst) <: SyntacticUnifier S.
                                end v'
                   | right _ => None
                 end
-              | Var v , Var v' => 
-                if EqNat.beq_nat v v' 
+              | Var v , Var v' =>
+                if EqNat.beq_nat v v'
                   then Some sub
                   else None
               | Func f1 args1 , Func f2 args2 =>
                 if EqNat.beq_nat f1 f2 then
-                  (fix unifyArgs (args1 args2 : list (expr types)) (s : S.Subst types) 
+                  (fix unifyArgs (args1 args2 : list (expr types)) (s : S.Subst types)
                     : option (S.Subst types) :=
                     match args1 , args2 with
                       | nil , nil => Some s
@@ -126,9 +126,9 @@ Module Make (S : Subst) <: SyntacticUnifier S.
                     None
               | Not e1 , Not e2 =>
                 unify e1 e2 sub
-              | UVar l , UVar r => 
+              | UVar l , UVar r =>
                 if EqNat.beq_nat l r then Some sub
-                  else 
+                  else
                     match S.Subst_lookup l sub with
                       | None => S.Subst_set l (UVar r) sub
                       | Some l' =>
@@ -147,7 +147,7 @@ Module Make (S : Subst) <: SyntacticUnifier S.
                 end
               | l , UVar u =>
                 match S.Subst_lookup u sub with
-                  | None => 
+                  | None =>
                     S.Subst_set u l sub
                   | Some r' =>
                     exprUnify bound l r' sub
@@ -156,7 +156,7 @@ Module Make (S : Subst) <: SyntacticUnifier S.
             end
       end.
 
-    Hint Rewrite S.exprInstantiate_Func S.exprInstantiate_Equal S.exprInstantiate_Not 
+    Hint Rewrite S.exprInstantiate_Func S.exprInstantiate_Equal S.exprInstantiate_Not
       S.exprInstantiate_UVar S.exprInstantiate_Var S.exprInstantiate_Const : subst_simpl.
 
     Opaque S.Subst_lookup S.Subst_set S.exprInstantiate.
@@ -194,7 +194,7 @@ Module Make (S : Subst) <: SyntacticUnifier S.
           rewrite H8 in *.
           destruct (nth_error U u); try congruence.
           consider (tvar_seqb t1 x); congruence. } }
-      { clear H; intuition. 
+      { clear H; intuition.
         { erewrite S.Subst_set_exprInstantiate by eassumption; auto. }
         { eapply S.Subst_set_Extends; eauto. }
         { eapply S.Subst_set_WellTyped; try eassumption. simpl in H2.
@@ -240,7 +240,7 @@ Module Make (S : Subst) <: SyntacticUnifier S.
               { repeat rewrite S.exprInstantiate_UVar.
                 specialize (IHn _ _ _ _ H2). destruct IHn as [ ? [ ? ? ] ].
                 repeat erewrite S.Subst_lookup_Extends by eassumption.
-                intuition. 
+                intuition.
                 simpl in *; consider (nth_error U x); consider (nth_error U x0); intros.
                 consider (tvar_seqb t t0); consider (tvar_seqb t t1); intros.
                 subst. subst.
@@ -248,14 +248,14 @@ Module Make (S : Subst) <: SyntacticUnifier S.
                 destruct (S.WellTyped_lookup H8 H1).
                 rewrite H6 in *. rewrite H9 in *.
                 intuition. inversion H11; inversion H7; subst. subst.
-                eapply H5; eauto. } 
+                eapply H5; eauto. }
               { intuition.
                 { erewrite S.Subst_set_exprInstantiate with (x := x0) by eassumption.
                   rewrite S.exprInstantiate_UVar.
                   erewrite S.Subst_lookup_Extends; try eassumption.
                   reflexivity. eapply S.Subst_set_Extends; eauto. }
                 { eapply S.Subst_set_Extends; eauto. }
-                { simpl in *. 
+                { simpl in *.
                   consider (nth_error U x); consider (nth_error U x0); intros.
                   consider (tvar_seqb t t0); consider (tvar_seqb t t1); intros; subst.
                   eapply S.Subst_set_WellTyped; try eassumption.
@@ -263,24 +263,24 @@ Module Make (S : Subst) <: SyntacticUnifier S.
                   destruct (S.WellTyped_lookup H5 H0); intuition.
                   rewrite H6 in *. inversion H7. subst. auto. } } }
             { intuition.
-              { erewrite S.Subst_set_exprInstantiate with (x := x) by eassumption. 
+              { erewrite S.Subst_set_exprInstantiate with (x := x) by eassumption.
                 reflexivity. }
               { eapply S.Subst_set_Extends; eauto. }
-              { simpl in *. 
+              { simpl in *.
                 consider (nth_error U x); consider (nth_error U x0); intros.
                 consider (tvar_seqb t t0); consider (tvar_seqb t t1); intros; subst.
                 eapply S.Subst_set_WellTyped; try eassumption.
-                subst. simpl. rewrite H2. consider (tvar_seqb t0 t0); auto. } } } } 
+                subst. simpl. rewrite H2. consider (tvar_seqb t0 t0); auto. } } } }
         { clear H. consider (S.Subst_lookup x sub); intros.
           { specialize (IHn _ _ _ _ H0); intuition.
-            { rewrite S.exprInstantiate_UVar. 
+            { rewrite S.exprInstantiate_UVar.
               erewrite S.Subst_lookup_Extends; try eassumption. }
             { eapply H4; try eassumption.
-              destruct (S.WellTyped_lookup H6 H). 
+              destruct (S.WellTyped_lookup H6 H).
               destruct (nth_error U x); try congruence.
               intuition. inversion H8; clear H8; subst.
               consider (tvar_seqb t x0); try congruence. } }
-          { intuition. 
+          { intuition.
             { erewrite S.Subst_set_exprInstantiate by eassumption. auto. }
             { eapply S.Subst_set_Extends; eauto. }
             { eapply S.Subst_set_WellTyped; eauto.
@@ -288,7 +288,7 @@ Module Make (S : Subst) <: SyntacticUnifier S.
               consider (tvar_seqb t t0); try congruence. } } } }
       { destruct r; simpl in *; intros; try congruence.
         { consider (EqNat.beq_nat f f0); try congruence; intros; subst.
-          intros. apply and_assoc. 
+          intros. apply and_assoc.
           split.
           { generalize dependent l0; generalize dependent sub; generalize dependent sub'.
             induction H.
@@ -309,10 +309,10 @@ Module Make (S : Subst) <: SyntacticUnifier S.
               { etransitivity; eauto. } } }
           { intros. destruct (nth_error funcs f0); try congruence.
             destruct t0. simpl in *.
-            generalize dependent l0; generalize dependent sub; generalize dependent sub'; 
+            generalize dependent l0; generalize dependent sub; generalize dependent sub';
               generalize dependent TDomain.
             induction H.
-            { destruct l0; try congruence. } (*inversion 1; subst. 
+            { destruct l0; try congruence. } (*inversion 1; subst.
               destruct (tvar_seqb t TRange); try congruence. auto. } *)
             { destruct l0; try congruence. intros.
               match goal with
@@ -336,7 +336,7 @@ Module Make (S : Subst) <: SyntacticUnifier S.
           consider (o l1 r1 sub); try congruence; intros.
           specialize (IHl1 _ _ _ H). specialize (IHl2 _ _ _ H0).
           intuition.
-          { do 2 rewrite S.exprInstantiate_Equal. f_equal; auto. 
+          { do 2 rewrite S.exprInstantiate_Equal. f_equal; auto.
             erewrite <- S.exprInstantiate_Extends with (y := s); eauto. rewrite H1.
             rewrite S.exprInstantiate_Extends; auto. }
           { etransitivity; eauto. }
@@ -344,9 +344,9 @@ Module Make (S : Subst) <: SyntacticUnifier S.
             eapply andb_true_iff in H4. eapply andb_true_iff in H8. intuition eauto. } }
         { eapply unify_uvar; eauto. } }
       { destruct r; intros; try congruence.
-        { specialize (IHl _ _ _ H). clear H. intuition eauto. 
+        { specialize (IHl _ _ _ H). clear H. intuition eauto.
           repeat rewrite S.exprInstantiate_Not. rewrite H. auto.
-          destruct t; try congruence. simpl in *. eauto. } 
+          destruct t; try congruence. simpl in *. eauto. }
         { eapply unify_uvar; eauto. } }
     Qed.
 
@@ -360,10 +360,10 @@ Module Make (S : Subst) <: SyntacticUnifier S.
     Theorem exprUnify_sound_sem : forall n l r sub sub',
       exprUnify n l r sub = Some sub' ->
       forall funcs U G t,
-      exprD funcs U G (S.exprInstantiate sub' l) t = 
+      exprD funcs U G (S.exprInstantiate sub' l) t =
       exprD funcs U G (S.exprInstantiate sub' r) t.
     Proof.
-      intros. f_equal. specialize (exprUnify_all _ _ _ _ _ H); intuition. 
+      intros. f_equal. specialize (exprUnify_all _ _ _ _ _ H); intuition.
     Qed.
 
     Theorem exprUnify_Extends : forall n l r sub sub',

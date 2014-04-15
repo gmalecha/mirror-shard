@@ -1,8 +1,8 @@
-Require Import List.
-Require Import Expr.
+Require Import Coq.Lists.List.
 Require Import ExtLib.Core.EquivDec.
 Require Import ExtLib.Tactics.Consider.
-Require Import Instantiation.
+Require Import MirrorShard.Expr.
+Require Import MirrorShard.Instantiation.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -12,7 +12,7 @@ Require Import FMapInterface.
 Module Make (FM : S with Definition E.t := uvar
                     with Definition E.eq := @eq uvar) <: Subst.
 
-  Require MoreFMapFacts.
+  Require MirrorShard.MoreFMapFacts.
 
   Module FACTS := FMapFacts.WFacts FM.
   Module PROPS := FMapFacts.WProperties FM.

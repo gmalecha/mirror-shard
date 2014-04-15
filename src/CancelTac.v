@@ -1,8 +1,9 @@
-Require Import List.
-Require Import Expr SepExpr SepHeap SepCancel.
-Require Import Prover.
-Require Import Tactics Reflection.
-Require ExprUnify.
+Require Import Coq.Lists.List.
+Require Import MirrorShard.Expr MirrorShard.SepExpr.
+Require Import MirrorShard.SepHeap MirrorShard.SepCancel.
+Require Import MirrorShard.Prover.
+Require Import MirrorShard.Tactics MirrorShard.Reflection.
+Require MirrorShard.ExprUnify.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -12,24 +13,24 @@ Module CancellerTac (ST : SepTheory.SepTheory)
                     (SH : SepHeap ST SE)
                     (C : Canceller ST SE SH).
   Module SH_FACTS := SepHeap.SepHeapFacts ST SE SH.
-  
+
 Section existsSubst.
   Variable types : list type.
   Variable funcs : functions types.
   Variable meta_base : env types.
   Variable var_env : env types.
   Variable sub : C.U.Subst types.
- 
-  Definition ExistsSubstNone (_ : tvar) (_ : expr types) := 
+
+  Definition ExistsSubstNone (_ : tvar) (_ : expr types) :=
     False.
 
   Fixpoint substInEnv (from : nat) (vals : env types) (ret : env types -> Prop) : Prop :=
-    match vals with 
+    match vals with
       | nil => ret nil
       | val :: vals =>
         match C.U.Subst_lookup from sub with
           | None => substInEnv (S from) vals (fun e => ret (val :: e))
-          | Some v => 
+          | Some v =>
             match exprD funcs meta_base var_env v (projT1 val) with
               | None => ExistsSubstNone (projT1 val) v
               | Some v' => projT2 val = v' /\ substInEnv (S from) vals (fun e => ret (existT _ (projT1 val) v' :: e))
@@ -56,7 +57,7 @@ Fixpoint consistent {ts} (vals : list { x : tvar & option (tvarD ts x) }) (e : l
       t = t' /\ @consistent _ vals e
     | existT t (Some v) :: vals , existT t' v' :: e =>
       match equiv_dec t t' return Prop with
-        | left pf => 
+        | left pf =>
           v' = match (pf : t = t') in _ = t return tvarD ts t with
                  | refl_equal => v
                end /\ @consistent _ vals e
@@ -86,7 +87,7 @@ Proof.
 Qed.
 
 Lemma substInEnv_sem : forall types funcs meta_env var_env sub vals from ret,
-  @substInEnv types funcs meta_env var_env sub from vals ret <-> 
+  @substInEnv types funcs meta_env var_env sub from vals ret <->
   (C.U.Subst_equations_to funcs meta_env var_env sub from vals /\ ret vals).
 Proof.
   induction vals; simpl; intros.
@@ -94,7 +95,7 @@ Proof.
   { destruct a; simpl in *.
     consider (C.U.Subst_lookup from sub); simpl; intros.
     consider (exprD funcs meta_env var_env e x); simpl; intros.
-    { rewrite IHvals. intuition; subst; auto. } 
+    { rewrite IHvals. intuition; subst; auto. }
     { intuition. }
     { rewrite IHvals. intuition. } }
 Qed.
@@ -121,7 +122,7 @@ Section canceller.
   ; Rhs    : SH.SHeap types
   ; Subst  : C.U.Subst types
   }.
-  
+
   Let bound := 10.
 
   Definition canceller tpreds (facts : Facts prover)
@@ -129,7 +130,7 @@ Section canceller.
     match C.sepCancel prover bound tpreds facts lhs rhs sub with
       | Some (l,r,s) =>
         ({| Lhs := l ; Rhs := r ; Subst := s |}, true)
-      | None => 
+      | None =>
         ({| Lhs := lhs ; Rhs := rhs ; Subst := sub |}, false)
     end.
 
@@ -138,7 +139,7 @@ Section canceller.
     WellTyped_env b d ->
     WellTyped_env (types := ts) (a ++ b) (c ++ d).
   Proof. clear.
-    intros. unfold WellTyped_env in *. unfold typeof_env in *. subst. 
+    intros. unfold WellTyped_env in *. unfold typeof_env in *. subst.
     rewrite map_app. reflexivity.
   Qed.
   Ltac t_list_length := repeat (rewrite typeof_env_length || rewrite rev_length || rewrite map_length || rewrite app_length).
@@ -164,9 +165,9 @@ Section canceller.
     { destruct s. destruct a; simpl in *. destruct (equiv_dec x0 x); try contradiction.
       unfold equiv in e. intuition; subst. f_equal; eauto. eapply IHa; eauto. }
     { inversion H; clear H; subst. destruct s. simpl in *.
-      destruct (equiv_dec x x); unfold equiv in *; eauto. 
+      destruct (equiv_dec x x); unfold equiv in *; eauto.
       intuition eauto. 2: eapply IHa; eauto. clear.
-      rewrite EqdepClass.UIP_refl with (p1 := e). reflexivity. }    
+      rewrite EqdepClass.UIP_refl with (p1 := e). reflexivity. }
   Qed.
 
   Lemma ApplyCancelSep_with_eq' : forall (PC : ProverT_correct prover funcs) (meta_env var_env : env types)
@@ -185,13 +186,13 @@ Section canceller.
       C.U.Subst_Extends subst sub ->
       SH.WellTyped_sheap (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env meta_env) (typeof_env var_env) lhs' = true ->
       SH.WellTyped_sheap (typeof_funcs funcs) (SE.typeof_preds preds) (typeof_env meta_env) (typeof_env var_env) rhs' = true ->
-        existsSubst funcs var_env subst 0 
+        existsSubst funcs var_env subst 0
           (map (fun x => existT (fun t => option (tvarD types t)) (projT1 x) (Some (projT2 x))) meta_env)
           (fun meta_env : Expr.env types =>
             ST.himp
               (SE.sexprD funcs preds meta_env var_env (SH.sheapD lhs'))
               (SE.sexprD funcs preds meta_env var_env (SH.sheapD rhs')))
-              
+
     end ->
     ST.himp (@SE.sexprD _ funcs preds meta_env var_env (SH.sheapD l))
                     (@SE.sexprD _ funcs preds meta_env var_env (SH.sheapD r)).
@@ -248,7 +249,7 @@ Section canceller.
       C.U.Subst_WellTyped tf tU tG s ->
       SH.WellTyped_sheap tf tp tU tG l = true ->
       SH.WellTyped_sheap tf tp tU tG r = true ->
-         C.U.Subst_WellTyped (types := types) tf tU tG (Subst cr) 
+         C.U.Subst_WellTyped (types := types) tf tU tG (Subst cr)
       /\ SH.WellTyped_sheap (types := types) tf tp tU tG (Lhs cr) = true
       /\ SH.WellTyped_sheap (types := types) tf tp tU tG (Rhs cr) = true.
   Proof.

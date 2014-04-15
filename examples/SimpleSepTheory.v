@@ -3,8 +3,8 @@
  ** A simple implementation of a separation theory based on functional
  ** extensionality.
  **)
+Require Import Coq.Classes.RelationClasses.
 Require Import MirrorShard.SepTheory.
-Require Import RelationClasses.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -35,22 +35,22 @@ Module SimpleSepLog_Kernel <: SepTheory_Kernel.
               | None => hr p
               | Some x => Some x
             end.
-              
+
   Definition star (l r : hprop) : hprop :=
-    fun h => 
+    fun h =>
       exists h1 h2, split h h1 h2 /\
         l h1 /\ r h2.
-      
+
   Definition ex (T : Type) (p : T -> hprop) : hprop :=
     fun h => exists x, p x h.
 
-  Ltac doIt := 
+  Ltac doIt :=
     unfold himp, star, emp, split, ex, inj; intros;
-    repeat match goal with 
+    repeat match goal with
              | [ H : exists x, _ |- _ ] => destruct H
              | [ H : _ /\ _ |- _ ] => destruct H
            end.
-  
+
   Theorem himp_star_comm : forall P Q : hprop, himp (star P Q) (star Q P).
   Proof.
     doIt. do 2 eexists; doIt. split. 2: eauto.
@@ -61,7 +61,7 @@ Module SimpleSepLog_Kernel <: SepTheory_Kernel.
 
   Theorem himp_star_assoc :
     forall P Q R : hprop, himp (star (star P Q) R) (star P (star Q R)).
-  Proof. 
+  Proof.
     doIt; intuition; doIt.
     exists x1. exists (fun p => match x2 p with
                                   | None => x0 p
@@ -77,7 +77,7 @@ Module SimpleSepLog_Kernel <: SepTheory_Kernel.
     rewrite H6 in *; auto.
     destruct (x1 p); auto. destruct (x p); eauto; try congruence.
     rewrite H6 in *; auto.
-    
+
     exists x2. exists x0. intuition.
     specialize (H p); specialize (H0 p); intuition; doIt.
     rewrite H0 in *; rewrite H4 in *; auto.
@@ -97,7 +97,7 @@ Module SimpleSepLog_Kernel <: SepTheory_Kernel.
     doIt. exists (fun _ => None). exists h. intuition.
   Qed.
 
-  Theorem himp_star_frame : forall P Q R S, 
+  Theorem himp_star_frame : forall P Q R S,
     himp P Q -> himp R S -> himp (star P R) (star Q S).
   Proof.
     doIt. exists x; exists x0. intuition.
@@ -137,7 +137,7 @@ Module SimpleSepLog_Kernel <: SepTheory_Kernel.
   Proof.
     doIt. eauto.
   Qed.
-  
+
   Theorem himp_ex_c :
     forall (T : Type) (P : T -> hprop) (Q : hprop),
       (exists v : T, himp Q (P v)) -> himp Q (ex P).

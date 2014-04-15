@@ -26,7 +26,7 @@ Ltac think := think' idtac ltac:(eauto).
 
 
 (** Lemmas About Lists **)
-Require Import List.
+Require Import Coq.Lists.List.
 Lemma nth_error_None_length : forall (T : Type) (ls : list T) (n : nat),
   nth_error ls n = None -> length ls <= n.
 Proof.

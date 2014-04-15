@@ -1,5 +1,5 @@
-Require Import RelationClasses.
-Require Import List.
+Require Import Coq.Classes.RelationClasses.
+Require Import Coq.Lists.List.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -7,9 +7,9 @@ Set Strict Implicit.
 Module Type SepTheory.
 
   Parameter hprop : Type.
- 
+
   Parameter himp : hprop -> hprop -> Prop.
-  
+
   Parameter heq : hprop -> hprop -> Prop.
 
   Parameter Refl_himp : Reflexive himp.
@@ -36,23 +36,23 @@ Module Type SepTheory.
   Parameter ex : forall (T : Type) (p : T -> hprop), hprop.
 
   (* star lemmas *)
-  Parameter himp_star_comm : forall P Q, 
+  Parameter himp_star_comm : forall P Q,
     (star P Q) ===> (star Q P).
 
-  Parameter heq_star_comm : forall P Q, 
+  Parameter heq_star_comm : forall P Q,
     (star P Q) <===> (star Q P).
 
-  Parameter heq_star_assoc : forall P Q R, 
+  Parameter heq_star_assoc : forall P Q R,
     (star (star P Q) R) <===> (star P (star Q R)).
 
   Parameter heq_star_emp_l : forall P, (star emp P) <===> P.
 
   Parameter heq_star_emp_r : forall P, (star P emp) <===> P.
 
-  Parameter himp_star_frame : forall P Q R S, 
+  Parameter himp_star_frame : forall P Q R S,
     P ===> Q -> R ===> S -> (star P R) ===> (star Q S).
 
-  Parameter heq_star_frame : forall P Q R S, 
+  Parameter heq_star_frame : forall P Q R S,
     P <===> Q -> R <===> S -> (star P R) <===> (star Q S).
 
   Parameter himp_subst_p : forall P Q R S,
@@ -70,13 +70,13 @@ Module Type SepTheory.
   Parameter himp_star_cancel : forall P Q R,
     Q ===> R -> (star P Q) ===> (star P R).
 
-  Parameter heq_star_cancel : forall P Q R, 
+  Parameter heq_star_cancel : forall P Q R,
     Q <===> R -> (star P Q) <===> (star P R).
 
   (** pure lemmas **)
   Parameter himp_star_pure_p : forall P Q F,
     (star (inj F) P) ===> Q -> (F -> P ===> Q).
-  
+
   Parameter himp_star_pure_c : forall P Q (F : Prop),
     (F -> P ===> Q) -> (star (inj F) P) ===> Q.
 
@@ -86,17 +86,17 @@ Module Type SepTheory.
     P ===> (star (inj p) Q).
 
   (** ex lemmas **)
-  Parameter himp_ex_p : forall T (P : T -> _) Q, 
+  Parameter himp_ex_p : forall T (P : T -> _) Q,
     (forall v, (P v) ===> Q) -> (ex P) ===> Q.
 
-  Parameter himp_ex_c : forall T (P : T -> _) Q, 
+  Parameter himp_ex_c : forall T (P : T -> _) Q,
     (exists v, Q ===> (P v)) -> Q ===> (ex P).
 
-  Parameter heq_ex : forall T (P Q : T -> _), 
+  Parameter heq_ex : forall T (P Q : T -> _),
     (forall v, P v <===> Q v) ->
     ex P <===> ex Q.
 
-  Parameter himp_ex : forall T (P Q : T -> _), 
+  Parameter himp_ex : forall T (P Q : T -> _),
     (forall v, P v ===> Q v) ->
     ex P ===> ex Q.
 
@@ -106,19 +106,19 @@ Module Type SepTheory.
   Parameter himp_ex_star : forall T (P : T -> _) Q,
     (star (ex P) Q) ===> (ex (fun x => star (P x) Q)).
 
-  Existing Instance Refl_himp. 
-  Existing Instance Trans_himp. 
+  Existing Instance Refl_himp.
+  Existing Instance Trans_himp.
   Existing Instance Refl_heq.
-  Existing Instance Sym_heq. 
-  Existing Instance Trans_heq. 
+  Existing Instance Sym_heq.
+  Existing Instance Trans_heq.
 
 End SepTheory.
 
 Module Type SepTheory_Kernel.
   Parameter hprop : Type.
- 
+
   Parameter himp : hprop -> hprop -> Prop.
-  
+
   Parameter Refl_himp : Reflexive himp.
   Parameter Trans_himp : Transitive himp.
 
@@ -134,23 +134,23 @@ Module Type SepTheory_Kernel.
   Parameter ex : forall (T : Type) (p : T -> hprop), hprop.
 
   (* star lemmas *)
-  Parameter himp_star_comm : forall P Q, 
+  Parameter himp_star_comm : forall P Q,
     (star P Q) ===> (star Q P).
 
-  Parameter himp_star_assoc : forall P Q R, 
+  Parameter himp_star_assoc : forall P Q R,
     (star (star P Q) R) ===> (star P (star Q R)).
 
   Parameter himp_star_emp_p : forall P, (star emp P) ===> P.
 
   Parameter himp_star_emp_c : forall P, P ===> (star emp P).
 
-  Parameter  himp_star_frame : forall P Q R S, 
+  Parameter  himp_star_frame : forall P Q R S,
     P ===> Q -> R ===> S -> (star P R) ===> (star Q S).
 
   (** pure lemmas **)
   Parameter himp_star_pure_p : forall P Q F,
     (star (inj F) P) ===> Q -> (F -> P ===> Q).
-  
+
   Parameter himp_star_pure_c : forall P Q (F : Prop),
     (F -> P ===> Q) -> (star (inj F) P) ===> Q.
 
@@ -160,10 +160,10 @@ Module Type SepTheory_Kernel.
     P ===> (star (inj p) Q).
 
   (** ex lemmas **)
-  Parameter himp_ex_p : forall T (P : T -> _) Q, 
+  Parameter himp_ex_p : forall T (P : T -> _) Q,
     (forall v, (P v) ===> Q) -> (ex P) ===> Q.
 
-  Parameter himp_ex_c : forall T (P : T -> _) Q, 
+  Parameter himp_ex_c : forall T (P : T -> _) Q,
     (exists v, Q ===> (P v)) -> Q ===> (ex P).
 
   Parameter himp_ex_star : forall T (P : T -> _) Q,
@@ -174,7 +174,7 @@ Module Type SepTheory_Kernel.
 
 End SepTheory_Kernel.
 
-Module SepTheory_From_Kernel (Import K : SepTheory_Kernel) <: 
+Module SepTheory_From_Kernel (Import K : SepTheory_Kernel) <:
   SepTheory.
 
   Include K.
@@ -184,14 +184,14 @@ Module SepTheory_From_Kernel (Import K : SepTheory_Kernel) <:
 
   Global Instance Refl_heq : Reflexive heq.
   Proof. unfold heq; red; intuition. Qed.
-    
+
   Global Instance Sym_heq : Symmetric heq.
   Proof. unfold heq; red; intuition. Qed.
 
   Global Instance Trans_heq : Transitive heq.
   Proof.
     unfold heq; red; intros. intuition; etransitivity; eassumption.
-  Qed.    
+  Qed.
 
   Local Notation "a ===> b" := (himp a b) (at level 60).
   Local Notation "a <===> b" := (heq a b) (at level 60).
@@ -203,8 +203,8 @@ Module SepTheory_From_Kernel (Import K : SepTheory_Kernel) <:
   Proof.
     intros. apply heq_defn in H. intuition.
   Qed.
-  
-  Theorem heq_star_comm : forall P Q, 
+
+  Theorem heq_star_comm : forall P Q,
     (star P Q) <===> (star Q P).
   Proof.
     intros. unfold heq. intuition; apply himp_star_comm.
@@ -221,7 +221,7 @@ Module SepTheory_From_Kernel (Import K : SepTheory_Kernel) <:
     unfold heq; split; apply himp_star_emp_p || apply himp_star_emp_c.
   Qed.
 
-  Ltac break_heq := 
+  Ltac break_heq :=
     intros;
       repeat match goal with
                | [ H : _ <===> _ |- _ ] => unfold heq in H
@@ -241,7 +241,7 @@ Module SepTheory_From_Kernel (Import K : SepTheory_Kernel) <:
     intros. rewrite H0. eapply himp_subst_p. eassumption. reflexivity.
   Qed.
 
-  Theorem heq_star_assoc : forall P Q R, 
+  Theorem heq_star_assoc : forall P Q R,
     (star (star P Q) R) <===> (star P (star Q R)).
   Proof.
     intros; eapply heq_defn; split; try eapply himp_star_assoc.
@@ -252,7 +252,7 @@ Module SepTheory_From_Kernel (Import K : SepTheory_Kernel) <:
     apply himp_star_comm. reflexivity.
   Qed.
 
-  Theorem heq_star_frame : forall P Q R S, 
+  Theorem heq_star_frame : forall P Q R S,
     P <===> Q -> R <===> S -> (star P R) <===> (star Q S).
   Proof.
     break_heq; apply himp_star_frame; eauto.
@@ -275,7 +275,7 @@ Module SepTheory_From_Kernel (Import K : SepTheory_Kernel) <:
     apply himp_star_comm.
   Qed.
 
-  Theorem heq_star_cancel : forall P Q R, 
+  Theorem heq_star_cancel : forall P Q R,
     Q <===> R -> (star P Q) <===> (star P R).
   Proof.
     break_heq.
@@ -283,14 +283,14 @@ Module SepTheory_From_Kernel (Import K : SepTheory_Kernel) <:
     apply himp_star_cancel; try eassumption.
   Qed.
 
-  Theorem heq_ex : forall T (P Q : T -> _), 
+  Theorem heq_ex : forall T (P Q : T -> _),
     (forall v, P v <===> Q v) ->
     ex P <===> ex Q.
   Proof.
     break_heq;
     apply himp_ex_p; intros; apply himp_ex_c; exists v;
     specialize (H v); break_heq; auto.
-  Qed.    
+  Qed.
 
   Theorem heq_ex_star : forall T (P : T -> _) Q,
     (star (ex P) Q) <===> (ex (fun x => star (P x) Q)).
@@ -298,11 +298,11 @@ Module SepTheory_From_Kernel (Import K : SepTheory_Kernel) <:
     intros; split; eapply himp_ex_star || eapply himp_star_ex.
   Qed.
 
-  Theorem himp_ex : forall T (P Q : T -> _), 
+  Theorem himp_ex : forall T (P Q : T -> _),
     (forall v, P v ===> Q v) ->
     ex P ===> ex Q.
   Proof.
-    intros. 
+    intros.
     apply himp_ex_p; intros; apply himp_ex_c; exists v;
     specialize (H v); break_heq; auto.
   Qed.
@@ -310,9 +310,9 @@ Module SepTheory_From_Kernel (Import K : SepTheory_Kernel) <:
 End SepTheory_From_Kernel.
 
 Module SepTheory_Rewrites (Import ST : SepTheory).
-  
-  Require Import Setoid Classes.Morphisms.
-  
+
+  Require Import Coq.Setoids.Setoid Coq.Classes.Morphisms.
+
   Add Parametric Relation : hprop himp
     reflexivity proved by Refl_himp
     transitivity proved by Trans_himp
@@ -336,19 +336,19 @@ Module SepTheory_Rewrites (Import ST : SepTheory).
     intros. eapply heq_star_frame; eauto.
   Qed.
 
-  Global Add Parametric Morphism T : (@ex T) with 
+  Global Add Parametric Morphism T : (@ex T) with
     signature (pointwise_relation T (heq) ==> heq)
   as ex_heq_mor.
     intros. eapply heq_ex. eauto.
   Qed.
 
-  Global Add Parametric Morphism T : (@ex T) with 
+  Global Add Parametric Morphism T : (@ex T) with
     signature (pointwise_relation T (himp) ==> himp)
   as ex_himp_mor.
     intros. eapply himp_ex. auto.
   Qed.
 
-  Global Add Parametric Morphism : (himp) with 
+  Global Add Parametric Morphism : (himp) with
     signature (heq ==> heq ==> Basics.impl)
   as himp_heq_mor.
     intros. intro. etransitivity.
@@ -356,17 +356,17 @@ Module SepTheory_Rewrites (Import ST : SepTheory).
     etransitivity. eassumption. eapply heq_defn in H0. intuition.
   Qed.
 
-  Global Add Parametric Morphism : (himp) with 
+  Global Add Parametric Morphism : (himp) with
     signature (himp --> himp ++> Basics.impl)
   as himp_himp_mor.
     intros. intro. repeat (etransitivity; eauto).
   Qed.
 
-  Global Add Parametric Morphism : inj with 
+  Global Add Parametric Morphism : inj with
     signature (Basics.impl ==> himp)
   as inj_himp_mor.
     intros.
-    intros. rewrite <- heq_star_emp_r. 
+    intros. rewrite <- heq_star_emp_r.
     eapply himp_star_pure_c. intros.
     rewrite <- heq_star_emp_r with (P := inj y).
     eapply himp_star_pure_cc. eauto.
@@ -383,28 +383,28 @@ Module SepTheory_Rewrites (Import ST : SepTheory).
 End SepTheory_Rewrites.
 
 Module SepTheory_Ext (ST : SepTheory).
-  Require Import List.
+  Require Import Coq.Lists.List.
   Module Import ST_RW := SepTheory_Rewrites ST.
 
   Section param.
     Variable type : Type.
     Variable typeD : type -> Type.
 
-    Definition existsEach (ts : list type) (f : list (@sigT _ typeD) -> ST.hprop ) 
+    Definition existsEach (ts : list type) (f : list (@sigT _ typeD) -> ST.hprop )
       : ST.hprop :=
       @ST.ex (list (@sigT _ typeD)) (fun env => ST.star (ST.inj (map (@projT1 _ _) env = ts)) (f env)).
 
-    Ltac thinker := 
+    Ltac thinker :=
       repeat match goal with
                | [ H : forall f, ST.himp _ _ _ |- _ ] => rewrite H
                | [ |- _ ] => reflexivity
-               | [ |- ST.himp (ST.star (ST.inj _) _) _ ] => 
+               | [ |- ST.himp (ST.star (ST.inj _) _) _ ] =>
                  apply ST.himp_star_pure_c ; intros
-               | [ |- ST.himp (ST.ex _) _ ] => 
+               | [ |- ST.himp (ST.ex _) _ ] =>
                  apply ST.himp_ex_p ; intros
-               | [ |- ST.himp _ (ST.ex (fun x => ST.star (ST.inj (?X = _)) _)) ] => 
+               | [ |- ST.himp _ (ST.ex (fun x => ST.star (ST.inj (?X = _)) _)) ] =>
                  apply ST.himp_ex_c ; exists nil ; eapply ST.himp_star_pure_cc; [ solve [ eauto ] | ]
-               | [ |- ST.himp _ (ST.ex (fun x => ST.star (ST.inj (?X = _)) _)) ] => 
+               | [ |- ST.himp _ (ST.ex (fun x => ST.star (ST.inj (?X = _)) _)) ] =>
                  apply ST.himp_ex_c ; eexists; eapply ST.himp_star_pure_cc; [ solve [ eauto ] | ]
              end.
 
@@ -417,11 +417,11 @@ Module SepTheory_Ext (ST : SepTheory).
         repeat match goal with
                  | [ H : forall f, ST.himp _ _ |- _ ] => rewrite H
                  | [ |- _ ] => reflexivity
-                 | [ |- ST.himp (ST.star (ST.inj _) _) _ ] => 
+                 | [ |- ST.himp (ST.star (ST.inj _) _) _ ] =>
                    apply ST.himp_star_pure_c ; intros
-                 | [ |- ST.himp (ST.ex _) _ ] => 
+                 | [ |- ST.himp (ST.ex _) _ ] =>
                    apply ST.himp_ex_p ; intros
-                 | [ |- ST.himp _ (ST.ex (fun x => ST.star (ST.inj (?X = _)) _)) ] => 
+                 | [ |- ST.himp _ (ST.ex (fun x => ST.star (ST.inj (?X = _)) _)) ] =>
                    apply ST.himp_ex_c ; eexists; eapply ST.himp_star_pure_cc; [ solve [ eauto ] | ]
                end.
     Qed.
@@ -436,7 +436,7 @@ Module SepTheory_Ext (ST : SepTheory).
       inversion H; clear H; subst. eapply IHls in H2.
       destruct H2. destruct H. intuition. subst. exists (a :: x0). exists x1. simpl; eauto.
     Qed.
-    
+
     Lemma existsEach_app : forall x x' (F : list (@sigT _ typeD) -> _) ,
       ST.heq (existsEach (x ++ x') F)
              (existsEach x (fun e => existsEach x' (fun e' => F (e ++ e')))).
@@ -486,30 +486,30 @@ Module SepTheory_Ext (ST : SepTheory).
       ST.himp F' (existsEach x F).
     Proof.
       intros. eapply ST.himp_ex_c. intros. destruct H.
-      exists x0. intuition. rewrite H1. eapply ST.himp_star_pure_cc; auto. reflexivity. 
+      exists x0. intuition. rewrite H1. eapply ST.himp_star_pure_cc; auto. reflexivity.
     Qed.
 
     Lemma heq_pushIn : forall P x (F : list (@sigT _ typeD) -> _) ,
       ST.heq (ST.star P (existsEach x F)) (existsEach x (fun e => ST.star P (F e))).
     Proof.
       intros. unfold existsEach; intros.
-      rewrite ST.heq_star_comm. rewrite ST.heq_ex_star. eapply ST.heq_ex. intros. 
+      rewrite ST.heq_star_comm. rewrite ST.heq_ex_star. eapply ST.heq_ex. intros.
       repeat rewrite ST.heq_star_assoc. eapply ST.heq_defn; split; thinker; eapply ST.himp_star_pure_cc; eauto.
       rewrite ST.heq_star_comm. reflexivity.
       rewrite ST.heq_star_comm. reflexivity.
     Qed.
-    
+
     Lemma existsEach_cons : forall v vs P,
       ST.heq (existsEach (v :: vs) P)
              (ST.ex (fun x => existsEach vs (fun env => P (@existT _ _ v x :: env)))).
     Proof.
       intros. change (v :: vs) with ((v :: nil) ++ vs). rewrite existsEach_app.
-      eapply ST.heq_defn. simpl. split; unfold existsEach; thinker. eapply ST.himp_ex_c. 
+      eapply ST.heq_defn. simpl. split; unfold existsEach; thinker. eapply ST.himp_ex_c.
       destruct v0; simpl in *; try congruence.
       inversion H; clear H; subst. exists (projT2 s). destruct v0; simpl in *; try congruence.
       eapply ST.himp_ex_c. exists v1. eapply ST.himp_star_pure_cc; eauto. destruct s; simpl; reflexivity.
 
-      eapply ST.himp_ex_c. exists (existT typeD v v0 :: nil). simpl. eapply ST.himp_star_pure_cc; eauto. 
+      eapply ST.himp_ex_c. exists (existT typeD v v0 :: nil). simpl. eapply ST.himp_star_pure_cc; eauto.
       eapply ST.himp_ex_c. exists v1. eapply ST.himp_star_pure_cc; eauto. reflexivity.
     Qed.
 
@@ -529,4 +529,3 @@ Module SepTheory_Ext (ST : SepTheory).
 
   End param.
 End SepTheory_Ext.
-

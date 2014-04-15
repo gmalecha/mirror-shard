@@ -1,5 +1,5 @@
-Require Import List.
-Require Import Permutation.
+Require Import Coq.Lists.List.
+Require Import Coq.Sorting.Permutation.
 
 Section ListLexOrder.
   Variable T : Type.
@@ -22,7 +22,7 @@ Section Sorting.
   Variable T : Type.
   Variable cmp : T -> T -> comparison.
 
-  Section insert. 
+  Section insert.
     Variable val : T.
 
     Fixpoint insert_in_order (ls : list T) : list T :=
@@ -30,16 +30,16 @@ Section Sorting.
         | nil => val :: nil
         | l :: ls' =>
           match cmp val l with
-            | Gt => l :: insert_in_order ls' 
-            | _ => val :: ls 
+            | Gt => l :: insert_in_order ls'
+            | _ => val :: ls
           end
       end.
   End insert.
 
   Fixpoint sort (ls : list T) : list T :=
     match ls with
-      | nil => nil 
-      | l :: ls => 
+      | nil => nil
+      | l :: ls =>
         insert_in_order l (sort ls)
     end.
 
@@ -50,7 +50,7 @@ Lemma insert_in_order_inserts : forall T C x l,
 Proof.
   clear. induction l; simpl; intros.
   exists nil; exists nil; eauto.
-  destruct (C x a). 
+  destruct (C x a).
   exists nil; simpl. eauto.
   exists nil; simpl. eauto.
   destruct IHl. destruct H. intuition. subst.

@@ -1,10 +1,10 @@
-Require Import List Bool.
+Require Import Coq.Lists.List Coq.Bool.Bool.
 Require Import ExtLib.Tactics.Consider.
-Require Import Expr SepExpr.
-Require Import Prover.
-Require Import Tactics.
-Require Unfolder.
-Require SepHeap.
+Require Import MirrorShard.Expr MirrorShard.SepExpr.
+Require Import MirrorShard.Prover.
+Require Import MirrorShard.Tactics.
+Require MirrorShard.Unfolder.
+Require MirrorShard.SepHeap.
 
 Set Implicit Arguments.
 Set Strict Implicit.

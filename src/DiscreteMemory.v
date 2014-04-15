@@ -1,19 +1,19 @@
-Require Import Heaps.
-Require Import Setoid.
+Require Import Coq.Lists.List.
+Require Import Coq.Setoids.Setoid.
 Require Import ExtLib.Data.HList.
-Require Import List.
+Require Import MirrorShard.Heaps.
 
 Module Type DiscreteMemory.
   Parameter addr : Type.
-  
+
   Parameter all_addr : list addr.
-  
+
   Parameter NoDup_all_addr : NoDup all_addr.
 End DiscreteMemory.
 
 (** A permission-like view on top of concrete memories **)
 Module DiscreteHeap (B : Memory)
-                    (BD : DiscreteMemory with Definition addr := B.addr) 
+                    (BD : DiscreteMemory with Definition addr := B.addr)
                  <: SeparationMemory with Module M := B.
   Module Import M := B.
 
@@ -29,15 +29,15 @@ Module DiscreteHeap (B : Memory)
   Fixpoint disjoint' dom : smem' dom -> smem' dom -> Prop :=
     match dom with
       | nil => fun _ _ => True
-      | a :: b => fun m1 m2 => 
-           (hlist_hd m1 = None \/ hlist_hd m2 = None) 
+      | a :: b => fun m1 m2 =>
+           (hlist_hd m1 = None \/ hlist_hd m2 = None)
         /\ disjoint' _ (hlist_tl m1) (hlist_tl m2)
     end.
   Fixpoint join' dom : smem' dom -> smem' dom -> smem' dom :=
     match dom with
       | nil => fun _ _ => Hnil
-      | a :: b => fun m1 m2 => 
-        Hcons 
+      | a :: b => fun m1 m2 =>
+        Hcons
         match hlist_hd m1 with
           | None => hlist_hd m2
           | Some x => Some x
@@ -48,25 +48,25 @@ Module DiscreteHeap (B : Memory)
   Fixpoint relevant' (ls : list addr) : smem' ls -> list addr :=
     match ls with
       | nil => fun _ => nil
-      | a :: b => fun x => 
+      | a :: b => fun x =>
         match hlist_hd x with
           | None => relevant' _ (hlist_tl x)
           | Some _ => a :: relevant' _ (hlist_tl x)
         end
     end.
-  
+
   Fixpoint smem_get' dom : addr -> smem' dom -> option value :=
-    match dom as dom return addr -> smem' dom -> option value with 
+    match dom as dom return addr -> smem' dom -> option value with
       | nil => fun _ _ => None
       | a :: b => fun a' m =>
-        if addr_dec a a' then 
+        if addr_dec a a' then
           hlist_hd m
         else
           smem_get' b a' (hlist_tl m)
     end.
 
   Fixpoint smem_set' dom : addr -> value -> smem' dom -> option (smem' dom) :=
-    match dom as dom return addr -> value -> smem' dom -> option (smem' dom) with 
+    match dom as dom return addr -> value -> smem' dom -> option (smem' dom) with
       | nil => fun _ _ _ => None
       | a :: b => fun p v m =>
         if addr_dec a p then
@@ -87,7 +87,7 @@ Module DiscreteHeap (B : Memory)
       | Hcons p _ a b =>
         match a with
           | None => True
-          | Some x => 
+          | Some x =>
             B.mem_get m p = Some x
         end /\ models' _ b m
     end.
@@ -105,7 +105,7 @@ Module DiscreteHeap (B : Memory)
   Definition disjoint (m1 m2 : smem) : Prop :=
     disjoint' _ m1 m2.
 
-  Definition join (m1 m2 : smem) : smem := 
+  Definition join (m1 m2 : smem) : smem :=
     join' _ m1 m2.
 
   Definition split (m ml mr : smem) : Prop :=
@@ -136,14 +136,14 @@ Module DiscreteHeap (B : Memory)
     smem_eqv s s' ->
     (models s m <-> models s' m).
   Proof. unfold smem_eqv; intuition subst; auto. Qed.
- 
+
   Theorem smem_get_respects : forall a s s',
     smem_eqv s s' -> smem_get a s = smem_get a s'.
-  Proof. unfold smem_eqv; intuition subst; auto. Qed.    
+  Proof. unfold smem_eqv; intuition subst; auto. Qed.
 
   Theorem smem_set_respects : forall a v s s',
     smem_eqv s s' -> smem_set a v s = smem_set a v s'.
-  Proof. unfold smem_eqv; intuition subst; auto. Qed.    
+  Proof. unfold smem_eqv; intuition subst; auto. Qed.
 
   Theorem split_respects : forall s1 s1' s2 s2' s3 s3',
     smem_eqv s1 s1' -> smem_eqv s2 s2' -> smem_eqv s3 s3' ->
@@ -160,15 +160,15 @@ Module DiscreteHeap (B : Memory)
     { intuition subst; rewrite hlist_eta with (h := c); eauto with typeclass_instances; f_equal;
       eapply IHl; intuition. }
   Qed.
- 
+
   Theorem split_comm : forall a b c,
     split a b c -> split a c b.
-  Proof. 
+  Proof.
     unfold split, join, disjoint, smem.
     generalize dependent BD.all_addr.
     induction l; simpl in *; intros; auto.
     destruct H. destruct H. subst.
-    destruct (IHl _ _ _ (conj H1 eq_refl)). 
+    destruct (IHl _ _ _ (conj H1 eq_refl)).
     rewrite H2. intuition; rewrite H3; try f_equal.
     destruct (hlist_hd c); auto.
     destruct (hlist_hd b); auto.
@@ -208,12 +208,12 @@ Module DiscreteHeap (B : Memory)
     generalize BD.all_addr; induction l; simpl in *; intros.
     intuition.
     destruct (addr_dec a p); subst.
-    { intuition. rewrite H0 in *. subst; simpl in *; auto. 
+    { intuition. rewrite H0 in *. subst; simpl in *; auto.
       rewrite H0 in *. subst. simpl in *; auto.
       rewrite H0 in *; subst. destruct (hlist_hd b); auto.
       destruct (hlist_hd b); auto. subst; simpl in *; auto. }
     { destruct H. destruct H. subst. simpl in *. eauto. }
-  Qed.      
+  Qed.
 
   Theorem split_disjoint : forall a b c,
     split a b c ->
@@ -240,7 +240,7 @@ Module DiscreteHeap (B : Memory)
 
   Ltac simp ext :=
     intros; simpl in *;
-    repeat (instantiate; 
+    repeat (instantiate;
       match goal with
         | [ H : prod _ _ |- _ ] => destruct H
         | [ H : Some _ = Some _ |- _ ] =>
@@ -248,19 +248,19 @@ Module DiscreteHeap (B : Memory)
         | [ H : _ = _ |- _ ] => rewrite H in *
         | [ H : NoDup (_ :: _) |- _ ] =>
           inversion H; clear H; subst
-        | [ H : context [ addr_dec ?A ?B ] |- _ ] => 
+        | [ H : context [ addr_dec ?A ?B ] |- _ ] =>
           destruct (addr_dec A B); subst
-        | [ |- context [ addr_dec ?A ?B ] ] => 
+        | [ |- context [ addr_dec ?A ?B ] ] =>
           destruct (addr_dec A B); subst
-        | [ H : match ?X with 
+        | [ H : match ?X with
                   | Some _ => _
                   | None => _
-                end = _ |- _ ] => 
+                end = _ |- _ ] =>
           generalize dependent H; case_eq X; intros
-        | [ H : match ?X with 
+        | [ H : match ?X with
                   | Some _ => _
                   | None => _
-                end |- _ ] => 
+                end |- _ ] =>
           generalize dependent H; case_eq X; intros
         | [ H : models' (_ :: _) ?M _ |- _ ] =>
           match M with
@@ -272,7 +272,7 @@ Module DiscreteHeap (B : Memory)
             | Hcons _ _ => fail 1
             | _ => rewrite (hlist_eta M)
           end
-        | [ H : smem' nil |- _ ] => 
+        | [ H : smem' nil |- _ ] =>
           rewrite (hlist_eta H) in *
         | [ H : exists x, _ |- _ ] => destruct H
         | [ H : _ /\ _ |- _ ] => destruct H
@@ -290,8 +290,8 @@ Module DiscreteHeap (B : Memory)
     induction l; try solve [ simp intuition ].
       simp auto.
       destruct (addr_dec a p); destruct (in_dec addr_dec p l); subst; try solve [ intuition ].
-      split; eauto. erewrite B.mem_get_set_neq; eauto. 
-      split; eauto. 
+      split; eauto. erewrite B.mem_get_set_neq; eauto.
+      split; eauto.
   Qed.
 
   Lemma smem_set_same_domain : forall s,
@@ -312,7 +312,7 @@ Module DiscreteHeap (B : Memory)
   Theorem smem_set_sound' : forall s m,
     models s m ->
     forall a v s', smem_set a v s = Some s' ->
-    exists m', M.mem_set m a v = Some m' /\ models s' m'. 
+    exists m', M.mem_set m a v = Some m' /\ models s' m'.
   Proof.
     generalize BD.NoDup_all_addr.
     unfold models, smem_set, mem_get, smem.
@@ -327,16 +327,16 @@ Module DiscreteHeap (B : Memory)
       intuition; eauto using B.mem_get_set_eq.
       eapply models_set_not_in; eauto.
       inversion H; auto.
-      
+
       exfalso. eapply mem_get_mem_set; eauto. congruence. }
 
     { revert H1.
       case_eq (smem_set' l a0 v (hlist_tl s)); intros.
       inversion H1; clear H1; subst. eapply IHl in H0; eauto.
-      destruct H0. simpl. eexists; intuition eauto. 
+      destruct H0. simpl. eexists; intuition eauto.
       destruct (hlist_hd s); auto.
-      erewrite mem_get_set_neq; eauto. inversion H; auto. 
-      
+      erewrite mem_get_set_neq; eauto. inversion H; auto.
+
       congruence. }
   Qed.
 
@@ -344,7 +344,7 @@ Module DiscreteHeap (B : Memory)
     models s m ->
     forall a v s', smem_set a v s = Some s' ->
     same_domain s s' /\
-    exists m', M.mem_set m a v = Some m' /\ models s' m'. 
+    exists m', M.mem_set m a v = Some m' /\ models s' m'.
   Proof.
     intuition eauto using smem_set_sound', smem_set_same_domain.
   Qed.
@@ -392,21 +392,21 @@ Module DiscreteHeap (B : Memory)
     clear.
     red. unfold same_domain. firstorder.
   Qed.
-      
+
   (** memoryIn **)
   Section memoryIn.
     Variable m : mem.
 
     Fixpoint memoryIn' (ls : list addr) : smem' ls :=
-      match ls with 
+      match ls with
         | nil => Hnil
         | l :: ls => Hcons (mem_get m l) (memoryIn' ls)
-      end. 
+      end.
 
     Definition memoryIn : smem := memoryIn' BD.all_addr.
   End memoryIn.
 
-  Theorem memoryIn_sound : forall m, 
+  Theorem memoryIn_sound : forall m,
     models (memoryIn m) m.
   Proof.
     unfold models, memoryIn. generalize BD.all_addr.
@@ -414,13 +414,13 @@ Module DiscreteHeap (B : Memory)
     intuition. destruct (mem_get m a); auto.
   Qed.
 
-  Theorem smem_set_get_eq : forall m p v' m', 
+  Theorem smem_set_get_eq : forall m p v' m',
     smem_set p v' m = Some m' ->
     smem_get p m' = Some v'.
   Proof.
     unfold smem_set, smem_get, smem.
     generalize BD.all_addr. induction l; simpl in *; intros; try congruence.
-    
+
     destruct (addr_dec a p); subst; auto. destruct (hlist_hd m); try congruence.
     inversion H; clear H; subst. auto.
     eapply IHl.
@@ -430,14 +430,14 @@ Module DiscreteHeap (B : Memory)
   Qed.
 
 
-  Theorem smem_set_get_neq : forall m p v' m', 
+  Theorem smem_set_get_neq : forall m p v' m',
     smem_set p v' m = Some m' ->
     forall p', p <> p' ->
       smem_get p' m' = smem_get p' m.
   Proof.
     unfold smem_set, smem_get, smem.
     generalize BD.all_addr. induction l; simpl in *; intros; try congruence.
-    
+
     destruct (addr_dec a p); subst; auto. destruct (hlist_hd m); try congruence.
     inversion H; clear H; subst. destruct (addr_dec p p'); auto; try congruence.
 

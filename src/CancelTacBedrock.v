@@ -1,14 +1,15 @@
 (** This is the cancellation algorithm/interface used in Bedrock
  **)
-Require Import List Bool.
+Require Import Coq.Lists.List Coq.Bool.Bool.
 Require Import ExtLib.Tactics.Consider.
 Require Import ExtLib.Core.EquivDec.
-Require Import Expr SepExpr SepHeap SepCancel SepLemma.
-Require Import Prover.
-Require Import Tactics.
-Require UnfolderTac.
-Require ProvePures.
-Require ExprUnify.
+Require Import MirrorShard.Expr MirrorShard.SepExpr MirrorShard.SepHeap.
+Require Import MirrorShard.SepCancel MirrorShard.SepLemma.
+Require Import MirrorShard.Prover.
+Require Import MirrorShard.Tactics.
+Require MirrorShard.UnfolderTac.
+Require MirrorShard.ProvePures.
+Require MirrorShard.ExprUnify.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -21,7 +22,7 @@ Module Make (ST : SepTheory.SepTheory)
             (UNIFY : ExprUnify.SyntacticUnifier SUBST)
             (UNF : Unfolder.Unfolder ST SE SH SL).
 
-  Require OrderedCanceler.
+  Require MirrorShard.OrderedCanceler.
 
   Module ORDER := OrderedCanceler.DefaultOrdering ST SE SH.
   Module CANCEL := OrderedCanceler.Make SUBST UNIFY ST SE SH ORDER.
@@ -32,7 +33,7 @@ Module Make (ST : SepTheory.SepTheory)
   Module UTAC := UnfolderTac.UnfolderTac ST SE SH SL UNF.
   Module SUBST_FACTS := Instantiation.SubstFacts SUBST.
 
-  Require SimpleBlockInstantiation.
+  Require MirrorShard.SimpleBlockInstantiation.
   Module INS := SimpleBlockInstantiation.Make SUBST.
 
   Lemma ex_iff : forall T (P P' : T -> Prop),

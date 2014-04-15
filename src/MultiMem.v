@@ -1,6 +1,6 @@
-Require Import List.
+Require Import Coq.Lists.List.
 Require Import ExtLib.Tactics.Consider.
-Require Import Heaps.
+Require Import MirrorShard.Heaps.
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -35,7 +35,7 @@ Section multi_mem.
   Section read.
     Variable read : addr -> mem -> option val.
     Variable m : mem.
-  
+
     Fixpoint multi_read_addrs (n : nat) : vector addr n -> (vector val n -> T) -> option T :=
       match n as n return vector addr n -> (vector val n -> T) -> option T with
         | 0 => fun _ k => Some (k tt)
@@ -46,7 +46,7 @@ Section multi_mem.
           end
       end.
   End read.
-  
+
   Section write.
     Variable write : addr -> val -> mem -> option mem.
 
@@ -71,11 +71,11 @@ Section multi_mem.
 
   Definition multi_write (write : addr -> val -> mem -> option mem) (a : addr) (v : T) : mem -> option mem :=
     multi_write_addrs write N (footprint a) (explode v).
-  
+
 End multi_mem.
 
 Module MultiSepMemFacts (SM : SeparationMemory).
-  
+
   Require Import ExtLib.Tactics.Consider.
 
   Lemma smem_multi_write_footprint : forall (N : nat) b b' addrs vals,
@@ -95,7 +95,7 @@ Module MultiSepMemFacts (SM : SeparationMemory).
 
   Lemma smem_multi_read_footprint : forall T (N : nat) b b' addrs k,
     (forall a, In a (to_list _ _ addrs) -> SM.smem_get a b = SM.smem_get a b') ->
-    @multi_read_addrs T SM.smem SM.M.addr SM.M.value SM.smem_get b N addrs k = 
+    @multi_read_addrs T SM.smem SM.M.addr SM.M.value SM.smem_get b N addrs k =
     @multi_read_addrs T SM.smem SM.M.addr SM.M.value SM.smem_get b' N addrs k.
   Proof.
     induction N; simpl; intros; auto.
@@ -122,7 +122,7 @@ Module MultiSepMemFacts (SM : SeparationMemory).
         | [ |- match ?X with _ => _ end = Some _ ] =>
         consider X; intros; try congruence
       end.
-      { generalize (smem_multi_write_footprint _ _ _ _ H1 (fst addrs) H4). 
+      { generalize (smem_multi_write_footprint _ _ _ _ H1 (fst addrs) H4).
         eapply IHN with (k := fun vs => k (v, vs)) in H1; eauto.
         generalize (SM.smem_set_get_eq _ _ _ _ H0).
         intros. rewrite H1. f_equal. f_equal. destruct vals; simpl; f_equal.
@@ -130,17 +130,17 @@ Module MultiSepMemFacts (SM : SeparationMemory).
         clear - H H2 H3. unfold vector in *.
         rewrite H in H3. rewrite H2 in H3. inversion H3; auto. }
       { exfalso.
-        generalize (smem_multi_write_footprint _ _ _ _ H1 (fst addrs) H4). 
+        generalize (smem_multi_write_footprint _ _ _ _ H1 (fst addrs) H4).
         eapply IHN with (k := fun vs => k (fst vals,vs)) in H1; eauto.
-        intuition.        
+        intuition.
         generalize (SM.smem_set_get_eq _ _ _ _ H0). unfold vector in *.
         rewrite H2. rewrite H. congruence. } }
   Qed.
 
   Lemma smem_read_write_neq_multi' : forall T (N : nat) k b b' addrs addrs' vals,
-    disjoint_v _ _ _ addrs addrs' ->    
+    disjoint_v _ _ _ addrs addrs' ->
     @multi_write_addrs SM.smem SM.M.addr SM.M.value SM.smem_set N addrs vals b = Some b' ->
-    @multi_read_addrs T SM.smem SM.M.addr SM.M.value SM.smem_get b' N addrs' k = 
+    @multi_read_addrs T SM.smem SM.M.addr SM.M.value SM.smem_get b' N addrs' k =
       @multi_read_addrs T SM.smem SM.M.addr SM.M.value SM.smem_get b N addrs' k.
   Proof.
     induction N; simpl; intros.
@@ -167,7 +167,7 @@ Module MultiSepMemFacts (SM : SeparationMemory).
             eapply H; eauto. }
           { rewrite <- H3 in H2.
             generalize (SM.smem_set_get_neq _ _ _ _ H0 (fst addrs')).
-            rewrite <- H2. intro. apply H4. 
+            rewrite <- H2. intro. apply H4.
             intro. eapply H. left. reflexivity.
             exfalso. eapply H. left. reflexivity. left; auto.
             intro. eapply H. right. eapply H4. left. auto. } }
@@ -196,9 +196,9 @@ Module MultiSepMemFacts (SM : SeparationMemory).
     { exfalso.
       destruct (SM.M.addr_dec p (fst addrs)); subst.
       { eapply SM.smem_set_get_eq in H0.
-        match type of H2 with 
+        match type of H2 with
           | ?X = _ => match type of H0 with
-                        | ?Y = _ => change X with Y in * 
+                        | ?Y = _ => change X with Y in *
                       end
         end. congruence. }
       { erewrite <- SM.smem_set_get_neq in H. 3: eassumption. 2: eassumption. congruence. } }
@@ -278,11 +278,11 @@ Module MultiSepMemFacts (SM : SeparationMemory).
       implode (explode v) = v ->
       disjoint_v _ _ _ (footprint p) (footprint p') ->
       @multi_write T SM.smem SM.M.addr SM.M.value N footprint explode SM.smem_set p v b = Some b' ->
-      @multi_read T SM.smem SM.M.addr SM.M.value N footprint implode SM.smem_get p' b' = 
-      @multi_read T SM.smem SM.M.addr SM.M.value N footprint implode SM.smem_get p' b. 
+      @multi_read T SM.smem SM.M.addr SM.M.value N footprint implode SM.smem_get p' b' =
+      @multi_read T SM.smem SM.M.addr SM.M.value N footprint implode SM.smem_get p' b.
     Proof.
       unfold multi_read, multi_write; intros.
-      eapply smem_read_write_neq_multi' with (k := implode) in H1; eauto. 
+      eapply smem_read_write_neq_multi' with (k := implode) in H1; eauto.
     Qed.
 
     Theorem split_multi_read : forall a b c p v,
@@ -302,7 +302,7 @@ Module MultiSepMemFacts (SM : SeparationMemory).
       intros. eapply split_smem_write_multi'; eauto.
     Qed.
 
-    
+
 
     Theorem smem_set_get_valid_multi : forall p v m,
                                         @multi_read T SM.smem _ _ N footprint implode SM.smem_get p m <> None ->

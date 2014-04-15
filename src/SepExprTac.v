@@ -1,11 +1,11 @@
-Require Import List.
-Require Import SepExpr.
-Require Import ExprTac.
+Require Import Coq.Lists.List.
+Require Import MirrorShard.SepExpr.
+Require Import MirrorShard.ExprTac.
 
 Module Make (ST : SepTheory.SepTheory) (SE : SepExpr ST).
 
   Section abstracted.
-    Variables (not : Prop -> Prop) 
+    Variables (not : Prop -> Prop)
               (emp : ST.hprop)
               (star : ST.hprop -> ST.hprop -> ST.hprop)
               (ex : forall T : Type, (T -> ST.hprop) -> ST.hprop)
@@ -32,7 +32,7 @@ Module Make (ST : SepTheory.SepTheory) (SE : SepExpr ST).
           match nth_error sfuncs f with
             | Some f' =>
               match
-                Expr.applyD (nexprD not types funcs meta_env var_env) 
+                Expr.applyD (nexprD not types funcs meta_env var_env)
                 (SE.SDomain f') b ST.hprop (SE.SDenotation f')
                 with
                 | Some p => p
@@ -43,9 +43,7 @@ Module Make (ST : SepTheory.SepTheory) (SE : SepExpr ST).
         | SE.Const p => p
       end.
   End abstracted.
-  
+
   Theorem nsexprD_sexprD : nsexprD not ST.emp ST.star ST.ex ST.inj = SE.sexprD.
   Proof. reflexivity. Qed.
 End Make.
-    
-      

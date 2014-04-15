@@ -1,7 +1,7 @@
-Require Import List Arith Bool.
+Require Import Coq.Lists.List Coq.Arith.Arith Coq.Bool.Bool.
 Require Import ExtLib.Core.EquivDec.
 Require Import ExtLib.Tactics.Consider.
-Require Import Expr Env.
+Require Import MirrorShard.Expr MirrorShard.Env.
 
 Set Implicit Arguments.
 Set Strict Implicit.

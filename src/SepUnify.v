@@ -1,7 +1,8 @@
-Require Import ExprUnify.
-Require Import SepHeap.
-Require Import Expr.
-Require Import List.
+Require Import Coq.Lists.List.
+Require Import MirrorShard.ExprUnify.
+Require Import MirrorShard.SepHeap.
+Require Import MirrorShard.Expr.
+
 
 Set Implicit Arguments.
 Set Strict Implicit.
@@ -27,13 +28,13 @@ Module Make (SUBST : Instantiation.Subst)
 
     Variable funcs : functions types.
     Variable preds : SE.predicates types.
-    
+
     Variables U G : env types.
 
     Lemma impuresInstantiate_mmap_add : forall n e acc, SE.heq funcs preds U G
         (SH.impuresD (impuresInstantiate (MM.mmap_add n e acc)))
-        (SH.impuresD 
-          (MM.mmap_add n (map (@SUBST.exprInstantiate _ s) e) 
+        (SH.impuresD
+          (MM.mmap_add n (map (@SUBST.exprInstantiate _ s) e)
                          (impuresInstantiate acc))).
     Proof.
       clear. intros. eapply MM.PROPS.map_induction with (m := acc); intros.
@@ -87,7 +88,7 @@ Module Make (SUBST : Instantiation.Subst)
 
         red. intros. specialize (H0 y). repeat (rewrite MM.FACTS.add_o in * || rewrite MM.FACTS.map_o in * ).
         unfold exprs in *. rewrite H0. unfold MM.FACTS.option_map. destruct (MF.FACTS.eq_dec n y); auto.
-        
+
         intro. apply H. apply MM.FACTS.map_in_iff in H1. auto.
     Qed.
 
@@ -105,14 +106,14 @@ Module Make (SUBST : Instantiation.Subst)
     Lemma starred_forget_exprInstantiate : forall x P,
       SUBST.Subst_equations funcs U G s ->
       forall e,
-      SE.heq funcs preds U G 
+      SE.heq funcs preds U G
         (SH.starred (fun v : list (expr types) => SE.Func x (map (SUBST.exprInstantiate s) v)) e P)
         (SH.starred (SE.Func x) e P).
     Proof.
       clear. induction e; intros; repeat rewrite SH.starred_def; simpl; repeat rewrite <- SH.starred_def; SEP_FACTS.heq_canceler.
         rewrite IHe. SEP_FACTS.heq_canceler. unfold SE.heq. simpl.
         match goal with
-                 | [ |- context [ match ?X with _ => _ end ] ] => 
+                 | [ |- context [ match ?X with _ => _ end ] ] =>
                    case_eq X; intros; try reflexivity
                end.
         erewrite applyD_forget_exprInstantiate with (D := SE.SDomain p) (F := SE.SDenotation p); eauto.
@@ -121,7 +122,7 @@ Module Make (SUBST : Instantiation.Subst)
 
     Lemma impuresD_forget_impuresInstantiate : forall h,
       SUBST.Subst_equations funcs U G s ->
-      SE.heq funcs preds U G 
+      SE.heq funcs preds U G
         (SH.impuresD (impuresInstantiate h))
         (SH.impuresD h).
     Proof.
